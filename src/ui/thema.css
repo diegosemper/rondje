@@ -278,6 +278,52 @@ button {
   font-size: 54px;
 }
 
+/* ── De boom van Bussen ─────────────────────────────────────── */
+
+.boom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.boom-rij {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+}
+
+.boom-plek {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+}
+
+/* Horizontaal liggende kaarten tellen dubbel. */
+.boom-plek.dubbel .speelkaart {
+  transform: rotate(90deg);
+}
+
+.boom-plek.nu .speelkaart {
+  outline: 3px solid var(--goud);
+  outline-offset: 3px;
+}
+
+.boom-plek .badge {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  padding: 1px 5px;
+  border-radius: 99px;
+  background: var(--goud);
+  color: #1a1205;
+  font-size: 11px;
+  font-weight: 800;
+  z-index: 2;
+}
+
 /* ── Spelersbalk ────────────────────────────────────────────── */
 
 .spelers {

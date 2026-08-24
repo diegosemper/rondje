@@ -4,6 +4,7 @@ import { testspel } from './testspel'
 import { hilo } from './hilo'
 import { wievanons } from './wievanons'
 import { snelstevinger } from './snelstevinger'
+import { bussen } from './bussen'
 
 /**
  * Alle spellen van Rondje.
@@ -12,6 +13,7 @@ import { snelstevinger } from './snelstevinger'
  * toevoegen. Meer is het niet.
  */
 export const ALLE_SPELLEN: GameModule[] = [
+  bussen,
   hilo,
   wievanons,
   snelstevinger,
