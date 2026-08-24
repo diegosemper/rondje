@@ -79,7 +79,7 @@ function Inhoud() {
     case 'lobby':
       return <Lobby kamer={kamer} uid={uid} bijVertrek={verlaat} />
     case 'kiezen':
-      return <SpelKiezer kamer={kamer} uid={uid} />
+      return <SpelKiezer kamer={kamer} uid={uid} bijVertrek={verlaat} />
     case 'uitleg':
       return <Uitleg kamer={kamer} uid={uid} />
     case 'spel':

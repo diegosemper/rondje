@@ -2,10 +2,19 @@ import type { Kamer } from '../engine/types'
 import { DUUR_TEKST, kiesWillekeurig, speelbaar, TAG_EMOJI } from '../engine/registry'
 import { maakRng } from '../engine/random'
 import { naarFase, startSpel } from '../net/hostLoop'
+import { verlaatKamer } from '../net/kamer'
 import { GroteKnop, Kaartje } from '../ui/Basis'
 import { meldFout } from '../ui/Fout'
 
-export function SpelKiezer({ kamer, uid }: { kamer: Kamer; uid: string }) {
+export function SpelKiezer({
+  kamer,
+  uid,
+  bijVertrek,
+}: {
+  kamer: Kamer
+  uid: string
+  bijVertrek: () => void
+}) {
   const benHost = kamer.meta.hostUid === uid
   const spelers = kamer.volgorde.map((u) => kamer.spelers[u]).filter(Boolean)
   const lijst = speelbaar(spelers.length, kamer.instelling.spellen)
@@ -45,6 +54,7 @@ export function SpelKiezer({ kamer, uid }: { kamer: Kamer; uid: string }) {
       {!benHost && (
         <Kaartje style={{ textAlign: 'center' }}>
           <h2 className="zacht">De host kiest het volgende spel…</h2>
+          <div className="klein zacht">Lobby {kamer.meta.code}</div>
         </Kaartje>
       )}
 
@@ -109,6 +119,18 @@ export function SpelKiezer({ kamer, uid }: { kamer: Kamer; uid: string }) {
             </GroteKnop>
           </div>
         </div>
+      )}
+
+      {!benHost && (
+        <GroteKnop
+          kleur="leeg"
+          klein
+          bijTik={() => {
+            verlaatKamer(kamer.meta.code, uid).catch(meldFout).finally(bijVertrek)
+          }}
+        >
+          Verlaat lobby
+        </GroteKnop>
       )}
     </div>
   )

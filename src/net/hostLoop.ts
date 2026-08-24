@@ -163,7 +163,28 @@ async function schrijfWeg(
     }
   }
 
+  controleerPaden(u)
   await update(ref(db()), u)
+}
+
+/**
+ * Firebase weigert een update die tegelijk een map beschrijft én iets binnen
+ * die map. De foutmelding daarvan is cryptisch, dus vangen we het hier af met
+ * een tekst waar je wat aan hebt. Kost niets en scheelt zoeken bij elk nieuw
+ * spel dat we toevoegen.
+ */
+function controleerPaden(u: Record<string, any>): void {
+  const paden = Object.keys(u)
+  for (const a of paden) {
+    for (const b of paden) {
+      if (a !== b && b.startsWith(a + '/')) {
+        throw new Error(
+          `Kan niet tegelijk "${a}" en "${b}" schrijven — de een zit in de ander. ` +
+            `Schrijf de losse velden van "${a}", of ruim "${a}" eerst apart op.`,
+        )
+      }
+    }
+  }
 }
 
 /* ── Commando's die de host kan geven ───────────────────────── */
@@ -179,20 +200,22 @@ export async function startSpel(kamer: Kamer, gameId: string): Promise<void> {
   const ctx = maakContext(kamer, seed, eff)
   const state = mod.init(ctx)
 
+  // Eerst het oude spel helemaal weg. Dat moet los, want Firebase weigert een
+  // update die tegelijk een map wist én iets binnen die map schrijft.
   await remove(ref(db(), padRuw(code, 'prive')))
   await remove(ref(db(), padRuw(code, 'acties')))
+  await remove(ref(db(), pad(code, 'spel')))
 
   const geschiedenis = [...kamer.geschiedenis.filter((g) => g !== gameId), gameId]
 
+  // Om dezelfde reden schrijven we de velden van `spel` los, en niet het blok
+  // in één keer: schrijfWeg zet er `spel/stateJson` bij.
   await schrijfWeg(kamer, state, eff, {
-    [pad(code, 'spel')]: {
-      gameId,
-      ronde: 0,
-      seed,
-      begonOp: nu(),
-      klaar: false,
-      stateJson: JSON.stringify(stripGeheim(state)),
-    },
+    [pad(code, 'spel/gameId')]: gameId,
+    [pad(code, 'spel/ronde')]: 0,
+    [pad(code, 'spel/seed')]: seed,
+    [pad(code, 'spel/begonOp')]: nu(),
+    [pad(code, 'spel/klaar')]: false,
     [pad(code, 'meta/fase')]: 'uitleg',
     [pad(code, 'skip')]: null,
     [pad(code, 'gereed')]: null,
