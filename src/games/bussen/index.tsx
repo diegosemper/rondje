@@ -1,6 +1,7 @@
 import {
   isRood,
   kaartKort,
+  leggAf,
   nieuweStapel,
   trek,
   waardeVoluit,
@@ -9,7 +10,7 @@ import {
 } from '../../engine/deck'
 import { volgende } from '../../engine/beurten'
 import { useHostKlok } from '../../engine/hooks'
-import { klokTekst, resterendMs, startKlok, voortgang, type Klok } from '../../engine/timer'
+import { klokTekst, startKlok, voortgang, type Klok } from '../../engine/timer'
 import type { Actie, GameModule, KijkContext, SpelContext } from '../../engine/types'
 import { Speelkaart } from '../../ui/Kaart'
 import { Balkje, GroteKnop, Kaartje, SpelerBalk } from '../../ui/Basis'
@@ -17,36 +18,40 @@ import { Balkje, GroteKnop, Kaartje, SpelerBalk } from '../../ui/Basis'
 /* ─────────────────────────────────────────────────────────────
    BUSSEN — de variant van Diego's vriendengroep
 
-   Drie fasen:
+   1. DE VIER VRAGEN, per vraag de kring rond. Eerst doet iedereen zijn
+      eerste kaart (rood of zwart), dan is iedereen aan de beurt voor hoger
+      of lager, enzovoort. Fout kost 1, 2, 3 of 4 slokken; gelijk kost dubbel.
+      Je vier kaarten worden je hand.
 
-   1. De vier vragen. Per vraag krijg je een kaart erbij. Fout kost 1, 2, 3
-      of 4 slokken. Je vier kaarten worden je geheime hand.
+   2. DE BOOM. Elf kaarten, van onder naar boven 1-2-3-4-1, waard 1 t/m 5
+      slokken. Ligt een kaart horizontaal, dan telt hij dubbel.
 
-   2. De boom. Elf kaarten, van onder naar boven 1-2-3-4-1, waard 1 t/m 5
-      slokken. Ligt een kaart horizontaal, dan telt hij dubbel. Gaat er één
-      open, dan is het een RACE: iedereen die die waarde heeft legt zo snel
-      mogelijk op. Wie als eerste legt, deelt als laatste uit — en dat is de
-      goede plek, want dan weet je wat de rest al gedaan heeft.
+      Gaat er één open, dan is het een RACE. Heb je die waarde, dan tik je hem
+      aan en hij ligt. Wie als eerste legt, deelt als LAATSTE uit — en dat is
+      de goede plek, want dan weet je al wat de rest gedaan heeft. Te laat is
+      pech: je houdt de kaart, en met de meeste kaarten over moet jij de bus in.
 
-      Bluffen mag. Je hand is op je eigen scherm en niemand kan meekijken, dus
-      je kunt opleggen wat je niet hebt. Tot iemand "laat zien" roept.
-
-   3. De bus. Wie de meeste kaarten overhoudt rijdt. Vijf kaarten hoger of
-      lager; bij een fout drink je en begin je opnieuw, maar wordt de bus één
-      kaart korter. Er komt dus altijd een eind aan.
+   3. DE BUS. Een willekeurige kaart bepaalt de lengte, minimaal 6. Hoger of
+      lager tot je hem helemaal uit hebt. Een waarde die al in de bus ligt komt
+      niet nog eens — dan wordt er een nieuwe kaart getrokken. Vanaf 9 kaarten
+      ligt er een checkpoint één over de helft, en daar herstart je voortaan.
    ───────────────────────────────────────────────────────────── */
 
-/* ── Vorm van de boom ───────────────────────────────────────── */
-
-/** Aantal kaarten per rij, van onder naar boven. */
+/** Aantal kaarten per rij van de boom, van onder naar boven. */
 const BOOM_RIJEN = [1, 2, 3, 4, 1]
 const KANS_HORIZONTAAL = 0.4
-
 const RACE_SEC = 8
-const UITDAAG_SEC = 7
+/** Hoe lang een kaart die niemand heeft in beeld blijft. */
+const LEEG_SEC = 2.5
 
 const VRAAG_INZET = [1, 2, 3, 4]
-const BUS_LENGTE = 5
+
+const BUS_MIN = 6
+/** Er zijn maar 13 verschillende waarden, en de startkaart pakt er één.
+ *  Langer dan 12 kan dus niet zonder herhaling. */
+const BUS_MAX = 12
+/** Vanaf deze lengte krijgt de bus een checkpoint. */
+const BUS_CHECKPOINT_VANAF = 9
 
 type Keuze =
   | 'rood'
@@ -60,23 +65,21 @@ type Keuze =
   | 'wel'
   | 'niet'
 
+type Uitkomst = 'goed' | 'fout' | 'gelijk'
+
 interface BoomPlek {
   rij: number
-  /** 1 t/m 5 */
   waarde: number
   horizontaal: boolean
   kaart: Kaart | null
 }
 
-interface Claim {
+interface Legging {
   uid: string
-  /** hoeveel kaarten deze speler zegt te hebben */
   aantal: number
-  /** wanneer hij als eerste oplegde — bepaalt de volgorde */
+  /** wanneer hij als eerste tikte — bepaalt de volgorde */
   ts: number
 }
-
-type Uitkomst = 'goed' | 'fout' | 'gelijk'
 
 interface BussenState {
   fase: 'vragen' | 'boom' | 'bus' | 'klaar'
@@ -90,35 +93,33 @@ interface BussenState {
   /** hoeveel kaarten iedereen nog heeft — dit mag iedereen zien */
   handGrootte: Record<string, number>
 
-  /* fase 1 */
-  vraagBeurt: string
+  /* fase 1 — per vraag de kring rond */
   vraagNr: number
-  /** de kaarten die de speler aan de beurt nu open op tafel heeft */
-  getoond: Kaart[]
+  vraagBeurt: string
+  gedaanDezeVraag: string[]
   laatste: { uid: string; keuze: Keuze; kaart: Kaart; uitkomst: Uitkomst } | null
-  gedaan: string[]
-  /** wie er nog een goed geraden zebra/regenboog mag uitdelen */
   bonus: string | null
 
   /* fase 2 */
   boom: BoomPlek[]
   boomIndex: number
-  boomFase: 'race' | 'uitdagen' | 'uitdelen'
+  boomFase: 'race' | 'uitdelen' | 'leeg'
   klok: Klok | null
-  claims: Claim[]
-  gepast: string[]
-  uitdagingen: { door: string; tegen: string }[]
-  betrapt: string[]
-  /** uid's in de volgorde waarin ze uitdelen (omgekeerde legvolgorde) */
+  gelegd: Legging[]
   uitdeelVolgorde: string[]
   uitdeelIndex: number
 
   /* fase 3 */
   chauffeur: string | null
+  busLengteKaart: Kaart | null
   busLengte: number
+  busStart: Kaart | null
+  busRij: (Kaart | null)[]
   busPositie: number
-  busOpen: Kaart | null
+  checkpointIndex: number
+  checkpointGehaald: boolean
   busPoging: number
+  busFoutKaart: Kaart | null
 }
 
 /* ── Hulpjes ────────────────────────────────────────────────── */
@@ -157,8 +158,7 @@ function beoordeel(hand: Kaart[], nieuw: Kaart, vraagNr: number, keuze: Keuze): 
   if (vraagNr === 1) {
     const eerste = hand[0]
     if (nieuw.waarde === eerste.waarde) return 'gelijk'
-    const hoger = nieuw.waarde > eerste.waarde
-    return (keuze === 'hoger') === hoger ? 'goed' : 'fout'
+    return (keuze === 'hoger') === (nieuw.waarde > eerste.waarde) ? 'goed' : 'fout'
   }
 
   if (vraagNr === 2) {
@@ -194,30 +194,120 @@ function isRisicoGok(keuze: Keuze): boolean {
   return keuze === 'zebra' || keuze === 'regenboog'
 }
 
-/** Speler is klaar met zijn vier vragen: door naar de volgende, of naar de boom. */
+/** Klaar met deze vraag? Dan iedereen door naar de volgende. */
 function volgendeVrager(s: BussenState, ctx: SpelContext, volgorde: string[], uid: string) {
-  if (!s.gedaan.includes(uid)) s.gedaan.push(uid)
-  s.vraagNr = 0
-  s.getoond = []
-  if (s.gedaan.length >= volgorde.length) {
+  if (!s.gedaanDezeVraag.includes(uid)) s.gedaanDezeVraag.push(uid)
+
+  if (s.gedaanDezeVraag.length < volgorde.length) {
+    s.vraagBeurt = volgende(volgorde, s.vraagBeurt)
+    return
+  }
+
+  s.gedaanDezeVraag = []
+  s.vraagNr++
+  s.vraagBeurt = volgorde[0]
+
+  if (s.vraagNr >= 4) {
     s.fase = 'boom'
     opentVolgendeBoomkaart(s, ctx)
-  } else {
-    s.vraagBeurt = volgende(volgorde, s.vraagBeurt)
   }
 }
 
 function opentVolgendeBoomkaart(s: BussenState, ctx: SpelContext) {
   const plek = s.boom[s.boomIndex]
   plek.kaart = s._geheim.boomKaarten[s.boomIndex]
-  s.boomFase = 'race'
-  s.klok = startKlok(RACE_SEC, ctx.nu)
-  s.claims = []
-  s.gepast = []
-  s.uitdagingen = []
-  s.betrapt = []
+  s.gelegd = []
   s.uitdeelVolgorde = []
   s.uitdeelIndex = 0
+
+  // Heeft niemand deze waarde? Dan hoeft er niet acht seconden gewacht te
+  // worden op een race die niet komt. Even laten zien, dan door.
+  const waarde = plek.kaart.waarde
+  const iemandHeeftHem = ctx.spelers.some((p) => aantalInHand(s, p.uid, waarde) > 0)
+  if (!iemandHeeftHem) {
+    ctx.log(`Niemand had een ${waardeVoluit(waarde)}`)
+    s.boomFase = 'leeg'
+    s.klok = startKlok(LEEG_SEC, ctx.nu)
+    return
+  }
+
+  s.boomFase = 'race'
+  s.klok = startKlok(RACE_SEC, ctx.nu)
+}
+
+/** Hoeveel van deze waarde heeft deze speler nog? */
+function aantalInHand(s: BussenState, uid: string, waarde: number): number {
+  return (s._geheim.handen[uid] ?? []).filter((k) => k.waarde === waarde).length
+}
+
+/** De race is voorbij zodra iedereen die de kaart heeft, alles gelegd heeft. */
+function iedereenGelegd(s: BussenState, ctx: SpelContext, waarde: number): boolean {
+  return ctx.spelers.every((p) => {
+    const over = aantalInHand(s, p.uid, waarde)
+    return over === 0
+  })
+}
+
+function sluitRace(s: BussenState, ctx: SpelContext) {
+  if (s.gelegd.length === 0) {
+    ctx.log('Iedereen was te traag — niemand legde op')
+    volgendePlek(s, ctx)
+    return
+  }
+
+  // Wie het eerst legde, deelt als laatste uit.
+  s.gelegd.sort((a, b) => a.ts - b.ts)
+  const volgordeUit: string[] = []
+  for (const legging of [...s.gelegd].reverse()) {
+    for (let i = 0; i < legging.aantal; i++) volgordeUit.push(legging.uid)
+  }
+
+  s.uitdeelVolgorde = volgordeUit
+  s.uitdeelIndex = 0
+  s.boomFase = 'uitdelen'
+  s.klok = null
+}
+
+function volgendePlek(s: BussenState, ctx: SpelContext) {
+  s.boomIndex++
+  s.gelegd = []
+  s.uitdeelVolgorde = []
+  s.uitdeelIndex = 0
+  s.klok = null
+
+  if (s.boomIndex >= s.boom.length) {
+    startBus(s, ctx)
+    return
+  }
+  opentVolgendeBoomkaart(s, ctx)
+}
+
+/* ── De bus ─────────────────────────────────────────────────── */
+
+/** Welke waarden liggen er al in de bus? Die komen niet nog een keer. */
+function gezienInBus(s: BussenState): number[] {
+  const uit: number[] = []
+  if (s.busStart) uit.push(s.busStart.waarde)
+  for (let i = 0; i < s.busPositie; i++) {
+    const k = s.busRij[i]
+    if (k) uit.push(k.waarde)
+  }
+  return uit
+}
+
+/** Trekt een kaart met een waarde die nog niet in de bus ligt. */
+function trekUniek(s: BussenState, ctx: SpelContext, gezien: number[]): Kaart {
+  const opzij: Kaart[] = []
+  let kaart = trek(s.stapel, ctx.rng)
+  let pogingen = 0
+  while (gezien.includes(kaart.waarde) && pogingen < 80) {
+    opzij.push(kaart)
+    kaart = trek(s.stapel, ctx.rng)
+    pogingen++
+  }
+  // De afgekeurde kaarten terug op de aflegstapel, zodat het deck niet opraakt.
+  if (opzij.length) leggAf(s.stapel, ...opzij)
+  return kaart
 }
 
 function startBus(s: BussenState, ctx: SpelContext) {
@@ -237,17 +327,28 @@ function startBus(s: BussenState, ctx: SpelContext) {
   }
   s.chauffeur = kandidaten[Math.floor(ctx.rng() * kandidaten.length)]
 
-  s.busLengte = BUS_LENGTE
+  // Een willekeurige kaart bepaalt de lengte van de bus.
+  const lengteKaart = trek(s.stapel, ctx.rng)
+  s.busLengteKaart = lengteKaart
+  s.busLengte = Math.min(BUS_MAX, Math.max(BUS_MIN, lengteKaart.waarde))
+  s.checkpointIndex = s.busLengte >= BUS_CHECKPOINT_VANAF ? Math.floor(s.busLengte / 2) : 0
+  s.checkpointGehaald = false
+
+  s.busRij = new Array(s.busLengte).fill(null)
   s.busPositie = 0
   s.busPoging = 1
-  s.busOpen = trek(s.stapel, ctx.rng)
+  s.busFoutKaart = null
+  s.busStart = trek(s.stapel, ctx.rng)
 
   // Handen zijn nu betekenisloos, dus weg ermee. Per speler wissen en niet met
-  // wisPrive(): in dezelfde zet kunnen er net handen zijn bijgewerkt, en die
+  // wisPrive(): in dezelfde zet kunnen er net handen bijgewerkt zijn, en die
   // zouden een algehele wis overleven.
   for (const p of ctx.spelers) ctx.zetPrive(p.uid, null)
 
-  ctx.log(`${ctx.naam(s.chauffeur)} rijdt de bus (${meeste} kaarten over)`)
+  ctx.log(
+    `${ctx.naam(s.chauffeur)} rijdt de bus — ${kaartKort(lengteKaart)} geeft ${s.busLengte} kaarten` +
+      (s.checkpointIndex > 0 ? `, checkpoint op ${s.checkpointIndex + 1}` : ''),
+  )
 }
 
 /* ── Het spel ───────────────────────────────────────────────── */
@@ -255,17 +356,17 @@ function startBus(s: BussenState, ctx: SpelContext) {
 export const bussen: GameModule<BussenState> = {
   id: 'bussen',
   naam: 'Bussen',
-  uitleg: 'Vier vragen, de boom met bluffen, en dan rijdt de verliezer de bus.',
+  uitleg: 'Vier vragen, de boom als race, en dan rijdt de verliezer de bus.',
   regels: [
-    'Vier vragen: fout kost 1, 2, 3 of 4 slokken.',
-    'Daarna de boom — wie het snelst oplegt, deelt als laatste uit.',
-    'Opleggen wat je niet hebt mag. Tot iemand "laat zien" roept.',
+    'Vier vragen om de beurt: fout kost 1, 2, 3 of 4 slokken.',
+    'Dan de boom: heb je de kaart, tik hem aan. Snelheid telt.',
+    'Wie als eerste legt, deelt als laatste uit.',
     'Meeste kaarten over? Jij rijdt de bus.',
   ],
   minSpelers: 2,
   maxSpelers: 8,
   duur: 'lang',
-  tags: ['kaarten', 'bluf', 'geheim'],
+  tags: ['kaarten', 'geheim', 'reflex'],
   privescherm: true,
 
   init(ctx) {
@@ -286,29 +387,30 @@ export const bussen: GameModule<BussenState> = {
       _geheim: { handen, boomKaarten },
       handGrootte,
 
-      vraagBeurt: ctx.spelers[0].uid,
       vraagNr: 0,
-      getoond: [],
+      vraagBeurt: ctx.spelers[0].uid,
+      gedaanDezeVraag: [],
       laatste: null,
-      gedaan: [],
       bonus: null,
 
       boom,
       boomIndex: 0,
       boomFase: 'race',
       klok: null,
-      claims: [],
-      gepast: [],
-      uitdagingen: [],
-      betrapt: [],
+      gelegd: [],
       uitdeelVolgorde: [],
       uitdeelIndex: 0,
 
       chauffeur: null,
-      busLengte: BUS_LENGTE,
+      busLengteKaart: null,
+      busLengte: BUS_MIN,
+      busStart: null,
+      busRij: [],
       busPositie: 0,
-      busOpen: null,
+      checkpointIndex: 0,
+      checkpointGehaald: false,
       busPoging: 1,
+      busFoutKaart: null,
     }
   },
 
@@ -319,8 +421,7 @@ export const bussen: GameModule<BussenState> = {
 
     if (s.fase === 'vragen' && actie.type === 'antwoord') {
       if (actie.uid !== s.vraagBeurt) return
-      // Eerst je bonus uitdelen, dan pas verder.
-      if (s.bonus) return
+      if (s.bonus) return // eerst je bonus uitdelen
       const keuze: Keuze = actie.payload?.keuze
       if (!keuze) return
 
@@ -331,7 +432,6 @@ export const bussen: GameModule<BussenState> = {
 
       hand.push(nieuw)
       s._geheim.handen[actie.uid] = hand
-      s.getoond = [...hand]
       s.laatste = { uid: actie.uid, keuze, kaart: nieuw, uitkomst }
 
       if (uitkomst === 'fout') {
@@ -345,10 +445,7 @@ export const bussen: GameModule<BussenState> = {
       }
 
       duwHand(s, ctx, actie.uid)
-      s.vraagNr++
-
-      // Wie nog moet uitdelen blijft aan de beurt tot dat gebeurd is.
-      if (s.vraagNr >= 4 && !s.bonus) volgendeVrager(s, ctx, volgorde, actie.uid)
+      if (!s.bonus) volgendeVrager(s, ctx, volgorde, actie.uid)
       return
     }
 
@@ -368,94 +465,37 @@ export const bussen: GameModule<BussenState> = {
     if (s.fase === 'boom') {
       const plek = s.boom[s.boomIndex]
       const inzet = inzetVan(plek)
+      const waarde = plek.kaart!.waarde
 
-      if (s.boomFase === 'race') {
-        if (actie.type === 'legop') {
-          const bestaand = s.claims.find((c) => c.uid === actie.uid)
-          // Meer dan vier kan niet: zoveel kaarten heeft niemand.
-          if (bestaand) bestaand.aantal = Math.min(4, bestaand.aantal + 1)
-          else s.claims.push({ uid: actie.uid, aantal: 1, ts: actie.ts })
-          s.gepast = s.gepast.filter((u) => u !== actie.uid)
-        } else if (actie.type === 'niks') {
-          if (!s.gepast.includes(actie.uid)) s.gepast.push(actie.uid)
-          s.claims = s.claims.filter((c) => c.uid !== actie.uid)
-        } else if (actie.type !== 'sluit-race') {
-          return
-        }
-
-        const iedereenKlaar = volgorde.every(
-          (u) => s.gepast.includes(u) || s.claims.some((c) => c.uid === u),
-        )
-        if (actie.type !== 'sluit-race' && !iedereenKlaar) return
-
-        // Race voorbij.
-        if (s.claims.length === 0) {
-          ctx.log(`Niemand had een ${waardeVoluit(plek.kaart!.waarde)}`)
-          volgendePlek(s, ctx)
-          return
-        }
-        s.claims.sort((a, b) => a.ts - b.ts)
-        s.boomFase = 'uitdagen'
-        s.klok = startKlok(UITDAAG_SEC, ctx.nu)
+      if (s.boomFase === 'leeg') {
+        if (actie.type === 'volgende-plek') volgendePlek(s, ctx)
         return
       }
 
-      if (s.boomFase === 'uitdagen') {
-        if (actie.type === 'daag') {
-          const tegen = actie.payload?.uid
-          if (!tegen || tegen === actie.uid) return
-          if (!s.claims.some((c) => c.uid === tegen)) return
-          if (s.uitdagingen.some((u) => u.door === actie.uid)) return
-          s.uitdagingen.push({ door: actie.uid, tegen })
+      if (s.boomFase === 'race') {
+        if (actie.type === 'legop') {
+          const hand = s._geheim.handen[actie.uid] ?? []
+          const idx = hand.findIndex((k) => k.waarde === waarde)
+          if (idx < 0) return // je hebt hem niet; bluffen bestaat hier niet
+
+          hand.splice(idx, 1)
+          s._geheim.handen[actie.uid] = hand
+          duwHand(s, ctx, actie.uid)
+
+          const bestaand = s.gelegd.find((g) => g.uid === actie.uid)
+          if (bestaand) bestaand.aantal++
+          else s.gelegd.push({ uid: actie.uid, aantal: 1, ts: actie.ts })
+
+          if (iedereenGelegd(s, ctx, waarde)) sluitRace(s, ctx)
           return
         }
 
-        if (actie.type !== 'sluit-uitdagen') return
-
-        // Uitdagingen afhandelen.
-        for (const uitdaging of s.uitdagingen) {
-          const claim = s.claims.find((c) => c.uid === uitdaging.tegen)
-          if (!claim) continue
-          const hand = s._geheim.handen[uitdaging.tegen] ?? []
-          const echt = hand.filter((k) => k.waarde === plek.kaart!.waarde).length
-
-          if (echt >= claim.aantal) {
-            ctx.drink(uitdaging.door, inzet * 2, `daagde ${ctx.naam(uitdaging.tegen)} onterecht uit`)
-          } else {
-            ctx.drink(uitdaging.tegen, inzet * 2, 'bluf betrapt')
-            if (!s.betrapt.includes(uitdaging.tegen)) s.betrapt.push(uitdaging.tegen)
-          }
-        }
-
-        // Betrapte bluffers delen niets uit. De rest wel — in omgekeerde
-        // legvolgorde, dus wie het snelst was komt als laatste aan de beurt.
-        const eerlijk = s.claims.filter((c) => !s.betrapt.includes(c.uid))
-        const volgordeUit: string[] = []
-        for (const claim of [...eerlijk].reverse()) {
-          const hand = s._geheim.handen[claim.uid] ?? []
-          const echt = hand.filter((k) => k.waarde === plek.kaart!.waarde).length
-          // Een niet-betrapte bluffer mag gewoon uitdelen; dat is de beloning
-          // voor durf. Wat hij écht heeft raakt hij kwijt.
-          for (let i = 0; i < claim.aantal; i++) volgordeUit.push(claim.uid)
-
-          const teVerwijderen = Math.min(echt, claim.aantal)
-          for (let i = 0; i < teVerwijderen; i++) {
-            const idx = hand.findIndex((k) => k.waarde === plek.kaart!.waarde)
-            if (idx >= 0) hand.splice(idx, 1)
-          }
-          s._geheim.handen[claim.uid] = hand
-          duwHand(s, ctx, claim.uid)
-        }
-
-        if (volgordeUit.length === 0) {
-          volgendePlek(s, ctx)
+        if (actie.type === 'sluit-race') {
+          // Tijd om. Wie te laat was houdt zijn kaart — en dus meer kans
+          // om straks de bus in te moeten.
+          sluitRace(s, ctx)
           return
         }
-
-        s.uitdeelVolgorde = volgordeUit
-        s.uitdeelIndex = 0
-        s.boomFase = 'uitdelen'
-        s.klok = null
         return
       }
 
@@ -472,7 +512,12 @@ export const bussen: GameModule<BussenState> = {
         const doel = actie.payload?.uid
         if (!doel || !volgorde.includes(doel)) return
 
-        ctx.deelUit(actie.uid, doel, inzet, `boom rij ${plek.rij}${plek.horizontaal ? ' (dubbel)' : ''}`)
+        ctx.deelUit(
+          actie.uid,
+          doel,
+          inzet,
+          `boom rij ${plek.rij}${plek.horizontaal ? ' (dubbel)' : ''}`,
+        )
         s.uitdeelIndex++
         if (s.uitdeelIndex >= s.uitdeelVolgorde.length) volgendePlek(s, ctx)
         return
@@ -484,35 +529,37 @@ export const bussen: GameModule<BussenState> = {
     if (s.fase === 'bus' && (actie.type === 'hoger' || actie.type === 'lager')) {
       if (actie.uid !== s.chauffeur) return
 
-      const oud = s.busOpen!
-      const nieuw = trek(s.stapel, ctx.rng)
-      s.busOpen = nieuw
+      const vorige = s.busPositie === 0 ? s.busStart! : s.busRij[s.busPositie - 1]!
+      const nieuw = trekUniek(s, ctx, gezienInBus(s))
+      const goed = (actie.type === 'hoger') === (nieuw.waarde > vorige.waarde)
 
-      let uitkomst: Uitkomst
-      if (nieuw.waarde === oud.waarde) uitkomst = 'gelijk'
-      else uitkomst = (actie.type === 'hoger') === (nieuw.waarde > oud.waarde) ? 'goed' : 'fout'
-
-      if (uitkomst === 'goed') {
+      if (goed) {
+        s.busRij[s.busPositie] = nieuw
         s.busPositie++
+        s.busFoutKaart = null
+
+        if (s.checkpointIndex > 0 && s.busPositie > s.checkpointIndex) {
+          s.checkpointGehaald = true
+        }
+
         if (s.busPositie >= s.busLengte) {
-          ctx.log(`${ctx.naam(s.chauffeur)} is uit de bus!`)
+          ctx.log(`${ctx.naam(s.chauffeur)} is uit de bus! 🎉`)
           s.fase = 'klaar'
           ctx.klaar()
         }
         return
       }
 
-      const straf = Math.max(1, s.busPositie) * (uitkomst === 'gelijk' ? 2 : 1)
-      ctx.drink(
-        s.chauffeur,
-        straf,
-        uitkomst === 'gelijk' ? 'gelijke kaart in de bus' : `strandde op kaart ${s.busPositie + 1}`,
-      )
+      // Fout. Je drinkt zoveel kaarten als je in déze poging deed.
+      const herstart = s.checkpointGehaald ? s.checkpointIndex : 0
+      const straf = s.busPositie - herstart + 1
+      ctx.drink(s.chauffeur, straf, `strandde op kaart ${s.busPositie + 1}`)
 
+      s.busFoutKaart = nieuw
+      leggAf(s.stapel, nieuw)
+      for (let i = herstart; i < s.busLengte; i++) s.busRij[i] = null
+      s.busPositie = herstart
       s.busPoging++
-      s.busPositie = 0
-      s.busLengte = Math.max(1, s.busLengte - 1)
-      s.busOpen = trek(s.stapel, ctx.rng)
       return
     }
   },
@@ -526,23 +573,6 @@ export const bussen: GameModule<BussenState> = {
   },
 }
 
-function volgendePlek(s: BussenState, ctx: SpelContext) {
-  s.boomIndex++
-  s.claims = []
-  s.gepast = []
-  s.uitdagingen = []
-  s.betrapt = []
-  s.uitdeelVolgorde = []
-  s.uitdeelIndex = 0
-  s.klok = null
-
-  if (s.boomIndex >= s.boom.length) {
-    startBus(s, ctx)
-    return
-  }
-  opentVolgendeBoomkaart(s, ctx)
-}
-
 /* ── Fase 1 ─────────────────────────────────────────────────── */
 
 const VRAAG_TEKST = ['Rood of zwart?', 'Hoger of lager?', 'Binnen of buiten?', 'Het patroon?']
@@ -551,6 +581,7 @@ function Vragen({ s, ctx }: { s: BussenState; ctx: KijkContext }) {
   const mijnBeurt = ctx.ik === s.vraagBeurt
   const speler = ctx.speler(s.vraagBeurt)
   const magUitdelen = s.bonus === ctx.ik
+  const hand: Kaart[] = ctx.prive?.hand ?? []
 
   return (
     <>
@@ -561,15 +592,23 @@ function Vragen({ s, ctx }: { s: BussenState; ctx: KijkContext }) {
           Vraag {s.vraagNr + 1} van 4 · fout kost {ctx.slok(VRAAG_INZET[s.vraagNr])}
         </div>
 
-        <div style={{ display: 'flex', gap: 6 }}>
-          {[0, 1, 2, 3].map((i) => (
-            <Speelkaart key={i} kaart={s.getoond[i] ?? null} maat="klein" dicht={!s.getoond[i]} />
-          ))}
+        <div>
+          <div className="kop-klein" style={{ marginBottom: 4 }}>
+            Jouw kaarten
+          </div>
+          <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
+            {[0, 1, 2, 3].map((i) => (
+              <Speelkaart key={i} kaart={hand[i] ?? null} maat="klein" dicht={!hand[i]} />
+            ))}
+          </div>
         </div>
 
         {s.laatste && <Uitslagje laatste={s.laatste} ctx={ctx} />}
 
-        <h2>{mijnBeurt ? VRAAG_TEKST[s.vraagNr] : `${speler?.emoji} ${speler?.naam} is bezig`}</h2>
+        <h2>{mijnBeurt ? VRAAG_TEKST[s.vraagNr] : `${speler?.emoji} ${speler?.naam} is aan zet`}</h2>
+        <div className="klein zacht">
+          {s.gedaanDezeVraag.length} van {ctx.spelers.length} deze ronde gehad
+        </div>
       </div>
 
       {magUitdelen ? (
@@ -637,9 +676,7 @@ function Vragen({ s, ctx }: { s: BussenState; ctx: KijkContext }) {
         </div>
       ) : (
         <Kaartje style={{ textAlign: 'center' }}>
-          <span className="zacht">
-            {s.gedaan.length} van {ctx.spelers.length} spelers gehad
-          </span>
+          <span className="zacht">Wachten tot jij weer aan de beurt bent</span>
         </Kaartje>
       )}
     </>
@@ -675,13 +712,11 @@ function Boom({ s, ctx }: { s: BussenState; ctx: KijkContext }) {
   const plek = s.boom[s.boomIndex]
   const inzet = inzetVan(plek)
   const hand: Kaart[] = ctx.prive?.hand ?? []
-  const ikHebHem = plek.kaart ? hand.filter((k) => k.waarde === plek.kaart!.waarde).length : 0
+  const passend = plek.kaart ? hand.filter((k) => k.waarde === plek.kaart!.waarde).length : 0
 
   useHostKlok(ctx, s.boomFase === 'race', s.klok?.eind ?? 0, 'sluit-race')
-  useHostKlok(ctx, s.boomFase === 'uitdagen', s.klok?.eind ?? 0, 'sluit-uitdagen')
+  useHostKlok(ctx, s.boomFase === 'leeg', s.klok?.eind ?? 0, 'volgende-plek')
 
-  const ikGeclaimd = s.claims.find((c) => c.uid === ctx.ik)
-  const ikGepast = s.gepast.includes(ctx.ik)
   const aanZet = s.uitdeelVolgorde[s.uitdeelIndex]
 
   return (
@@ -695,76 +730,48 @@ function Boom({ s, ctx }: { s: BussenState; ctx: KijkContext }) {
         </div>
       </div>
 
-      {s.klok && (
-        <Balkje waarde={1 - voortgang(s.klok, ctx.nu)} />
-      )}
+      {s.klok && <Balkje waarde={1 - voortgang(s.klok, ctx.nu)} />}
 
-      <MijnHand hand={hand} raak={plek.kaart?.waarde} />
+      {s.boomFase === 'leeg' && (
+        <div className="midden">
+          <div style={{ fontSize: 44 }}>🤷</div>
+          <h2 className="zacht">Niemand heeft hem</h2>
+        </div>
+      )}
 
       {s.boomFase === 'race' && (
-        <div className="onderaan">
-          {s.claims.length > 0 && (
-            <div className="klein zacht" style={{ textAlign: 'center' }}>
-              {s.claims.map((c, i) => `${i + 1}. ${ctx.naam(c.uid)}`).join(' · ')}
+        <>
+          <div className="midden" style={{ gap: 10 }}>
+            {s.gelegd.length > 0 && (
+              <div className="klein zacht">
+                {s.gelegd.map((g, i) => `${i + 1}. ${ctx.naam(g.uid)}`).join('  ·  ')}
+              </div>
+            )}
+            <div className="reusachtig" style={{ fontSize: 'clamp(36px,12vw,64px)' }}>
+              {klokTekst(s.klok, ctx.nu)}
             </div>
-          )}
-          <div className="rij">
-            <GroteKnop
-              kleur="goud"
-              enorm
-              bijTik={() => ctx.stuur('legop')}
-            >
-              LEG OP {ikGeclaimd ? `(${ikGeclaimd.aantal})` : ''}
-            </GroteKnop>
-            <GroteKnop
-              kleur={ikGepast ? 'leeg' : 'grijs'}
-              enorm
-              uit={ikGepast}
-              bijTik={() => ctx.stuur('niks')}
-            >
-              Ik heb niks
-            </GroteKnop>
           </div>
-          <div className="klein zacht" style={{ textAlign: 'center' }}>
-            {ikHebHem > 0
-              ? `Je hebt er ${ikHebHem}. Snel zijn loont: wie eerst legt, deelt als laatste uit.`
-              : 'Je hebt hem niet — maar opleggen mag alsnog. 😏'}
-            {'  '}
-            {resterendMs(s.klok, ctx.nu) > 0 && `${klokTekst(s.klok, ctx.nu)}s`}
-          </div>
-        </div>
-      )}
 
-      {s.boomFase === 'uitdagen' && (
-        <div className="onderaan">
-          <div className="kop-klein" style={{ textAlign: 'center' }}>
-            Iemand die bluft? Tik erop. {klokTekst(s.klok, ctx.nu)}s
+          <div className="onderaan">
+            <div className="kop-klein" style={{ textAlign: 'center' }}>
+              {passend > 0
+                ? `Je hebt er ${passend} — tik erop, snel!`
+                : 'Jouw hand — je hebt hem niet'}
+            </div>
+            <HandKnoppen
+              hand={hand}
+              raak={plek.kaart?.waarde}
+              bijTik={() => ctx.stuur('legop')}
+            />
+            <div className="klein zacht" style={{ textAlign: 'center' }}>
+              Wie het eerst legt, deelt als laatste uit. Te laat = je houdt de kaart.
+            </div>
           </div>
-          {s.claims.map((c, i) => (
-            <GroteKnop
-              key={c.uid}
-              klein
-              kleur={s.uitdagingen.some((u) => u.tegen === c.uid) ? 'rood' : 'leeg'}
-              uit={c.uid === ctx.ik || s.uitdagingen.some((u) => u.door === ctx.ik)}
-              bijTik={() => ctx.stuur('daag', { uid: c.uid })}
-            >
-              {i + 1}e · {ctx.naam(c.uid)}
-              {c.aantal > 1 ? ` (${c.aantal}×)` : ''} — laat zien!
-            </GroteKnop>
-          ))}
-          <div className="klein zacht" style={{ textAlign: 'center' }}>
-            Betrapt = {ctx.slok(inzet * 2)} voor de bluffer. Mis = {ctx.slok(inzet * 2)} voor jou.
-          </div>
-        </div>
+        </>
       )}
 
       {s.boomFase === 'uitdelen' && (
-        <div className="onderaan">
-          {s.betrapt.length > 0 && (
-            <div className="klein" style={{ textAlign: 'center', color: 'var(--rood)' }}>
-              Betrapt: {s.betrapt.map(ctx.naam).join(', ')}
-            </div>
-          )}
+        <div className="onderaan" style={{ marginTop: 'auto' }}>
           {aanZet === ctx.ik ? (
             <>
               <h2 style={{ textAlign: 'center' }}>Wie krijgt {ctx.slok(inzet)}?</h2>
@@ -828,29 +835,46 @@ function BoomPlaatje({ s }: { s: BussenState }) {
   )
 }
 
-function MijnHand({ hand, raak }: { hand: Kaart[]; raak?: number }) {
+/** Je hand als knoppen: de passende kaarten lichten op en zijn tikbaar. */
+function HandKnoppen({
+  hand,
+  raak,
+  bijTik,
+}: {
+  hand: Kaart[]
+  raak?: number
+  bijTik: () => void
+}) {
   if (hand.length === 0) {
-    return <div className="klein zacht" style={{ textAlign: 'center' }}>Je hand is leeg 🎉</div>
+    return (
+      <div className="klein" style={{ textAlign: 'center', color: 'var(--groen)' }}>
+        Je hand is leeg 🎉
+      </div>
+    )
   }
   return (
-    <div>
-      <div className="kop-klein" style={{ textAlign: 'center', marginBottom: 4 }}>
-        Jouw hand — alleen jij ziet dit
-      </div>
-      <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
-        {hand.map((k) => (
-          <div
+    <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+      {hand.map((k) => {
+        const past = raak === k.waarde
+        return (
+          <button
             key={k.id}
+            onClick={past ? bijTik : undefined}
+            disabled={!past}
             style={{
-              outline: raak === k.waarde ? '3px solid var(--goud)' : 'none',
-              outlineOffset: 2,
+              padding: 0,
               borderRadius: 14,
+              outline: past ? '3px solid var(--goud)' : 'none',
+              outlineOffset: 3,
+              opacity: past ? 1 : 0.45,
+              transform: past ? 'translateY(-4px)' : 'none',
+              transition: 'transform .1s ease',
             }}
           >
-            <Speelkaart kaart={k} maat="klein" />
-          </div>
-        ))}
-      </div>
+            <Speelkaart kaart={k} maat="midden" />
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -880,35 +904,31 @@ function SpelerKnoppen({
 function Bus({ s, ctx }: { s: BussenState; ctx: KijkContext }) {
   const ikRij = ctx.ik === s.chauffeur
   const chauffeur = ctx.speler(s.chauffeur ?? '')
+  const vorige = s.busPositie === 0 ? s.busStart : s.busRij[s.busPositie - 1]
+  const herstart = s.checkpointGehaald ? s.checkpointIndex : 0
+  const straf = s.busPositie - herstart + 1
 
   return (
     <>
       <div style={{ textAlign: 'center' }}>
         <div className="kop-klein">
-          De bus · poging {s.busPoging} · {s.busLengte} kaarten
+          De bus · {s.busLengte} kaarten · poging {s.busPoging}
         </div>
         <h2>
           🚌 {chauffeur?.emoji} {chauffeur?.naam}
         </h2>
       </div>
 
-      <div className="midden" style={{ gap: 16 }}>
-        <div style={{ display: 'flex', gap: 5, justifyContent: 'center' }}>
-          {Array.from({ length: s.busLengte }).map((_, i) => (
-            <div
-              key={i}
-              style={{
-                width: 26,
-                height: 36,
-                borderRadius: 6,
-                background: i < s.busPositie ? 'var(--groen)' : 'var(--vlak-hoog)',
-                border: i === s.busPositie ? '2px solid var(--goud)' : '1px solid var(--rand)',
-              }}
-            />
-          ))}
-        </div>
+      <BusRij s={s} />
 
-        <Speelkaart kaart={s.busOpen} maat="groot" />
+      <div className="midden" style={{ gap: 10 }}>
+        {s.busFoutKaart && (
+          <div className="klein" style={{ color: 'var(--rood)' }}>
+            {kaartKort(s.busFoutKaart)} — mis
+          </div>
+        )}
+        <div className="kop-klein">Hoger of lager dan</div>
+        <Speelkaart kaart={vorige} maat="groot" />
       </div>
 
       {ikRij ? (
@@ -922,7 +942,15 @@ function Bus({ s, ctx }: { s: BussenState; ctx: KijkContext }) {
             </GroteKnop>
           </div>
           <div className="klein zacht" style={{ textAlign: 'center' }}>
-            Fout? Je drinkt wat je al goed had, en de bus wordt één kaart korter.
+            Fout kost nu {ctx.slok(straf)}
+            {s.checkpointGehaald
+              ? ` — je herstart op kaart ${s.checkpointIndex + 1}`
+              : s.checkpointIndex > 0
+                ? ` — checkpoint op kaart ${s.checkpointIndex + 1}`
+                : ''}
+            .
+            <br />
+            Waarden die al liggen komen niet nog eens.
           </div>
         </div>
       ) : (
@@ -931,5 +959,42 @@ function Bus({ s, ctx }: { s: BussenState; ctx: KijkContext }) {
         </Kaartje>
       )}
     </>
+  )
+}
+
+function BusRij({ s }: { s: BussenState }) {
+  return (
+    <div style={{ display: 'flex', gap: 3, justifyContent: 'center', flexWrap: 'wrap' }}>
+      {Array.from({ length: s.busLengte }).map((_, i) => {
+        const gehaald = !!s.busRij[i]
+        const nu = i === s.busPositie
+        const isCheckpoint = s.checkpointIndex > 0 && i === s.checkpointIndex
+        return (
+          <div
+            key={i}
+            title={isCheckpoint ? 'checkpoint' : undefined}
+            style={{
+              position: 'relative',
+              width: 22,
+              height: 32,
+              borderRadius: 5,
+              background: gehaald ? 'var(--groen)' : 'var(--vlak-hoog)',
+              border: nu
+                ? '2px solid var(--goud)'
+                : isCheckpoint
+                  ? '2px dashed var(--goud)'
+                  : '1px solid var(--rand)',
+              display: 'grid',
+              placeItems: 'center',
+              fontSize: 10,
+              fontWeight: 700,
+              color: gehaald ? '#05230f' : 'var(--tekst-zacht)',
+            }}
+          >
+            {isCheckpoint && !gehaald ? '⚑' : i + 1}
+          </div>
+        )
+      })}
+    </div>
   )
 }
