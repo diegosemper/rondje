@@ -14,6 +14,7 @@ import { geefSpel } from '../engine/registry'
 import { stripGeheim, kopie } from '../engine/geheim'
 import { maakRng, nieuweSeed } from '../engine/random'
 import { berekenSlokken, slokTekst, werkwoord } from '../engine/slokken'
+import { meldFout } from '../ui/Fout'
 import type { Actie, Kamer, SpelContext, Speler } from '../engine/types'
 
 /* ─────────────────────────────────────────────────────────────
@@ -258,7 +259,7 @@ export function useHostLoop(kamer: Kamer | null, uid: string | null): void {
     const stop = onChildAdded(ref(db(), padRuw(code, 'acties')), (snap) => {
       wachtrij.current = wachtrij.current
         .then(() => verwerk(snap.key!, snap.val()))
-        .catch((e) => console.error('[host] actie mislukt', e))
+        .catch(meldFout)
     })
 
     async function verwerk(sleutel: string, ruw: any) {
@@ -318,7 +319,7 @@ export function useHostLoop(kamer: Kamer | null, uid: string | null): void {
     if (stemmen === 0) return
 
     if (kamer.skip[kamer.meta.hostUid] || stemmen * 2 > aanwezig) {
-      stopSpel(code).catch(() => {})
+      stopSpel(code).catch(meldFout)
     }
   }, [benHost, code, kamer])
 }

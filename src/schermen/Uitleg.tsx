@@ -4,6 +4,7 @@ import { geefSpel } from '../engine/registry'
 import { beginSpel, stopSpel } from '../net/hostLoop'
 import { zetGereed } from '../net/kamer'
 import { GroteKnop, Kaartje } from '../ui/Basis'
+import { meldFout } from '../ui/Fout'
 
 /**
  * Drie regels en een grote knop. Meer leest niemand op dit moment van de
@@ -21,7 +22,7 @@ export function Uitleg({ kamer, uid }: { kamer: Kamer; uid: string }) {
 
   // Iedereen heeft "snap ik" getikt → de host zet het spel in gang.
   useEffect(() => {
-    if (benHost && iedereenGereed) beginSpel(code).catch(() => {})
+    if (benHost && iedereenGereed) beginSpel(code).catch(meldFout)
   }, [benHost, iedereenGereed, code])
 
   if (!mod) {
@@ -36,7 +37,10 @@ export function Uitleg({ kamer, uid }: { kamer: Kamer; uid: string }) {
     <div className="scherm">
       <div className="balk">
         <span className="kop-klein">Volgende spel</span>
-        <button className="knop klein leeg" onClick={() => benHost && stopSpel(code)}>
+        <button
+          className="knop klein leeg"
+          onClick={() => benHost && stopSpel(code).catch(meldFout)}
+        >
           {benHost ? 'Toch niet' : ''}
         </button>
       </div>
@@ -80,12 +84,16 @@ export function Uitleg({ kamer, uid }: { kamer: Kamer; uid: string }) {
         <div className="klein zacht" style={{ textAlign: 'center' }}>
           {gereed} van {spelers.length} klaar
         </div>
-        <GroteKnop kleur={ikGereed ? 'leeg' : 'goud'} enorm={!ikGereed} uit={ikGereed}
-          bijTik={() => zetGereed(code, uid)}>
+        <GroteKnop
+          kleur={ikGereed ? 'leeg' : 'goud'}
+          enorm={!ikGereed}
+          uit={ikGereed}
+          bijTik={() => zetGereed(code, uid).catch(meldFout)}
+        >
           {ikGereed ? 'Wachten op de rest…' : 'Snap ik'}
         </GroteKnop>
         {benHost && !iedereenGereed && (
-          <GroteKnop kleur="leeg" klein bijTik={() => beginSpel(code)}>
+          <GroteKnop kleur="leeg" klein bijTik={() => beginSpel(code).catch(meldFout)}>
             Nu beginnen
           </GroteKnop>
         )}

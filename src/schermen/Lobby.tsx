@@ -6,6 +6,7 @@ import { MAX_SPELERS, MIN_SPELERS, verlaatKamer, zetSpellen, zetZwaarte } from '
 import { naarFase } from '../net/hostLoop'
 import { deelLink } from '../net/profiel'
 import { GroteKnop, Kaartje } from '../ui/Basis'
+import { meldFout } from '../ui/Fout'
 
 const ZWAARTES: Zwaarte[] = ['zacht', 'normaal', 'hard', 'droog']
 
@@ -47,7 +48,7 @@ export function Lobby({
   function wisselSpel(id: string) {
     const huidig = aan === null ? SPELLEN.filter((s) => s.id !== 'testspel').map((s) => s.id) : aan
     const nieuw = huidig.includes(id) ? huidig.filter((x) => x !== id) : [...huidig, id]
-    zetSpellen(code, nieuw)
+    zetSpellen(code, nieuw).catch(meldFout)
   }
 
   return (
@@ -93,7 +94,7 @@ export function Lobby({
                   key={z}
                   klein
                   kleur={kamer.instelling.zwaarte === z ? 'goud' : 'leeg'}
-                  bijTik={() => zetZwaarte(code, z)}
+                  bijTik={() => zetZwaarte(code, z).catch(meldFout)}
                 >
                   {ZWAARTE_LABEL[z]}
                 </GroteKnop>
@@ -141,7 +142,12 @@ export function Lobby({
 
       <div className="onderaan" style={{ marginTop: 'auto' }}>
         {benHost ? (
-          <GroteKnop kleur="goud" enorm uit={!genoeg} bijTik={() => naarFase(code, 'kiezen')}>
+          <GroteKnop
+            kleur="goud"
+            enorm
+            uit={!genoeg}
+            bijTik={() => naarFase(code, 'kiezen').catch(meldFout)}
+          >
             {genoeg ? 'Begin de avond' : `Wacht op ${MIN_SPELERS - spelers.length} speler(s)`}
           </GroteKnop>
         ) : (

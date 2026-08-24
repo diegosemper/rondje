@@ -11,8 +11,18 @@ import { Uitleg } from './schermen/Uitleg'
 import { Spelen } from './schermen/Spelen'
 import { Scorebord } from './schermen/Scorebord'
 import { Kaartje } from './ui/Basis'
+import { FoutBanner } from './ui/Fout'
 
 export function App() {
+  return (
+    <>
+      <FoutBanner />
+      <Inhoud />
+    </>
+  )
+}
+
+function Inhoud() {
   const ingesteld = isIngesteld()
   const { uid, fout } = useUid()
   const [code, zetCode] = useState<string | null>(() => codeUitUrl() ?? leesCode())

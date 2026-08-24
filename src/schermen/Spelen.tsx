@@ -7,6 +7,7 @@ import { stuurActie, zetSkip } from '../net/kamer'
 import { useNu } from '../net/useKamer'
 import { GroteKnop, Kaartje } from '../ui/Basis'
 import { DrinkScherm } from '../ui/DrinkScherm'
+import { meldFout } from '../ui/Fout'
 
 export function Spelen({
   kamer,
@@ -37,7 +38,7 @@ export function Spelen({
       prive,
       nu,
       stuur: (type, payload) => {
-        stuurActie(code, uid, type, payload).catch((e) => console.error('actie mislukt', e))
+        stuurActie(code, uid, type, payload).catch(meldFout)
       },
       slok: (n) => slokTekst(berekenSlokken(n, zwaarte), zwaarte),
       slokKort: (n) => slokKort(berekenSlokken(n, zwaarte), zwaarte),
@@ -57,7 +58,7 @@ export function Spelen({
       <div className="scherm">
         <Kaartje>Spel niet gevonden.</Kaartje>
         {benHost && (
-          <GroteKnop kleur="goud" bijTik={() => stopSpel(code)}>
+          <GroteKnop kleur="goud" bijTik={() => stopSpel(code).catch(meldFout)}>
             Kies iets anders
           </GroteKnop>
         )}
@@ -73,7 +74,7 @@ export function Spelen({
         <span className="kop-klein">{mod.naam}</span>
         <button
           className={`knop klein ${ikGeskipt ? 'goud' : 'leeg'}`}
-          onClick={() => zetSkip(code, uid, !ikGeskipt)}
+          onClick={() => zetSkip(code, uid, !ikGeskipt).catch(meldFout)}
         >
           {benHost
             ? 'Skip ⏭'
@@ -99,7 +100,7 @@ export function Spelen({
           </div>
           <div className="onderaan">
             {benHost ? (
-              <GroteKnop kleur="goud" enorm bijTik={() => stopSpel(code)}>
+              <GroteKnop kleur="goud" enorm bijTik={() => stopSpel(code).catch(meldFout)}>
                 Volgende spel
               </GroteKnop>
             ) : (

@@ -3,6 +3,7 @@ import { DUUR_TEKST, kiesWillekeurig, speelbaar, TAG_EMOJI } from '../engine/reg
 import { maakRng } from '../engine/random'
 import { naarFase, startSpel } from '../net/hostLoop'
 import { GroteKnop, Kaartje } from '../ui/Basis'
+import { meldFout } from '../ui/Fout'
 
 export function SpelKiezer({ kamer, uid }: { kamer: Kamer; uid: string }) {
   const benHost = kamer.meta.hostUid === uid
@@ -18,7 +19,7 @@ export function SpelKiezer({ kamer, uid }: { kamer: Kamer; uid: string }) {
   function dobbel() {
     const rng = maakRng(Date.now() & 0x7fffffff)
     const keuze = kiesWillekeurig(rng, spelers.length, kamer.instelling.spellen, kamer.geschiedenis)
-    if (keuze) startSpel(kamer, keuze.id)
+    if (keuze) startSpel(kamer, keuze.id).catch(meldFout)
   }
 
   return (
@@ -64,7 +65,7 @@ export function SpelKiezer({ kamer, uid }: { kamer: Kamer; uid: string }) {
               key={s.id}
               className="kaartje"
               disabled={!benHost}
-              onClick={() => benHost && startSpel(kamer, s.id)}
+              onClick={() => benHost && startSpel(kamer, s.id).catch(meldFout)}
               style={{
                 textAlign: 'left',
                 opacity: gespeeld ? 0.55 : 1,
@@ -92,10 +93,18 @@ export function SpelKiezer({ kamer, uid }: { kamer: Kamer; uid: string }) {
             🎲 Laat het lot beslissen
           </GroteKnop>
           <div className="rij">
-            <GroteKnop kleur="leeg" klein bijTik={() => naarFase(kamer.meta.code, 'lobby')}>
+            <GroteKnop
+              kleur="leeg"
+              klein
+              bijTik={() => naarFase(kamer.meta.code, 'lobby').catch(meldFout)}
+            >
               Terug naar lobby
             </GroteKnop>
-            <GroteKnop kleur="leeg" klein bijTik={() => naarFase(kamer.meta.code, 'scorebord')}>
+            <GroteKnop
+              kleur="leeg"
+              klein
+              bijTik={() => naarFase(kamer.meta.code, 'scorebord').catch(meldFout)}
+            >
               Eindstand
             </GroteKnop>
           </div>

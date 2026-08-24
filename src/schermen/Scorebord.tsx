@@ -2,6 +2,7 @@ import type { Kamer } from '../engine/types'
 import { eenheid } from '../engine/slokken'
 import { naarFase } from '../net/hostLoop'
 import { GroteKnop, Kaartje } from '../ui/Basis'
+import { meldFout } from '../ui/Fout'
 
 export function Scorebord({ kamer, uid }: { kamer: Kamer; uid: string }) {
   const benHost = kamer.meta.hostUid === uid
@@ -65,10 +66,17 @@ export function Scorebord({ kamer, uid }: { kamer: Kamer; uid: string }) {
 
       {benHost && (
         <div className="onderaan">
-          <GroteKnop kleur="goud" bijTik={() => naarFase(kamer.meta.code, 'kiezen')}>
+          <GroteKnop
+            kleur="goud"
+            bijTik={() => naarFase(kamer.meta.code, 'kiezen').catch(meldFout)}
+          >
             Nog een spel
           </GroteKnop>
-          <GroteKnop kleur="leeg" klein bijTik={() => naarFase(kamer.meta.code, 'lobby')}>
+          <GroteKnop
+            kleur="leeg"
+            klein
+            bijTik={() => naarFase(kamer.meta.code, 'lobby').catch(meldFout)}
+          >
             Terug naar de lobby
           </GroteKnop>
         </div>
