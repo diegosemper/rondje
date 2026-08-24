@@ -1,0 +1,460 @@
+/* ─────────────────────────────────────────────────────────────
+   Rondje — vormgeving
+
+   Ontwerpregels, want dit wordt gebruikt door mensen die dronken zijn:
+   · enorme letters, hoog contrast
+   · knoppen onderaan (duimbereik), minstens 64px hoog
+   · kleur = betekenis: goud is doen, rood is drinken, groen is goed
+   · niets om te lezen tijdens het spel
+   ───────────────────────────────────────────────────────────── */
+
+:root {
+  --achtergrond: #0b0b10;
+  --vlak: #16161f;
+  --vlak-hoog: #21212e;
+  --rand: #2e2e40;
+
+  --tekst: #f4f4f8;
+  --tekst-zacht: #9a9ab0;
+
+  --goud: #f5b942;
+  --goud-donker: #6b4d12;
+  --rood: #e8453c;
+  --rood-donker: #6d1d19;
+  --groen: #35c46b;
+  --groen-donker: #14512c;
+  --blauw: #4c8dff;
+  --paars: #9b6cf0;
+
+  --straal: 18px;
+  --straal-klein: 10px;
+
+  --veilig-onder: env(safe-area-inset-bottom, 0px);
+  --veilig-boven: env(safe-area-inset-top, 0px);
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--achtergrond);
+  color: var(--tekst);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif;
+  font-size: 17px;
+  line-height: 1.4;
+  overscroll-behavior: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Tekst niet per ongeluk selecteren bij snel tikken. */
+button,
+.geen-selectie {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ── Structuur ──────────────────────────────────────────────── */
+
+.scherm {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  padding: calc(var(--veilig-boven) + 12px) 16px calc(var(--veilig-onder) + 16px);
+  gap: 14px;
+}
+
+.midden {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  text-align: center;
+}
+
+.onderaan {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rij {
+  display: flex;
+  gap: 10px;
+}
+
+.rij > * {
+  flex: 1;
+}
+
+/* ── Tekst ──────────────────────────────────────────────────── */
+
+h1 {
+  font-size: 40px;
+  line-height: 1.05;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+h2 {
+  font-size: 26px;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.reusachtig {
+  font-size: clamp(72px, 28vw, 140px);
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+}
+
+.zacht {
+  color: var(--tekst-zacht);
+}
+
+.klein {
+  font-size: 14px;
+}
+
+.kop-klein {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--tekst-zacht);
+}
+
+/* ── Knoppen ────────────────────────────────────────────────── */
+
+button {
+  font: inherit;
+  color: inherit;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.knop {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 64px;
+  padding: 16px 20px;
+  border-radius: var(--straal);
+  background: var(--vlak-hoog);
+  color: var(--tekst);
+  font-size: 20px;
+  font-weight: 700;
+  border: 1px solid var(--rand);
+  transition: transform 0.06s ease, filter 0.12s ease;
+}
+
+.knop:active {
+  transform: scale(0.97);
+  filter: brightness(1.15);
+}
+
+.knop:disabled {
+  opacity: 0.35;
+  transform: none;
+}
+
+.knop.goud {
+  background: var(--goud);
+  color: #1a1205;
+  border-color: transparent;
+}
+
+.knop.rood {
+  background: var(--rood);
+  color: #fff;
+  border-color: transparent;
+}
+
+.knop.groen {
+  background: var(--groen);
+  color: #05230f;
+  border-color: transparent;
+}
+
+.knop.leeg {
+  background: transparent;
+  border-color: var(--rand);
+  font-size: 17px;
+  min-height: 52px;
+}
+
+.knop.enorm {
+  min-height: 96px;
+  font-size: 28px;
+}
+
+.knop.klein {
+  min-height: 44px;
+  font-size: 15px;
+  padding: 10px 14px;
+  border-radius: var(--straal-klein);
+  width: auto;
+}
+
+/* ── Vlakken ────────────────────────────────────────────────── */
+
+.kaartje {
+  background: var(--vlak);
+  border: 1px solid var(--rand);
+  border-radius: var(--straal);
+  padding: 16px;
+}
+
+.balk {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+/* ── Speelkaart ─────────────────────────────────────────────── */
+
+.speelkaart {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 5 / 7;
+  background: #fbfbf7;
+  color: #14141c;
+  border-radius: 14px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.speelkaart.rood {
+  color: #d62828;
+}
+
+.speelkaart .waarde {
+  font-size: 0.42em;
+}
+
+.speelkaart .teken {
+  font-size: 0.34em;
+  margin-top: 0.04em;
+}
+
+.speelkaart.dicht {
+  background: linear-gradient(135deg, #2b2b45, #14141f);
+  color: var(--goud);
+  border: 2px solid var(--goud-donker);
+  font-size: 0.3em;
+}
+
+.kaart-groot {
+  width: min(62vw, 260px);
+  font-size: 200px;
+}
+
+.kaart-midden {
+  width: 96px;
+  font-size: 96px;
+}
+
+.kaart-klein {
+  width: 54px;
+  font-size: 54px;
+}
+
+/* ── Spelersbalk ────────────────────────────────────────────── */
+
+.spelers {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+
+.spelers::-webkit-scrollbar {
+  display: none;
+}
+
+.speler {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 60px;
+  padding: 8px 6px;
+  border-radius: var(--straal-klein);
+  background: var(--vlak);
+  border: 2px solid transparent;
+  font-size: 12px;
+  text-align: center;
+}
+
+.speler.actief {
+  border-color: var(--goud);
+  background: var(--goud-donker);
+}
+
+.speler.offline {
+  opacity: 0.4;
+}
+
+.speler .gezicht {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.speler .naam {
+  max-width: 64px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Het rode drinkscherm ───────────────────────────────────── */
+
+.drinkscherm {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--rood);
+  color: #fff;
+  text-align: center;
+  padding: 24px;
+  animation: opkomen 0.18s ease-out;
+}
+
+.drinkscherm.droog {
+  background: var(--blauw);
+}
+
+@keyframes opkomen {
+  from {
+    opacity: 0;
+    transform: scale(1.06);
+  }
+}
+
+@keyframes kloppen {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.klopt {
+  animation: kloppen 0.9s ease-in-out infinite;
+}
+
+/* ── Diversen ───────────────────────────────────────────────── */
+
+.code {
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 44px;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  color: var(--goud);
+}
+
+input,
+select {
+  width: 100%;
+  min-height: 60px;
+  padding: 14px 16px;
+  font: inherit;
+  font-size: 20px;
+  color: var(--tekst);
+  background: var(--vlak);
+  border: 1px solid var(--rand);
+  border-radius: var(--straal);
+  outline: none;
+}
+
+input:focus,
+select:focus {
+  border-color: var(--goud);
+}
+
+input.code-invoer {
+  text-align: center;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 36px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+
+.emoji-raster {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 6px;
+}
+
+.emoji-knop {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  border-radius: var(--straal-klein);
+  background: var(--vlak);
+  border: 2px solid transparent;
+}
+
+.emoji-knop.gekozen {
+  border-color: var(--goud);
+  background: var(--goud-donker);
+}
+
+.streep {
+  height: 1px;
+  background: var(--rand);
+  border: none;
+  margin: 4px 0;
+}
+
+.logboek {
+  font-size: 13px;
+  color: var(--tekst-zacht);
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 3px;
+  max-height: 96px;
+  overflow-y: auto;
+}
+
+.balkje {
+  height: 8px;
+  border-radius: 99px;
+  background: var(--rand);
+  overflow: hidden;
+}
+
+.balkje > div {
+  height: 100%;
+  background: var(--goud);
+  transition: width 0.1s linear;
+}

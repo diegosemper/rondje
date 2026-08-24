@@ -1,0 +1,32 @@
+{
+  "rules": {
+    "rooms": {
+      "$code": {
+        "publiek": {
+          ".read": "auth != null",
+          ".write": "auth != null"
+        },
+
+        "prive": {
+          "$uid": {
+            ".read": "auth != null && (auth.uid === $uid || auth.uid === root.child('rooms').child($code).child('publiek/meta/hostUid').val())",
+            ".write": "auth != null && (auth.uid === $uid || auth.uid === root.child('rooms').child($code).child('publiek/meta/hostUid').val())"
+          }
+        },
+
+        "hostState": {
+          ".read": "auth != null && auth.uid === root.child('rooms').child($code).child('publiek/meta/hostUid').val()",
+          ".write": "auth != null && auth.uid === root.child('rooms').child($code).child('publiek/meta/hostUid').val()"
+        },
+
+        "acties": {
+          ".read": "auth != null && auth.uid === root.child('rooms').child($code).child('publiek/meta/hostUid').val()",
+          "$actieId": {
+            ".write": "auth != null",
+            ".validate": "!newData.exists() || (newData.hasChildren(['uid', 'type', 'ts']) && newData.child('uid').val() === auth.uid)"
+          }
+        }
+      }
+    }
+  }
+}
