@@ -25,13 +25,13 @@
    ───────────────────────────────────────────────────────────── */
 
 export const firebaseConfig = {
-  apiKey: 'VUL-IN',
-  authDomain: 'VUL-IN',
-  databaseURL: 'VUL-IN',
-  projectId: 'VUL-IN',
-  storageBucket: 'VUL-IN',
-  messagingSenderId: 'VUL-IN',
-  appId: 'VUL-IN',
+  apiKey: 'AIzaSyBja3D1gI1aLLTR-How3VuDKgWlTGEqV5Q',
+  authDomain: 'naam-rondje.firebaseapp.com',
+  databaseURL: 'https://naam-rondje-default-rtdb.europe-west1.firebasedatabase.app',
+  projectId: 'naam-rondje',
+  storageBucket: 'naam-rondje.firebasestorage.app',
+  messagingSenderId: '946635860607',
+  appId: '1:946635860607:web:70b8ed51deb340d7e4ed4a',
 }
 
 export function isIngesteld(): boolean {
