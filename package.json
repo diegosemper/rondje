@@ -1,9 +1,9 @@
 {
-  "name": "rondje",
+  "name": "dorst",
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Rondje - 40 drankspellen in een lobby",
+  "description": "DORST! - drankspellen voor je hele groep, in een lobby",
   "scripts": {
     "dev": "vite",
     "telefoon": "vite --host",

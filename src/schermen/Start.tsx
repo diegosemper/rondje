@@ -55,11 +55,23 @@ export function Start({
 
   return (
     <div className="scherm">
-      <div style={{ textAlign: 'center', paddingTop: 8 }}>
-        <h1>
-          Rondje <span style={{ color: 'var(--goud)' }}>🍺</span>
-        </h1>
-        <div className="zacht klein">Veertig drankspellen, één lobby</div>
+      <div style={{ textAlign: 'center', paddingTop: 4 }}>
+        <img
+          src={`${import.meta.env.BASE_URL}logo-512.png`}
+          alt="DORST!"
+          width={148}
+          height={148}
+          style={{
+            width: 148,
+            height: 148,
+            maxWidth: '46vw',
+            borderRadius: 28,
+            boxShadow: '0 10px 28px rgba(0,0,0,.45)',
+          }}
+        />
+        <div className="zacht klein" style={{ marginTop: 8 }}>
+          Drankspellen voor je hele groep, in één lobby
+        </div>
       </div>
 
       <div>

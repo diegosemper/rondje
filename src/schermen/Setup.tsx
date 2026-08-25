@@ -6,7 +6,7 @@ export function Setup() {
   return (
     <div className="scherm">
       <h1>
-        Rondje <span style={{ color: 'var(--goud)' }}>🍺</span>
+        DORST! <span style={{ color: 'var(--goud)' }}>🍺</span>
       </h1>
       <p className="zacht">
         Bijna klaar. De app moet nog verbonden worden met Firebase — dat is de gratis

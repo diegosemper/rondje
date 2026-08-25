@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 
 /* ─────────────────────────────────────────────────────────────
-   De vaste vorm van alles in Rondje.
+   De vaste vorm van alles in DORST!
    Elk van de 40 spellen praat via deze typen met de app.
    ───────────────────────────────────────────────────────────── */
 

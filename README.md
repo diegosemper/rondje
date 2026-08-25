@@ -1,20 +1,28 @@
-# Rondje 🍺
+<img src="public/logo-512.png" alt="DORST!" width="140" />
 
-Veertig korte drankspellen in één lobby. Iedereen opent dezelfde link op zijn
-telefoon, typt de lobbycode, en de groep gaat samen door de spellen heen.
+# DORST!
+
+Drankspellen voor je hele groep, in één lobby. Iedereen opent dezelfde link op
+zijn telefoon, typt de lobbycode, en de groep gaat samen door de spellen heen.
 Uitgespeeld? Skip, volgende.
 
-- 3 tot 8 spelers
+- 2 tot 8 spelers
 - Web-app: geen installatie, geen app store
 - Zwaarte instelbaar in de lobby — inclusief een **droge stand** met strafpunten
   in plaats van slokken, zodat wie rijdt gewoon mee kan doen
 - Elke speler heeft een privéscherm, dus bluffen en geheime rollen kunnen echt
 
+**Live:** https://diegosemper.github.io/rondje/
+
+> De app heet DORST!, maar de repository en de link heten nog `rondje` — dat was
+> de werknaam. Die hernoemen zou de link breken die je al gedeeld hebt, dus dat
+> laten we zo tot je er klaar voor bent.
+
 ---
 
 ## Zelf draaien
 
-Node.js staat al geïnstalleerd in `%LOCALAPPDATA%\rondje-tools`. Open een
+Node.js en Git staan geïnstalleerd in `%LOCALAPPDATA%\rondje-tools`. Open een
 PowerShell-venster in deze map en typ:
 
 ```powershell
@@ -41,39 +49,10 @@ npm run build
 
 ---
 
-## Firebase instellen (eenmalig, gratis)
-
-De app zelf is een gewone website. Om telefoons live met elkaar te verbinden
-gebruiken we Firebase. Zolang dat niet is ingesteld, laat de app een
-uitlegscherm zien.
-
-1. Ga naar [console.firebase.google.com](https://console.firebase.google.com)
-2. **Project toevoegen** → naam `rondje` → Google Analytics uit
-3. **Build → Realtime Database → Database maken** → locatie `europe-west1` →
-   *Start in vergrendelde modus*
-4. **Build → Authentication → Aan de slag** → tabblad *Sign-in method* →
-   **Anoniem** inschakelen
-5. **Tandwiel → Projectinstellingen → Jouw apps → `</>`** → bijnaam `rondje` →
-   registreren. Kopieer de getoonde waarden naar
-   [`src/net/firebaseConfig.ts`](src/net/firebaseConfig.ts)
-6. **Realtime Database → Regels** → plak de inhoud van
-   [`database.rules.json`](database.rules.json) → **Publiceren**
-
-> De Firebase-sleutel staat gewoon openbaar in deze repo. Dat hoort zo bij
-> web-apps: de sleutel zegt alleen wélk project het is. De beveiliging zit in
-> de regels uit stap 6.
-
----
-
 ## Online zetten
 
-Zodra deze map een GitHub-repository is en je pusht naar `main`, bouwt
-[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) de app en zet
-hem op GitHub Pages.
-
-Eenmalig instellen: **Settings → Pages → Source: GitHub Actions**.
-
-Daarna is elke update een kwestie van:
+Pushen naar `main` is genoeg; [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)
+bouwt de app en zet hem op GitHub Pages.
 
 ```powershell
 git add .
@@ -81,13 +60,23 @@ git commit -m "wat er veranderd is"
 git push
 ```
 
-Twee minuten later staat het op `https://<jouw-naam>.github.io/<repo>/`.
+Twee minuten later staat het online.
+
+---
+
+## Firebase
+
+De lobby's lopen via Firebase Realtime Database, project `naam-rondje`. De
+instellingen staan in [`src/net/firebaseConfig.ts`](src/net/firebaseConfig.ts)
+en de databaseregels in [`database.rules.json`](database.rules.json).
+
+> De Firebase-sleutel staat gewoon openbaar in deze repo. Dat hoort zo bij
+> web-apps: de sleutel zegt alleen wélk project het is. De beveiliging zit in de
+> regels.
 
 ---
 
 ## Hoe het in elkaar zit
-
-Drie dingen werken samen:
 
 | Onderdeel | Wat het doet |
 |---|---|
@@ -109,10 +98,12 @@ twee telefoons het nooit oneens worden over wie er aan de beurt is.
 ### Mappen
 
 ```
+public/        het logo en het app-icoontje
 src/
-├─ engine/     het fundament: kaartdeck, beurten, slokken, stemmen, timer
-├─ net/        verbinding met Firebase, de lobby, en de host-loop
-├─ ui/         knoppen, speelkaarten, het rode drinkscherm, de vormgeving
+├─ engine/     kaartdeck, beurten, slokken, stemmen, timer, toeval
+├─ net/        Firebase, de lobby, de host-lus, live tekenen
+├─ ui/         knoppen, speelkaarten, drinkpauze, verdeler,
+│              tekenveld, arcade-veld, bierpongtafel
 ├─ schermen/   start, lobby, spelkiezer, uitleg, spelen, scorebord
 └─ games/      één mapje per spel
 ```
@@ -120,8 +111,7 @@ src/
 ### Een spel toevoegen
 
 Maak een mapje in `src/games/` en voeg één regel toe aan
-[`src/games/index.ts`](src/games/index.ts). Meer is het niet. Een spel ziet er
-zo uit:
+[`src/games/index.ts`](src/games/index.ts). Meer is het niet.
 
 ```ts
 export const mijnspel: GameModule<MijnState> = {
@@ -142,27 +132,36 @@ export const mijnspel: GameModule<MijnState> = {
 }
 ```
 
-Wat `ctx` je geeft in `reduce`: `drink()`, `deelUit()`, `iedereenDrinkt()`,
-`zetPrive()`, `log()`, `klaar()`, plus `rng()` en `spelers`. De
-zwaarte-instelling wordt automatisch verrekend — geef gewoon het aantal door
-dat je bedoelt.
+Wat `ctx` je geeft in `reduce`: `drink()`, `deelUit()`, `deelUitPrecies()`,
+`iedereenDrinkt()`, `zetPrive()`, `log()`, `klaar()`, plus `rng()` en
+`spelers`. De zwaarte-instelling wordt automatisch verrekend — geef gewoon het
+aantal door dat je bedoelt.
 
 **Geheime informatie:** alles wat in de spelstand onder de sleutel `_geheim`
 staat, blijft op de telefoon van de host en gaat nooit naar de andere
 telefoons. Wat één speler wél mag zien, geef je met `ctx.zetPrive(uid, data)`;
 die speler leest het terug als `ctx.prive` in de View.
 
+**Kant-en-klaar gereedschap:** de drinkpauze (het spel staat stil tot iedereen
+gedronken heeft), de verdeler (slokken spreiden over meerdere mensen),
+`useHostKlok` (aftellers), `Tekenveld` (live tekenen), `maakArcadeSpel`
+(behendigheidsspellen met start, score en uitslag) en `Pongveld`.
+
 ---
 
-## Stand van zaken
+## De spellen
 
-| Fase | | |
-|---|---|---|
-| 0 | Gereedschap | ✅ Node draait |
-| 1 | Fundament + lobby | ✅ gebouwd, wacht op Firebase-sleutel |
-| 2 | Drie spellen als bewijs | ✅ HiLo, Wie van Ons, Snelste Vinger |
-| 3 | Klassiekers (Bussen, Kingsen, …) | openstaand |
-| 4 | Geheim & bluf | openstaand |
-| 5 | Reflex & chaos | openstaand |
-| 6 | Praten & sociaal | openstaand |
-| 7 | Afwerking | openstaand |
+**Kaarten** — Bussen · Kingsen · Pyramide · Blinde Kaart · Ezelen ·
+Kaartroulette · Fuck the Dealer · HiLo · 21 Overboord
+
+**Geheim & bluf** — De Imposter · Spiegelspelers · Sabotage · Verboden Woord ·
+Golflengte · Twee Waarheden één Leugen · De Ketting
+
+**Reflex & arcade** — Flappy · Jetpack · Snelweg · Stapeltoren · Bierpong ·
+Snelste Vinger · Zwaartekracht · Snelle Wiskunde
+
+**Praten & raden** — Tekenen · Raad het Nummer · Wie van Ons · Gelijk Denken ·
+Het Alfabet · Bom Doorgeven · Opbouwen of Stoppen
+
+Plus een Testspel dat elke bouwsteen los aanroept; dat staat standaard uit en
+kun je in de lobby aanzetten.

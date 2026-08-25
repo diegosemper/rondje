@@ -32,9 +32,9 @@ export function Lobby({
 
   async function deel() {
     const link = deelLink(code)
-    const tekst = `Doe mee met Rondje — lobby ${code}\n${link}`
+    const tekst = `Doe mee met DORST! — lobby ${code}\n${link}`
     try {
-      if (navigator.share) await navigator.share({ title: 'Rondje', text: tekst, url: link })
+      if (navigator.share) await navigator.share({ title: 'DORST!', text: tekst, url: link })
       else {
         await navigator.clipboard.writeText(tekst)
         zetGedeeld(true)

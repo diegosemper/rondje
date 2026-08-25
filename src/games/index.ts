@@ -34,7 +34,7 @@ import { zwaartekracht } from './zwaartekracht'
 import { tweewaarheden } from './tweewaarheden'
 
 /**
- * Alle spellen van Rondje.
+ * Alle spellen van DORST!
  *
  * Een spel toevoegen = één mapje in deze map maken en hier één regel
  * toevoegen. Meer is het niet.

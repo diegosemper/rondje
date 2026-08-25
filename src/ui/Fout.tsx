@@ -14,7 +14,7 @@ const luisteraars = new Set<Luisteraar>()
 export function meldFout(e: unknown): void {
   const ruw = (e as any)?.message ?? String(e)
   luisteraars.forEach((l) => l(vertaal(ruw)))
-  console.error('[rondje]', e)
+  console.error('[dorst]', e)
 }
 
 /** Firebase-taal omzetten naar iets waar je wat aan hebt. */
