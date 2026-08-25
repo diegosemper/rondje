@@ -25,6 +25,37 @@ function schrijf(sleutel: string, waarde: string | null): void {
   }
 }
 
+/* ─────────────────────────────────────────────────────────────
+   Je lobby onthouden we in sessionStorage en niet in localStorage.
+
+   Dat is precies het verschil tussen "ik ververs even" en "ik ben klaar":
+
+   · Pagina verversen, telefoon op slot, even naar een andere app →
+     hetzelfde tabblad blijft leven, dus je komt terug waar je was.
+   · Tabblad of app helemaal afsluiten → sessionStorage is leeg, dus je
+     begint netjes op het beginscherm.
+
+   Je naam en emoji blijven wél in localStorage staan; die wil je juist niet
+   elke keer opnieuw invullen.
+   ───────────────────────────────────────────────────────────── */
+
+function leesSessie(sleutel: string): string | null {
+  try {
+    return sessionStorage.getItem(sleutel)
+  } catch {
+    return null
+  }
+}
+
+function schrijfSessie(sleutel: string, waarde: string | null): void {
+  try {
+    if (waarde === null) sessionStorage.removeItem(sleutel)
+    else sessionStorage.setItem(sleutel, waarde)
+  } catch {
+    /* niet erg */
+  }
+}
+
 export function leesNaam(): string {
   return lees(SLEUTEL.naam) ?? ''
 }
@@ -39,14 +70,16 @@ export function bewaarProfiel(naam: string, emoji: string): void {
 }
 
 export function leesCode(): string | null {
-  return lees(SLEUTEL.code)
+  return leesSessie(SLEUTEL.code)
 }
 
 export function bewaarCode(code: string | null): void {
-  schrijf(SLEUTEL.code, code)
+  schrijfSessie(SLEUTEL.code, code)
+  // De code uit de link halen zodra je binnen bent. Anders stapt iemand die
+  // de app later opnieuw opent zomaar weer een oude lobby in, alleen omdat
+  // de browser het adres met #CODE onthouden had.
   try {
-    if (code) history.replaceState(null, '', `#${code}`)
-    else history.replaceState(null, '', location.pathname + location.search)
+    history.replaceState(null, '', location.pathname + location.search)
   } catch {
     /* niet erg */
   }

@@ -17,9 +17,15 @@ export const MIN_SPELERS = 2
 /** Geen I, O, 1 of 0 — die worden verkeerd overgetypt in een donkere kroeg. */
 const CODE_LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ'
 
+/** Ruime keuze; ze staan in een strip die je opzij schuift. */
 export const EMOJIS = [
-  '🍺', '🍷', '🥃', '🍸', '🦆', '🐙', '🦖', '🐸',
-  '🦩', '🐧', '🦊', '🐨', '👻', '🤖', '🎃', '🦄',
+  '🍺', '🍷', '🥃', '🍸', '🍹', '🥂', '🍾', '🧃',
+  '🦆', '🐙', '🦖', '🐸', '🦩', '🐧', '🦊', '🐨',
+  '🐼', '🐷', '🐮', '🦁', '🐵', '🦉', '🦅', '🦀',
+  '🦈', '🐢', '🦔', '🐝', '🦋', '🐌', '🦥', '🦦',
+  '👻', '🤖', '🎃', '🦄', '👽', '🤠', '🥸', '🧙',
+  '🧟', '🧜', '🦸', '🥷', '🎅', '🤡', '💀', '👹',
+  '⚡', '🔥', '🌈', '⭐', '🍕', '🌮', '🍔', '🥑',
 ]
 
 export function maakCode(): string {

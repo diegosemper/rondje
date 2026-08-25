@@ -49,6 +49,14 @@ function Inhoud() {
     }
   }, [code, weg, laden])
 
+  // Zodra we een lobby hebben: opslaan voor déze sessie en de code uit het
+  // adres halen. Dat laatste geldt ook voor wie via een gedeelde link
+  // binnenkomt — anders blijft #CODE in de balk staan en stapt hij bij een
+  // volgende keer opstarten zomaar weer diezelfde lobby in.
+  useEffect(() => {
+    if (code) bewaarCode(code)
+  }, [code])
+
   function ganaarLobby(nieuw: string) {
     bewaarCode(nieuw)
     zetCode(nieuw)

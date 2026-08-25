@@ -31,6 +31,7 @@ export function Start({
   const [naam, zetNaam] = useState(leesNaam)
   const [emoji, zetEmoji] = useState(leesEmoji)
   const [aantal, zetAantal] = useState(4)
+  const [open, zetOpen] = useState(false)
   const [code, zetCode] = useState(beginCode ?? '')
   const [bezig, zetBezig] = useState(false)
   const [fout, zetFout] = useState<string | null>(null)
@@ -91,31 +92,43 @@ export function Start({
         <div className="paneel">
           <div className="paneel-kop">
             <span className="kop-klein">1 · Wie ben je?</span>
-            <span className="naamkaartje">
-              <span style={{ fontSize: 18 }}>{emoji}</span>
-              <strong>{naam.trim() || '…'}</strong>
-            </span>
+            <span className="klein zacht">tik op je poppetje</span>
           </div>
 
-          <input
-            value={naam}
-            onChange={(e) => zetNaam(e.target.value.slice(0, 12))}
-            placeholder="Je naam"
-            autoComplete="off"
-            autoCapitalize="words"
-          />
-
-          <div className="emoji-raster" style={{ marginTop: 8 }}>
-            {EMOJIS.map((e) => (
-              <button
-                key={e}
-                className={`emoji-knop ${e === emoji ? 'gekozen' : ''}`}
-                onClick={() => zetEmoji(e)}
-              >
-                {e}
-              </button>
-            ))}
+          <div style={{ display: 'flex', gap: 10, alignItems: 'stretch' }}>
+            <button
+              className={`emoji-groot ${open ? 'open' : ''}`}
+              onClick={() => zetOpen(!open)}
+              aria-label="Kies een poppetje"
+            >
+              {emoji}
+            </button>
+            <input
+              style={{ flex: 1 }}
+              value={naam}
+              onChange={(e) => zetNaam(e.target.value.slice(0, 12))}
+              placeholder="Je naam"
+              autoComplete="off"
+              autoCapitalize="words"
+            />
           </div>
+
+          {open && (
+            <div className="emoji-strip">
+              {EMOJIS.map((e) => (
+                <button
+                  key={e}
+                  className={`emoji-knop ${e === emoji ? 'gekozen' : ''}`}
+                  onClick={() => {
+                    zetEmoji(e)
+                    zetOpen(false)
+                  }}
+                >
+                  {e}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* ── Met hoeveel ── */}

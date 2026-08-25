@@ -458,13 +458,49 @@ button {
   background: var(--rand);
 }
 
-/* Het emoji-raster wat luchtiger op het beginscherm. */
-.paneel .emoji-knop {
-  font-size: 24px;
+/* Eén groot poppetje naast je naam; de rest zit in een strip die je
+   opzij schuift. Zo kost de keuze bijna geen ruimte. */
+
+.emoji-groot {
+  flex-shrink: 0;
+  width: 60px;
+  min-height: 60px;
+  border-radius: var(--straal);
+  background: var(--vlak);
+  border: 2px solid var(--rand);
+  font-size: 30px;
+  line-height: 1;
+  transition: transform 0.1s ease, border-color 0.12s ease;
 }
 
-.paneel .emoji-knop.gekozen {
-  transform: scale(1.12);
+.emoji-groot.open {
+  border-color: var(--goud);
+  background: var(--goud-donker);
+  transform: scale(1.04);
+}
+
+.emoji-strip {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  margin-top: 8px;
+  padding-bottom: 4px;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.emoji-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.emoji-strip .emoji-knop {
+  flex: 0 0 auto;
+  width: 46px;
+  height: 46px;
+  aspect-ratio: auto;
+  font-size: 24px;
+  scroll-snap-align: center;
 }
 
 /* ── De boom van Bussen ─────────────────────────────────────── */
