@@ -1,0 +1,42 @@
+/** Woorden om op te rijmen (de 9). Kort en makkelijk uit te spreken. */
+export const RIJMWOORDEN: string[] = [
+  'bier', 'kater', 'fles', 'nacht', 'dansen', 'zoenen', 'kroeg', 'shot',
+  'tafel', 'vriend', 'geld', 'trein', 'regen', 'feest', 'stoel', 'muziek',
+  'been', 'hand', 'kop', 'lach', 'droom', 'straat', 'zomer', 'winter',
+  'brood', 'kaas', 'boot', 'fiets', 'school', 'werk', 'baas', 'huis',
+  'kat', 'hond', 'vis', 'boom', 'maan', 'zon', 'wolk', 'wind',
+]
+
+/** Categorieën om om de beurt op te noemen (de 10). */
+export const CATEGORIEEN: string[] = [
+  'biermerken',
+  'autospullen',
+  'landen in Europa',
+  'Nederlandse steden',
+  'dingen in de koelkast',
+  'dieren met vier poten',
+  'voetbalclubs',
+  'films met een cijfer in de titel',
+  'dingen die je meeneemt op vakantie',
+  'beroepen',
+  'kleuren',
+  'lichaamsdelen',
+  'dingen in deze kamer',
+  'zangers of bands',
+  'sporten',
+  'pizzabelegs',
+  'redenen om te laat te komen',
+  'dingen die piepen',
+  'merken kleding',
+  'Nederlandse tv-programma’s',
+  'dingen die je niet aan je moeder vertelt',
+  'schoolvakken',
+  'dingen in je broekzak',
+  'cocktails',
+  'games',
+  'dingen die drijven',
+  'bijnamen voor dronken zijn',
+  'apps op je telefoon',
+  'dingen die stinken',
+  'plekken om te zoenen',
+]
