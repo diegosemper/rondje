@@ -167,6 +167,12 @@ export interface KijkContext {
   /** mijn eigen uid */
   ik: string
   benIkHost: boolean
+  /**
+   * De lobbycode. Alleen nodig voor spellen die buiten de host-lus om naar de
+   * database schrijven — zoals het tekenveld, dat tientallen strepen per
+   * tekening verstuurt en die niet door de spellogica hoeft te halen.
+   */
+  kamerCode: string
   spelers: Speler[]
   zwaarte: Zwaarte
   /** wat alleen ik mag zien; undefined als ik niets geheims heb */

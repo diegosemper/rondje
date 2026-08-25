@@ -33,6 +33,7 @@ export function Spelen({
     () => ({
       ik: uid,
       benIkHost: benHost,
+      kamerCode: code,
       spelers,
       zwaarte,
       prive,

@@ -16,6 +16,10 @@ import { pyramide } from './pyramide'
 import { blindekaart } from './blindekaart'
 import { ezelen } from './ezelen'
 import { roulette } from './roulette'
+import { tekenen } from './tekenen'
+import { spiegel } from './spiegel'
+import { zwaartekracht } from './zwaartekracht'
+import { tweewaarheden } from './tweewaarheden'
 
 /**
  * Alle spellen van Rondje.
@@ -32,6 +36,10 @@ export const ALLE_SPELLEN: GameModule[] = [
   blindekaart,
   ezelen,
   roulette,
+  tekenen,
+  spiegel,
+  tweewaarheden,
+  zwaartekracht,
   ketting,
   eenentwintig,
   bom,
