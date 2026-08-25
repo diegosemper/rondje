@@ -17,8 +17,14 @@ import { Verdeler } from '../../ui/Verdeler'
    ───────────────────────────────────────────────────────────── */
 
 const RONDES = 10
-const RONDE_SEC = 6
-const TOON_SEC = 1.6
+/** De klok loopt elke ronde korter: rustig beginnen, hijgend eindigen. */
+const START_SEC = 6
+const MIN_SEC = 2
+const TOON_SEC = 1.4
+
+function secondenVoor(ronde: number): number {
+  return Math.max(MIN_SEC, START_SEC - (ronde - 1) * ((START_SEC - MIN_SEC) / (RONDES - 1)))
+}
 const PUNT_SNELST = 3
 const PUNT_GOED = 1
 const MAX_STRAF = 5
@@ -77,7 +83,7 @@ function nieuweRonde(s: KlapState, ctx: SpelContext) {
   s.gedaan = []
   s.laatste = null
   s.fase = 'kijken'
-  s.klok = startKlok(RONDE_SEC, ctx.nu)
+  s.klok = startKlok(secondenVoor(s.ronde), ctx.nu)
 }
 
 function rondAf(s: KlapState, ctx: SpelContext) {
@@ -118,7 +124,7 @@ export const kleurenklap: GameModule<KlapState> = {
   regels: [
     'Er staat een kleurnaam, in een andere kleur.',
     'Tik op de kleur van de letters.',
-    'Snelste goed = 3 punten, ook goed = 1.',
+    'Elke ronde krijg je minder tijd.',
     'Aan het eind drinkt iedereen behalve de winnaar.',
   ],
   minSpelers: 2,

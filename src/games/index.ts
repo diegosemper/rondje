@@ -42,7 +42,8 @@ import { wiebenik } from './wiebenik'
 import { springen } from './springen'
 import { pijlen } from './pijlen'
 import { spiegel } from './spiegel'
-import { zwaartekracht } from './zwaartekracht'
+// Zwaartekracht staat bewust niet in de lijst: eruit gehaald op verzoek. De
+// code staat er nog, dus terugzetten is deze regel en de import weer aanzetten.
 import { tweewaarheden } from './tweewaarheden'
 
 /**
@@ -84,7 +85,6 @@ export const ALLE_SPELLEN: GameModule[] = [
   alfabet,
   spiegel,
   tweewaarheden,
-  zwaartekracht,
   ketting,
   eenentwintig,
   bom,
