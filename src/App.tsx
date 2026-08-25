@@ -13,6 +13,7 @@ import { Spelen } from './schermen/Spelen'
 import { Scorebord } from './schermen/Scorebord'
 import { Kaartje } from './ui/Basis'
 import { FoutBanner } from './ui/Fout'
+import { Versiebalk } from './ui/Versie'
 
 export function App() {
   return (
@@ -92,9 +93,26 @@ function Inhoud() {
 
   if (!kamer) return <Splash ondertitel={`lobby ${code}`} />
 
+  return (
+    <>
+      <Versiebalk hostVersie={kamer.meta.versie} />
+      <Scherm kamer={kamer} uid={uid} prive={prive} verlaat={verlaat} />
+    </>
+  )
+}
+
+function Scherm({
+  kamer,
+  uid,
+  prive,
+  verlaat,
+}: {
+  kamer: NonNullable<ReturnType<typeof useKamer>['kamer']>
+  uid: string
+  prive: any
+  verlaat: () => void
+}) {
   switch (kamer.meta.fase) {
-    case 'lobby':
-      return <Lobby kamer={kamer} uid={uid} bijVertrek={verlaat} />
     case 'kiezen':
       return <SpelKiezer kamer={kamer} uid={uid} bijVertrek={verlaat} />
     case 'uitleg':

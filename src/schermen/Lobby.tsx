@@ -12,10 +12,22 @@ import {
 } from '../net/kamer'
 import { naarFase } from '../net/hostLoop'
 import { deelLink } from '../net/profiel'
-import { GroteKnop, Kaartje } from '../ui/Basis'
+import { tril } from '../ui/Basis'
+import { Kroeg } from '../ui/Kroeg'
 import { meldFout } from '../ui/Fout'
 
+/* ─────────────────────────────────────────────────────────────
+   De lobby, in dezelfde kroegstijl als het beginscherm.
+
+   Het bord met de code staat bovenaan en is het grootste ding op het scherm,
+   want dat is het enige wat je aan de anderen moet doorgeven.
+
+   De instellingen zijn alleen voor de host. De rest ziet wel wát er staat
+   ingesteld, maar krijgt geen knoppen die niets doen.
+   ───────────────────────────────────────────────────────────── */
+
 const ZWAARTES: Zwaarte[] = ['zacht', 'normaal', 'hard', 'droog']
+const AANTALLEN = [2, 3, 4, 5, 6, 7, 8]
 
 export function Lobby({
   kamer,
@@ -36,6 +48,9 @@ export function Lobby({
 
   const uit = kamer.instelling.uit
   const isAan = (id: string) => !uit.includes(id)
+  const passend = SPELLEN.filter(
+    (s) => s.id !== 'testspel' && isAan(s.id) && pastBijGroep(s, kamer.instelling.verwacht),
+  ).length
 
   async function deel() {
     const link = deelLink(code)
@@ -58,147 +73,172 @@ export function Lobby({
   }
 
   return (
-    <div className="scherm">
-      <div style={{ textAlign: 'center' }}>
-        <div className="kop-klein">Lobbycode</div>
-        <div className="code">{code}</div>
-      </div>
-
-      <GroteKnop kleur="leeg" bijTik={deel}>
-        {gedeeld ? '✓ Link gekopieerd' : '📤 Stuur de link'}
-      </GroteKnop>
-
-      <div>
-        <div className="kop-klein" style={{ marginBottom: 8 }}>
-          Spelers · {spelers.length}/{MAX_SPELERS}
+    <>
+      <Kroeg />
+      <div className="scherm" style={{ gap: 12 }}>
+        {/* ── De code ── */}
+        <div className="codebord">
+          <div className="kroeg-kop">Lobbycode</div>
+          <div className="cijfers">{code}</div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          {spelers.map((s) => (
-            <div
-              key={s.uid}
-              className="kaartje balk"
-              style={{ opacity: s.online ? 1 : 0.45, padding: 12 }}
-            >
-              <span>
-                <span style={{ fontSize: 22 }}>{s.emoji}</span> <strong>{s.naam}</strong>
-              </span>
-              {s.uid === kamer.meta.hostUid && <span className="klein zacht">host</span>}
-            </div>
-          ))}
-        </div>
-      </div>
 
-      {benHost ? (
-        <>
-          <div>
-            <div className="kop-klein" style={{ marginBottom: 8 }}>
-              Hoe zwaar?
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              {ZWAARTES.map((z) => (
-                <GroteKnop
-                  key={z}
-                  klein
-                  kleur={kamer.instelling.zwaarte === z ? 'goud' : 'leeg'}
-                  bijTik={() => zetZwaarte(code, z).catch(meldFout)}
-                >
-                  {ZWAARTE_LABEL[z]}
-                </GroteKnop>
-              ))}
-            </div>
-            <div className="klein zacht" style={{ marginTop: 6 }}>
-              {ZWAARTE_UITLEG[kamer.instelling.zwaarte]}
-            </div>
+        <button className="plaat hout" onClick={deel}>
+          {gedeeld ? '✓ Link gekopieerd' : '📤 Stuur de link'}
+        </button>
+
+        {/* ── Wie zitten erin ── */}
+        <div className="plank">
+          <div className="plank-kop">
+            Aan tafel
+            <small>
+              {spelers.length} van {MAX_SPELERS}
+            </small>
           </div>
 
-          <div>
-            <div className="paneel-kop">
-              <span className="kop-klein">Met hoeveel spelen jullie?</span>
-              <span className="klein zacht">
-                {SPELLEN.filter((s) => s.id !== 'testspel' && pastBijGroep(s, kamer.instelling.verwacht))
-                  .length}{' '}
-                spellen
-              </span>
-            </div>
-            <div className="aantal-rij">
-              {[2, 3, 4, 5, 6, 7, 8].map((n) => (
-                <button
-                  key={n}
-                  className={`aantal-knop ${n === kamer.instelling.verwacht ? 'gekozen' : ''}`}
-                  onClick={() => zetVerwacht(code, n).catch(meldFout)}
-                >
-                  {n}
-                </button>
-              ))}
-            </div>
+          <div className="spelers-raster">
+            {spelers.map((s) => (
+              <div
+                key={s.uid}
+                className={[
+                  'speler-tegel',
+                  s.uid === kamer.meta.hostUid ? 'host' : '',
+                  s.online ? '' : 'weg',
+                ].join(' ')}
+              >
+                <span className="gezicht">{s.emoji}</span>
+                <span className="naam">{s.naam}</span>
+                {s.uid === kamer.meta.hostUid && <span title="host">👑</span>}
+              </div>
+            ))}
+            {spelers.length < 2 && <div className="speler-tegel leeg">wacht op vrienden…</div>}
           </div>
+        </div>
 
-          <GroteKnop kleur="leeg" klein bijTik={() => zetToonSpellen(!toonSpellen)}>
-            {toonSpellen ? 'Verberg spellijst' : `Welke spellen? (${SPELLEN.filter((s) => isAan(s.id)).length})`}
-          </GroteKnop>
-
-          {toonSpellen && (
-            <Kaartje>
-              {SPELLEN.map((s) => (
-                <label
-                  key={s.id}
-                  className="balk"
-                  style={{ padding: '10px 0', borderBottom: '1px solid var(--rand)' }}
-                >
-                  <span>
-                    <strong>{s.naam}</strong>
-                    {spelers.length < s.minSpelers && (
-                      <span className="klein" style={{ color: 'var(--goud)' }}>
-                        {' '}
-                        · vanaf {s.minSpelers} spelers
-                      </span>
-                    )}
-                    <br />
-                    <span className="klein zacht">{s.uitleg}</span>
-                  </span>
-                  <input
-                    type="checkbox"
-                    checked={isAan(s.id)}
-                    onChange={() => wisselSpel(s.id)}
-                    style={{ width: 26, height: 26, minHeight: 0, flexShrink: 0 }}
-                  />
-                </label>
-              ))}
-            </Kaartje>
-          )}
-        </>
-      ) : (
-        <Kaartje style={{ textAlign: 'center' }}>
-          <div className="kop-klein">Zwaarte</div>
-          <strong>{ZWAARTE_LABEL[kamer.instelling.zwaarte]}</strong>
-        </Kaartje>
-      )}
-
-      <div className="onderaan" style={{ marginTop: 'auto' }}>
+        {/* ── Instellingen ── */}
         {benHost ? (
-          <GroteKnop
-            kleur="goud"
-            enorm
-            uit={!genoeg}
-            bijTik={() => naarFase(code, 'kiezen').catch(meldFout)}
-          >
-            {genoeg ? 'Begin de avond' : `Wacht op ${MIN_SPELERS - spelers.length} speler(s)`}
-          </GroteKnop>
+          <>
+            <div className="plank">
+              <div className="plank-kop">
+                Hoe zwaar?
+                <small>{ZWAARTE_UITLEG[kamer.instelling.zwaarte]}</small>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                {ZWAARTES.map((z) => (
+                  <button
+                    key={z}
+                    className={`keuze ${kamer.instelling.zwaarte === z ? 'gekozen' : ''}`}
+                    onClick={() => {
+                      tril(8)
+                      zetZwaarte(code, z).catch(meldFout)
+                    }}
+                  >
+                    {ZWAARTE_LABEL[z]}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="plank">
+              <div className="plank-kop">
+                Met hoeveel spelen jullie?
+                <small>{passend} spellen beschikbaar</small>
+              </div>
+              <div className="munten">
+                {AANTALLEN.map((n) => (
+                  <button
+                    key={n}
+                    className={`munt ${n === kamer.instelling.verwacht ? 'gekozen' : ''}`}
+                    onClick={() => {
+                      tril(8)
+                      zetVerwacht(code, n).catch(meldFout)
+                    }}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <button className="plaat hout" onClick={() => zetToonSpellen(!toonSpellen)}>
+              {toonSpellen ? 'Verberg de spellijst' : `Welke spellen? (${passend} aan)`}
+            </button>
+
+            {toonSpellen && (
+              <div className="plank">
+                {SPELLEN.map((s) => {
+                  const aan = isAan(s.id)
+                  const teWeinig = !pastBijGroep(s, kamer.instelling.verwacht)
+                  return (
+                    <button
+                      key={s.id}
+                      className="spelrij"
+                      style={{ width: '100%', textAlign: 'left' }}
+                      onClick={() => wisselSpel(s.id)}
+                    >
+                      <span className={aan && !teWeinig ? '' : 'uit'} style={{ minWidth: 0 }}>
+                        <strong>{s.naam}</strong>
+                        {teWeinig && (
+                          <span style={{ color: '#ffd166', fontSize: 12 }}>
+                            {' '}
+                            · vanaf {s.minSpelers}
+                          </span>
+                        )}
+                        <br />
+                        <span style={{ fontSize: 12, opacity: 0.7 }}>{s.uitleg}</span>
+                      </span>
+                      <span className={`vinkje ${aan ? 'aan' : ''}`}>✓</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </>
         ) : (
-          <Kaartje style={{ textAlign: 'center' }}>
-            <h2 className="zacht">Wachten op de host…</h2>
-          </Kaartje>
+          <div className="plank">
+            <div className="plank-kop">
+              Instellingen
+              <small>de host bepaalt dit</small>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+              <div className="keuze gekozen" style={{ textAlign: 'center' }}>
+                {ZWAARTE_LABEL[kamer.instelling.zwaarte]}
+              </div>
+              <div className="keuze gekozen" style={{ textAlign: 'center' }}>
+                {kamer.instelling.verwacht} spelers
+              </div>
+            </div>
+          </div>
         )}
-        <GroteKnop
-          kleur="leeg"
-          klein
-          bijTik={() => {
-            verlaatKamer(code, uid).finally(bijVertrek)
-          }}
-        >
-          Verlaat lobby
-        </GroteKnop>
+
+        {/* ── Beginnen ── */}
+        <div className="onderaan" style={{ marginTop: 'auto' }}>
+          {benHost ? (
+            <button
+              className="plaat"
+              disabled={!genoeg}
+              onClick={() => naarFase(code, 'kiezen').catch(meldFout)}
+            >
+              {genoeg
+                ? '🍻 Begin de avond'
+                : `Wacht op ${MIN_SPELERS - spelers.length} speler(s)`}
+            </button>
+          ) : (
+            <div className="bordje" style={{ maxWidth: '100%', padding: '10px 14px' }}>
+              Wachten tot de host begint…
+            </div>
+          )}
+
+          <button
+            className="plaat hout"
+            style={{ minHeight: 46, fontSize: 14 }}
+            onClick={() => {
+              verlaatKamer(code, uid).catch(meldFout).finally(bijVertrek)
+            }}
+          >
+            Verlaat lobby
+          </button>
+        </div>
       </div>
-    </div>
+    </>
   )
 }

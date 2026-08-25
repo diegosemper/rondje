@@ -420,6 +420,14 @@ export function useHostLoop(kamer: Kamer | null, uid: string | null): void {
     }
   }, [benHost, code])
 
+  // De host zet zijn eigen bouwstempel in de lobby, zodat iedereen kan zien of
+  // hij dezelfde versie draait.
+  useEffect(() => {
+    if (!benHost || !code || !kamer) return
+    if (kamer.meta.versie === __BUILD__) return
+    update(ref(db(), pad(code, 'meta')), { versie: __BUILD__ }).catch(() => {})
+  }, [benHost, code, kamer])
+
   // Drinkpauze bewaken: is iedereen klaar met drinken, dan gaat het spel door.
   const gateGedaan = useRef<string | null>(null)
   useEffect(() => {

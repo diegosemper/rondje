@@ -664,6 +664,141 @@ button {
   color: rgba(255, 233, 194, 0.7);
 }
 
+/* ── Lobby in kroegstijl ────────────────────────────────────── */
+
+/* Het bord met de lobbycode, als een krijtbord achter de bar. */
+.codebord {
+  text-align: center;
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #2c1a08, #1c1005);
+  border: 3px solid #c99244;
+  box-shadow:
+    inset 0 0 24px rgba(0, 0, 0, 0.6),
+    0 6px 18px rgba(0, 0, 0, 0.45);
+}
+
+.codebord .cijfers {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: clamp(38px, 15vw, 62px);
+  font-weight: 900;
+  letter-spacing: 0.22em;
+  text-indent: 0.22em;
+  color: #ffd166;
+  text-shadow: 0 0 22px rgba(255, 180, 60, 0.6);
+}
+
+/* Spelers als houten naamplaatjes. */
+.spelers-raster {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.speler-tegel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #9a6329, #6f4318);
+  border: 2px solid rgba(255, 220, 160, 0.28);
+  box-shadow: inset 0 2px 0 rgba(255, 230, 180, 0.18);
+  color: #ffe9c2;
+  font-weight: 700;
+  min-width: 0;
+}
+
+.speler-tegel.host {
+  border-color: #ffd166;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 230, 180, 0.25),
+    0 0 18px rgba(255, 180, 60, 0.4);
+}
+
+.speler-tegel.weg {
+  opacity: 0.4;
+}
+
+.speler-tegel .gezicht {
+  font-size: 24px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.speler-tegel .naam {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Een lege plek die nog gevuld kan worden. */
+.speler-tegel.leeg {
+  background: rgba(0, 0, 0, 0.18);
+  border-style: dashed;
+  border-color: rgba(255, 220, 160, 0.22);
+  color: rgba(255, 233, 194, 0.4);
+  font-weight: 600;
+  justify-content: center;
+}
+
+/* Keuzeknoppen binnen een plank (zwaarte, spellen). */
+.keuze {
+  min-height: 46px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #ffe9c2;
+  background: linear-gradient(180deg, #9a6329, #6f4318);
+  border: 2px solid rgba(255, 220, 160, 0.25);
+}
+
+.keuze.gekozen {
+  color: #4a2a0d;
+  background: linear-gradient(180deg, #ffd276, #f0a020);
+  border-color: #fff0cc;
+}
+
+/* Rijtje in de spellenlijst. */
+.spelrij {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 4px;
+  border-bottom: 1px solid rgba(255, 220, 160, 0.18);
+  color: #ffe9c2;
+}
+
+.spelrij:last-child {
+  border-bottom: none;
+}
+
+.spelrij .uit {
+  opacity: 0.45;
+}
+
+.vinkje {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+  font-weight: 900;
+  background: rgba(0, 0, 0, 0.25);
+  border: 2px solid rgba(255, 220, 160, 0.3);
+  color: transparent;
+}
+
+.vinkje.aan {
+  background: linear-gradient(180deg, #ffd276, #f0a020);
+  border-color: #fff0cc;
+  color: #4a2a0d;
+}
+
 /* ── Panelen op het beginscherm ─────────────────────────────── */
 
 .paneel {

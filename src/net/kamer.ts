@@ -98,6 +98,7 @@ export function leesKamer(ruw: any, code: string): Kamer | null {
       hostUid: ruw.meta.hostUid,
       fase: (ruw.meta.fase ?? 'lobby') as Fase,
       gemaaktOp: ruw.meta.gemaaktOp ?? 0,
+      versie: ruw.meta.versie ?? null,
     },
     instelling,
     spelers,

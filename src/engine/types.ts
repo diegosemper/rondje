@@ -100,6 +100,13 @@ export interface Kamer {
     hostUid: string
     fase: Fase
     gemaaktOp: number
+    /**
+     * De bouw waarmee de host draait. Telefoons die een andere versie hebben
+     * krijgen een balk met "herlaad" te zien — anders speel je samen een spel
+     * waarvan de helft een oudere uitvoering heeft en snapt niemand waarom het
+     * bij de een anders gaat dan bij de ander.
+     */
+    versie: string | null
   }
   instelling: Instelling
   spelers: Record<string, Speler>
