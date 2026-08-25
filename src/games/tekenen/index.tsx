@@ -5,8 +5,8 @@ import { klokTekst, startKlok, voortgang, type Klok } from '../../engine/timer'
 import type { Actie, GameModule, KijkContext, SpelContext } from '../../engine/types'
 import { Balkje, GroteKnop, Kaartje, tril } from '../../ui/Basis'
 import { Verdeler } from '../../ui/Verdeler'
-import { Kleurkiezer, Tekenveld } from '../../ui/Tekenveld'
-import { stuurStreep, useTekening, wisTekening } from '../../net/tekening'
+import { Tekenbalk, Tekenveld } from '../../ui/Tekenveld'
+import { stuurStreep, useTekening, wisLaatsteStreep, wisTekening } from '../../net/tekening'
 import { TEKEN_WOORDEN } from './woorden'
 
 /* ─────────────────────────────────────────────────────────────
@@ -214,6 +214,7 @@ function Scherm({ s, ctx }: { s: TekenState; ctx: KijkContext }) {
   const tekenaar = s.volgorde[s.index]
   const ikTeken = ctx.ik === tekenaar
   const [kleur, zetKleur] = useState(0)
+  const [dikte, zetDikte] = useState(1)
   const [gok, zetGok] = useState('')
 
   // Alle strepen van deze beurt, live uit de database.
@@ -223,7 +224,7 @@ function Scherm({ s, ctx }: { s: TekenState; ctx: KijkContext }) {
 
   // De tekenaar veegt het bord schoon zodra hij aan de beurt is.
   useEffect(() => {
-    if (!ikTeken || s.fase !== 'kiezen' || !ctx.kamerCode) return
+    if (!ikTeken || s.fase !== 'kiezen') return
     wisTekening(ctx.kamerCode).catch(() => {})
   }, [ikTeken, s.fase, ctx.kamerCode])
 
@@ -327,13 +328,18 @@ function Scherm({ s, ctx }: { s: TekenState; ctx: KijkContext }) {
 
       <Balkje waarde={1 - voortgang(s.klok, ctx.nu)} />
 
+      {/* De kleuren staan boven het veld: daar kijk je voordat je begint. */}
+      {ikTeken && (
+        <Tekenbalk kleur={kleur} zetKleur={zetKleur} dikte={dikte} zetDikte={zetDikte} />
+      )}
+
       <Tekenveld
         strepen={strepen}
         magTekenen={ikTeken}
         kleur={kleur}
+        dikte={dikte}
         bijStreep={(punten) => {
-          if (!ctx.kamerCode) return
-          stuurStreep(ctx.kamerCode, s.index, kleur, punten).catch(() => {})
+          stuurStreep(ctx.kamerCode, s.index, kleur, dikte, punten).catch(() => {})
         }}
       />
 
@@ -356,21 +362,29 @@ function Scherm({ s, ctx }: { s: TekenState; ctx: KijkContext }) {
 
       <div className="onderaan">
         {ikTeken ? (
-          <>
-            <Kleurkiezer kleur={kleur} zetKleur={zetKleur} />
-            <div className="rij">
-              <GroteKnop
-                kleur="leeg"
-                klein
-                bijTik={() => ctx.kamerCode && wisTekening(ctx.kamerCode).catch(() => {})}
-              >
-                Wis alles
-              </GroteKnop>
-              <GroteKnop kleur="leeg" klein bijTik={() => ctx.stuur('geef-op')}>
-                Stoppen
-              </GroteKnop>
-            </div>
-          </>
+          <div className="rij">
+            <GroteKnop
+              kleur="leeg"
+              klein
+              uit={strepen.length === 0}
+              bijTik={() => {
+                const laatste = strepen[strepen.length - 1]
+                if (laatste) wisLaatsteStreep(ctx.kamerCode, laatste.id).catch(() => {})
+              }}
+            >
+              ↩ Terug
+            </GroteKnop>
+            <GroteKnop
+              kleur="leeg"
+              klein
+              bijTik={() => wisTekening(ctx.kamerCode).catch(() => {})}
+            >
+              Wis alles
+            </GroteKnop>
+            <GroteKnop kleur="leeg" klein bijTik={() => ctx.stuur('geef-op')}>
+              Stoppen
+            </GroteKnop>
+          </div>
         ) : ikGeraden ? (
           <Kaartje style={{ textAlign: 'center', borderColor: 'var(--groen)' }}>
             <h2 style={{ color: 'var(--groen)' }}>✓ Je hebt hem!</h2>

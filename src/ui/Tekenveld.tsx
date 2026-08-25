@@ -12,7 +12,21 @@ import type { Streep } from '../net/tekening'
    schrijfacties per tekening.
    ───────────────────────────────────────────────────────────── */
 
-export const KLEUREN = ['#f4f4f8', '#f5b942', '#e8453c', '#35c46b', '#4c8dff', '#9b6cf0']
+export const KLEUREN = [
+  '#f4f4f8', // wit
+  '#111118', // zwart
+  '#e8453c', // rood
+  '#f5b942', // goud
+  '#35c46b', // groen
+  '#4c8dff', // blauw
+  '#9b6cf0', // paars
+  '#ff7ab8', // roze
+  '#25c8c8', // turquoise
+  '#a06a3c', // bruin
+]
+
+/** Lijndiktes, als deel van de breedte van het veld. */
+export const DIKTES = [0.006, 0.013, 0.028]
 
 /** Punten dichter dan dit op elkaar slaan we niet op. */
 const MIN_AFSTAND = 0.012
@@ -21,11 +35,13 @@ export function Tekenveld({
   strepen,
   magTekenen,
   kleur,
+  dikte = 1,
   bijStreep,
 }: {
   strepen: Streep[]
   magTekenen: boolean
   kleur: number
+  dikte?: number
   bijStreep: (punten: number[]) => void
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -53,15 +69,16 @@ export function Tekenveld({
     ctx.clearRect(0, 0, b, h)
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
-    ctx.lineWidth = Math.max(3, b * 0.012)
 
-    const tekenPunten = (punten: number[], kleurIndex: number) => {
+    const tekenPunten = (punten: number[], kleurIndex: number, dikteIndex: number) => {
+      const breedte = Math.max(2, b * (DIKTES[dikteIndex] ?? DIKTES[1]))
+      ctx.lineWidth = breedte
       if (punten.length < 4) {
         // Eén tik: een puntje.
         if (punten.length === 2) {
           ctx.fillStyle = KLEUREN[kleurIndex] ?? KLEUREN[0]
           ctx.beginPath()
-          ctx.arc(punten[0] * b, punten[1] * h, ctx.lineWidth / 2, 0, Math.PI * 2)
+          ctx.arc(punten[0] * b, punten[1] * h, breedte / 2, 0, Math.PI * 2)
           ctx.fill()
         }
         return
@@ -75,9 +92,9 @@ export function Tekenveld({
       ctx.stroke()
     }
 
-    for (const s of strepen) tekenPunten(s.punten, s.kleur)
-    if (bezig.length > 0) tekenPunten(bezig, kleur)
-  }, [strepen, bezig, kleur])
+    for (const s of strepen) tekenPunten(s.punten, s.kleur, s.dikte)
+    if (bezig.length > 0) tekenPunten(bezig, kleur, dikte)
+  }, [strepen, bezig, kleur, dikte])
 
   /* Vinger volgen */
   function positie(e: React.PointerEvent): [number, number] {
@@ -142,29 +159,70 @@ export function Tekenveld({
   )
 }
 
-export function Kleurkiezer({
+/** Kleuren en penseeldiktes. Staat bewust bóven het tekenveld: daar zoek je het. */
+export function Tekenbalk({
   kleur,
   zetKleur,
+  dikte,
+  zetDikte,
 }: {
   kleur: number
   zetKleur: (i: number) => void
+  dikte: number
+  zetDikte: (i: number) => void
 }) {
   return (
-    <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
-      {KLEUREN.map((k, i) => (
-        <button
-          key={k}
-          onClick={() => zetKleur(i)}
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 99,
-            background: k,
-            border: i === kleur ? '3px solid var(--tekst)' : '2px solid var(--rand)',
-            transform: i === kleur ? 'scale(1.1)' : 'none',
-          }}
-        />
-      ))}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(10, 1fr)',
+          gap: 5,
+        }}
+      >
+        {KLEUREN.map((k, i) => (
+          <button
+            key={k}
+            onClick={() => zetKleur(i)}
+            aria-label={`kleur ${i + 1}`}
+            style={{
+              aspectRatio: '1',
+              borderRadius: 99,
+              background: k,
+              border: i === kleur ? '3px solid var(--goud)' : '2px solid var(--rand)',
+              boxShadow: i === kleur ? '0 0 0 2px rgba(245,185,66,.25)' : 'none',
+            }}
+          />
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
+        {DIKTES.map((d, i) => (
+          <button
+            key={i}
+            onClick={() => zetDikte(i)}
+            style={{
+              flex: 1,
+              height: 40,
+              borderRadius: 'var(--straal-klein)',
+              background: i === dikte ? 'var(--vlak-hoog)' : 'transparent',
+              border: `1px solid ${i === dikte ? 'var(--goud)' : 'var(--rand)'}`,
+              display: 'grid',
+              placeItems: 'center',
+            }}
+          >
+            <span
+              style={{
+                display: 'block',
+                width: `${18 + i * 10}px`,
+                height: `${2 + i * 5}px`,
+                borderRadius: 99,
+                background: KLEUREN[kleur],
+              }}
+            />
+          </button>
+        ))}
+      </div>
     </div>
   )
 }

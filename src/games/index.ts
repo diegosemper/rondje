@@ -17,6 +17,7 @@ import { blindekaart } from './blindekaart'
 import { ezelen } from './ezelen'
 import { roulette } from './roulette'
 import { tekenen } from './tekenen'
+import { nummers } from './nummers'
 import { spiegel } from './spiegel'
 import { zwaartekracht } from './zwaartekracht'
 import { tweewaarheden } from './tweewaarheden'
@@ -37,6 +38,7 @@ export const ALLE_SPELLEN: GameModule[] = [
   ezelen,
   roulette,
   tekenen,
+  nummers,
   spiegel,
   tweewaarheden,
   zwaartekracht,

@@ -24,6 +24,7 @@ export interface Streep {
   /** ronde waar deze streep bij hoort, zodat oude krabbels niet blijven staan */
   r: number
   kleur: number
+  dikte: number
   punten: number[]
 }
 
@@ -43,14 +44,21 @@ export async function stuurStreep(
   code: string,
   ronde: number,
   kleur: number,
+  dikte: number,
   punten: number[],
 ): Promise<void> {
   if (punten.length < 2) return
   await push(ref(db(), pad(code, 'tekening')), {
     r: ronde,
     k: kleur,
+    d: dikte,
     p: pakIn(punten),
   })
+}
+
+/** De laatste streep van deze speler terugnemen. */
+export async function wisLaatsteStreep(code: string, id: string): Promise<void> {
+  await remove(ref(db(), pad(code, 'tekening', id)))
 }
 
 export async function wisTekening(code: string): Promise<void> {
@@ -68,6 +76,7 @@ export function useTekening(code: string | null, ronde: number): Streep[] {
         id,
         r: v.r ?? 0,
         kleur: v.k ?? 0,
+        dikte: v.d ?? 1,
         punten: pakUit(v.p ?? ''),
       }))
       zetStrepen(lijst)
