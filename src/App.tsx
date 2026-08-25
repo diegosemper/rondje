@@ -3,6 +3,8 @@ import { isIngesteld } from './net/firebase'
 import { useKamer, useUid } from './net/useKamer'
 import { useHostLoop } from './net/hostLoop'
 import { bewaarCode, codeUitUrl, leesCode } from './net/profiel'
+import { DICHT } from './dicht'
+import { Dicht } from './schermen/Dicht'
 import { Setup } from './schermen/Setup'
 import { Splash } from './schermen/Splash'
 import { Start } from './schermen/Start'
@@ -16,6 +18,9 @@ import { FoutBanner } from './ui/Fout'
 import { Versiebalk } from './ui/Versie'
 
 export function App() {
+  // Dicht? Dan houdt het hier op: geen Firebase, geen lobby, niets.
+  if (DICHT) return <Dicht />
+
   return (
     <>
       <FoutBanner />
