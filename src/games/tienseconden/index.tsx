@@ -226,21 +226,28 @@ function Scherm({ s, ctx }: { s: TienState; ctx: KijkContext }) {
           Ronde {s.ronde}/{RONDES}
         </span>
         <span className="kop-klein">
-          {s.klaarMet.length}/{ctx.spelers.length} klaar
+          doel {toon(s.doel / 1000)}s · {s.klaarMet.length}/{ctx.spelers.length}
         </span>
       </div>
 
       <div className="midden" style={{ gap: 12 }}>
         <div style={{ fontSize: 56 }}>{loopt ? '🤫' : '⏱'}</div>
-        <div className="reusachtig" style={{ fontSize: 'clamp(50px,20vw,110px)' }}>
-          {loopt ? '???' : '10'}
+        {!loopt && <div className="kop-klein">Jouw doel deze ronde</div>}
+        <div
+          className="reusachtig"
+          style={{
+            fontSize: 'clamp(46px,18vw,100px)',
+            color: loopt ? 'var(--tekst)' : 'var(--goud)',
+          }}
+        >
+          {loopt ? '???' : `${toon(s.doel / 1000)}s`}
         </div>
         <div className="klein zacht">
           {ikKlaar
             ? 'Ingeleverd — wachten op de rest'
             : loopt
-              ? 'Tellen maar. Je ziet niets.'
-              : 'Stop hem op precies tien seconden'}
+              ? `Tellen maar. Je ziet niets. Doel: ${toon(s.doel / 1000)}s`
+              : 'Onthoud dat getal — straks zie je het niet meer'}
         </div>
         <SpelerBalk spelers={ctx.spelers} actief={s.klaarMet} />
       </div>
