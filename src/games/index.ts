@@ -22,6 +22,8 @@ import { sabotage } from './sabotage'
 import { golflengte } from './golflengte'
 import { alfabet } from './alfabet'
 import { verbodenwoord } from './verbodenwoord'
+import { flappy } from './flappy'
+import { jetpack } from './jetpack'
 import { spiegel } from './spiegel'
 import { zwaartekracht } from './zwaartekracht'
 import { tweewaarheden } from './tweewaarheden'
@@ -43,6 +45,8 @@ export const ALLE_SPELLEN: GameModule[] = [
   roulette,
   tekenen,
   nummers,
+  flappy,
+  jetpack,
   golflengte,
   sabotage,
   verbodenwoord,

@@ -12,7 +12,7 @@
  * en plak de previewUrl hieronder. Mocht een link ooit doodgaan, dan meldt de
  * app dat en kan de host het nummer overslaan.
  *
- * Automatisch samengesteld — 60 nummers.
+ * Automatisch samengesteld — 63 nummers.
  */
 
 export interface Nummer {
@@ -24,6 +24,7 @@ export interface Nummer {
 export const NUMMERS: Nummer[] = [
   { titel: 'Take On Me', artiest: 'a-ha', url: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview115/v4/12/2f/eb/122febd2-32d3-a816-ec26-baa22a1e4184/mzaf_6909997937289684998.plus.aac.p.m4a' },
   { titel: 'Dancing Queen', artiest: 'ABBA', url: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/c1/e7/c7/c1e7c761-3185-0a54-9433-1dfbc42fdc5c/mzaf_6292672129281227789.plus.aac.p.m4a' },
+  { titel: 'Thunderstruck', artiest: 'AC/DC', url: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview125/v4/f3/45/64/f3456422-afe5-5218-0144-6a2dd6754a2b/mzaf_8906497323614731144.plus.aac.p.m4a' },
   { titel: 'Rolling In the Deep', artiest: 'Adele', url: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview125/v4/1f/aa/38/1faa38cc-3137-1409-ccb9-2eaf92a1b386/mzaf_5683578537884510102.plus.aac.p.m4a' },
   { titel: 'Rehab', artiest: 'Amy Winehouse', url: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/c0/7f/37/c07f37f1-a8e1-b093-f643-9e3bae02589b/mzaf_10374144630525520706.plus.aac.p.m4a' },
   { titel: 'Wake Me Up', artiest: 'Avicii', url: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/65/b9/b0/65b9b0a0-530c-0137-9462-b6672e944b53/mzaf_1369429484595404848.plus.aac.p.m4a' },
@@ -46,6 +47,7 @@ export const NUMMERS: Nummer[] = [
   { titel: 'The Final Countdown', artiest: 'Europe', url: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/d3/5b/d9/d35bd9a3-d105-95d8-ba29-0f5c6b8e764b/mzaf_7609183394807520180.plus.aac.p.m4a' },
   { titel: 'Sweet Dreams', artiest: 'Eurythmics', url: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview126/v4/33/72/78/337278b2-6ec6-ddbd-1d11-94e0c8ca3b22/mzaf_17096504411490598724.plus.aac.p.m4a' },
   { titel: 'Somebody That I Used to Know', artiest: 'Gotye', url: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/a2/35/89/a23589ed-2b87-ac29-9046-2553461682b5/mzaf_7145891335591006940.plus.aac.p.m4a' },
+  { titel: 'Holiday', artiest: 'Green Day', url: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/86/f1/d0/86f1d039-f2d6-2f5b-b34b-2b63504fa6d0/mzaf_3363059623415356317.plus.aac.p.m4a' },
   { titel: 'Sweet Child O\' Mine', artiest: 'Guns N\' Roses', url: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/0d/cb/f3/0dcbf381-7cbf-78b8-7f74-d5789adf65a1/mzaf_17081805577020235844.plus.aac.p.m4a' },
   { titel: 'As It Was', artiest: 'Harry Styles', url: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/67/10/16/67101606-3869-ca44-6c03-e13d6322cb51/mzaf_1135399237022217274.plus.aac.p.m4a' },
   { titel: 'Don\'t Stop Believin\'', artiest: 'Journey', url: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview122/v4/f7/fe/40/f7fe405a-0526-60b5-9898-b555e4146c8d/mzaf_11089651359573769705.plus.aac.p.m4a' },
@@ -79,6 +81,7 @@ export const NUMMERS: Nummer[] = [
   { titel: 'Mr. Brightside', artiest: 'The Killers', url: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview115/v4/fe/b3/b6/feb3b68a-21f8-9948-902d-b862a18c0318/mzaf_16049587660925197353.plus.aac.p.m4a' },
   { titel: 'Paint It, Black', artiest: 'The Rolling Stones', url: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/da/f5/ec/daf5ece2-6853-c6a4-d481-389001453f75/mzaf_3869995397273029315.plus.aac.p.m4a' },
   { titel: 'Blinding Lights', artiest: 'The Weeknd', url: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/17/b4/8f/17b48f9a-0b93-6bb8-fe1d-3a16623c2cfb/mzaf_9560252727299052414.plus.aac.p.m4a' },
+  { titel: 'Seven Nation Army', artiest: 'The White Stripes', url: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview115/v4/61/54/97/61549744-a83b-1c4d-58cf-e56b36beb4a7/mzaf_1246579179619940831.plus.aac.p.m4a' },
   { titel: 'Africa', artiest: 'Toto', url: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview115/v4/12/e5/ba/12e5ba45-05c1-7060-25a8-c9b718e7f6e8/mzaf_4488601364870711408.plus.aac.p.m4a' },
   { titel: 'YMCA', artiest: 'Village People', url: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/d7/ff/36/d7ff36ab-3756-079a-5f12-3fa616e95a64/mzaf_2805463762976087995.plus.aac.p.m4a' },
   { titel: 'I Wanna Dance with Somebody', artiest: 'Whitney Houston', url: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/7b/67/fd/7b67fd07-6a7a-0362-135c-878ac5799f2c/mzaf_11309521725869189721.plus.aac.p.m4a' },
