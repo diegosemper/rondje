@@ -27,6 +27,8 @@ import { jetpack } from './jetpack'
 import { snelweg } from './snelweg'
 import { stapeltoren } from './stapeltoren'
 import { wiskunde } from './wiskunde'
+import { bierpong } from './bierpong'
+import { opbouwen } from './opbouwen'
 import { spiegel } from './spiegel'
 import { zwaartekracht } from './zwaartekracht'
 import { tweewaarheden } from './tweewaarheden'
@@ -52,7 +54,9 @@ export const ALLE_SPELLEN: GameModule[] = [
   jetpack,
   snelweg,
   stapeltoren,
+  bierpong,
   wiskunde,
+  opbouwen,
   golflengte,
   sabotage,
   verbodenwoord,
