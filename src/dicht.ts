@@ -14,7 +14,7 @@
    omdat er net geen verbinding was.
    ───────────────────────────────────────────────────────────── */
 
-export const DICHT = false
+export const DICHT = true
 
 /** Wat er op de pagina staat als hij dicht is. */
 export const DICHT_TITEL = 'Even dicht'
