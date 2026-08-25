@@ -395,7 +395,17 @@ export function useHostLoop(kamer: Kamer | null, uid: string | null): void {
 
       const werk = kopie(stateRef.current)
       const eff = leegEffect()
-      const ctx = maakContext(huidig, huidig.spel.seed + (huidig.spel.ronde ?? 0), eff)
+
+      // Elke zet een vers startgetal. Deed hij dat niet, dan begon de
+      // toevalsgenerator bij iedere actie opnieuw bij hetzelfde punt en gaf
+      // hij dus steeds hetzelfde getal terug — dan gooi je een hele avond
+      // alleen maar vijven.
+      //
+      // Reproduceerbaarheid verliezen we daarmee, en dat geeft niet: alleen
+      // de host gebruikt deze generator, en de spellen die wél een gedeelde
+      // baan nodig hebben (Flappy en de rest) krijgen hun eigen startgetal
+      // meegestuurd in de spelstand.
+      const ctx = maakContext(huidig, nieuweSeed(), eff)
 
       mod.reduce(werk, actie, ctx)
       if (!eff.klaar && mod.isKlaar?.(werk)) eff.klaar = true

@@ -26,9 +26,15 @@ export interface Beker {
 const KRACHT = 1.35
 /** Hoe sterk zijwaarts vegen doorwerkt. */
 const ZIJWAARTS = 1.15
-const BEKER_STRAAL = 0.062
-/** Zo dicht mag je landen om hem erin te krijgen. */
-const RAAK_MARGE = 0.055
+const BEKER_STRAAL = 0.055
+/**
+ * Zo dicht mag je landen om hem erin te krijgen.
+ *
+ * Bewust krap. En belangrijker: je ziet tijdens het mikken niet waar hij
+ * landt, alleen in welke richting en hoe hard je gooit. Met een stip op de
+ * landingsplek kon je hem er gewoon op parkeren en miste niemand ooit.
+ */
+const RAAK_MARGE = 0.03
 
 export interface Worp {
   x: number
@@ -81,7 +87,8 @@ export function Pongveld({
   const doosRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const sleep = useRef<{ x: number; y: number } | null>(null)
-  const [mik, zetMik] = useState<Worp | null>(null)
+  /** de sleep zelf, niet de landingsplek: je mikt op gevoel */
+  const [trek, zetTrek] = useState<{ dx: number; dy: number } | null>(null)
   const [animatie, zetAnimatie] = useState(0)
 
   // De vlucht van de bal afspelen.
@@ -172,23 +179,27 @@ export function Pongveld({
       c.stroke()
     }
 
-    // Mikstip terwijl je sleept
-    if (mik && magGooien) {
-      const { sx, sy, krimp } = opScherm(mik.x, mik.diepte, b, h)
-      c.strokeStyle = 'rgba(245,185,66,.8)'
-      c.lineWidth = 2
-      c.setLineDash([5, 5])
-      c.beginPath()
-      c.ellipse(sx, sy, 16 * krimp, 8 * krimp, 0, 0, Math.PI * 2)
-      c.stroke()
-      c.setLineDash([])
-
+    // Mikken: alleen richting en kracht, niet waar hij landt.
+    if (trek && magGooien) {
       const start = opScherm(0.5, -0.02, b, h)
-      c.strokeStyle = 'rgba(245,185,66,.35)'
+      const lengte = Math.min(1, Math.hypot(trek.dx, trek.dy) * 1.6)
+      const hoek = Math.atan2(-Math.max(0.02, trek.dy), trek.dx)
+      const pijl = lengte * h * 0.3
+
+      c.strokeStyle = `rgba(245,185,66,${0.35 + lengte * 0.5})`
+      c.lineWidth = 4
+      c.lineCap = 'round'
       c.beginPath()
       c.moveTo(start.sx, start.sy)
-      c.quadraticCurveTo((start.sx + sx) / 2, Math.min(start.sy, sy) - h * 0.22, sx, sy)
+      c.lineTo(start.sx + Math.cos(hoek) * pijl, start.sy - Math.sin(hoek) * pijl)
       c.stroke()
+
+      // Krachtmeter langs de zijkant.
+      const balkH = h * 0.4
+      c.fillStyle = 'rgba(255,255,255,.12)'
+      c.fillRect(b - 18, h - 20 - balkH, 8, balkH)
+      c.fillStyle = lengte > 0.9 ? '#e8453c' : '#f5b942'
+      c.fillRect(b - 18, h - 20 - balkH * lengte, 8, balkH * lengte)
     }
 
     // De bal
@@ -208,7 +219,7 @@ export function Pongveld({
       c.arc(balStart.sx, balStart.sy, 11, 0, Math.PI * 2)
       c.fill()
     }
-  }, [bekers, mik, magGooien, vlucht, animatie])
+  }, [bekers, trek, magGooien, vlucht, animatie])
 
   function plek(e: React.PointerEvent) {
     const r = doosRef.current!.getBoundingClientRect()
@@ -226,19 +237,19 @@ export function Pongveld({
       onPointerMove={(e) => {
         if (!sleep.current || !magGooien) return
         const nu = plek(e)
-        zetMik(berekenWorp(nu.x - sleep.current.x, sleep.current.y - nu.y))
+        zetTrek({ dx: nu.x - sleep.current.x, dy: sleep.current.y - nu.y })
       }}
       onPointerUp={(e) => {
         if (!sleep.current || !magGooien) return
         const nu = plek(e)
         const worp = berekenWorp(nu.x - sleep.current.x, sleep.current.y - nu.y)
         sleep.current = null
-        zetMik(null)
+        zetTrek(null)
         if (worp.diepte > 0.05) bijWorp(worp)
       }}
       onPointerCancel={() => {
         sleep.current = null
-        zetMik(null)
+        zetTrek(null)
       }}
       style={{
         position: 'relative',

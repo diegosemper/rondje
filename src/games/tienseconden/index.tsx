@@ -1,30 +1,41 @@
 import { useRef, useState } from 'react'
+import { tussen } from '../../engine/random'
 import type { Actie, GameModule, KijkContext, SpelContext } from '../../engine/types'
 import { GroteKnop, Kaartje, SpelerBalk, tril } from '../../ui/Basis'
 import { Verdeler } from '../../ui/Verdeler'
 
 /* ─────────────────────────────────────────────────────────────
-   TIEN SECONDEN
+   BLINDE KLOK
 
-   Je start een stopwatch die je niet kunt zien, en stopt hem als je denkt dat
-   er precies tien seconden om zijn. Geen klok, geen balkje, niets.
+   Je krijgt een doeltijd — elke ronde een andere, ergens tussen de tien en
+   negentig seconden, tot op een tiende nauwkeurig. Je start een stopwatch die
+   je niet kunt zien en stopt hem als je denkt dat je er bent. Geen klok, geen
+   balkje, niets.
 
-   Belachelijk simpel, en toch spannend — en het is een van de weinige dingen
-   die aantoonbaar slechter worden naarmate de avond vordert.
+   Het doel wisselt met opzet: op een vaste tien seconden leer je binnen twee
+   rondes het ritme, en dan is er niets meer aan. Op 47,3 moet je echt tellen.
 
    De meting gebeurt op je eigen telefoon en gaat niet over het netwerk: een
    halve seconde vertraging zou hier het hele verschil zijn.
    ───────────────────────────────────────────────────────────── */
 
-const DOEL = 10
+const DOEL_MIN = 10
+const DOEL_MAX = 90
 const RONDES = 3
 const MAX_STRAF = 5
 const WINST_UITDELEN = 5
 
+/** "47,3" — met een komma, want we tellen in het Nederlands. */
+function toon(seconden: number): string {
+  return seconden.toFixed(1).replace('.', ',')
+}
+
 interface TienState {
   ronde: number
   fase: 'meten' | 'uitslag'
-  /** afwijking in milliseconden per speler */
+  /** de doeltijd van deze ronde, in milliseconden */
+  doel: number
+  /** de gemeten tijd in milliseconden per speler */
   tijden: Record<string, number>
   klaarMet: string[]
   winnaar: string | null
@@ -32,9 +43,14 @@ interface TienState {
   klaar: boolean
 }
 
+/** Een doel tussen 10,0 en 90,0 seconden, op een tiende. */
+function nieuwDoel(ctx: SpelContext): number {
+  return tussen(ctx.rng, DOEL_MIN * 10, DOEL_MAX * 10) * 100
+}
+
 function rondAf(s: TienState, ctx: SpelContext) {
   const rij = ctx.spelers
-    .map((p) => ({ uid: p.uid, af: Math.abs((s.tijden[p.uid] ?? 99999) - DOEL * 1000) }))
+    .map((p) => ({ uid: p.uid, af: Math.abs((s.tijden[p.uid] ?? 999999) - s.doel) }))
     .sort((a, b) => a.af - b.af)
 
   s.winnaar = rij[0]?.uid ?? null
@@ -49,12 +65,12 @@ function rondAf(s: TienState, ctx: SpelContext) {
 
 export const tienseconden: GameModule<TienState> = {
   id: 'tienseconden',
-  naam: 'Tien Seconden',
-  uitleg: 'Stop de onzichtbare stopwatch op precies tien seconden.',
+  naam: 'Blinde Klok',
+  uitleg: 'Stop de onzichtbare stopwatch op de doeltijd. Elke ronde een andere.',
   regels: [
+    'Je krijgt een doeltijd tussen 10 en 90 seconden.',
     'Tik op START en dan zie je niets meer.',
-    'Tik op STOP als je denkt dat er tien seconden om zijn.',
-    'Geen klok, geen balkje. Alleen tellen.',
+    'Tik op STOP als je denkt dat je er bent.',
     'Wie er het verst naast zit, drinkt het meest.',
   ],
   minSpelers: 2,
@@ -63,10 +79,11 @@ export const tienseconden: GameModule<TienState> = {
   tags: ['reflex', 'chaos'],
   privescherm: false,
 
-  init() {
+  init(ctx) {
     return {
       ronde: 1,
       fase: 'meten',
+      doel: nieuwDoel(ctx),
       tijden: {},
       klaarMet: [],
       winnaar: null,
@@ -107,6 +124,7 @@ export const tienseconden: GameModule<TienState> = {
         }
         s.ronde++
         s.fase = 'meten'
+        s.doel = nieuwDoel(ctx)
         s.tijden = {}
         s.klaarMet = []
         s.winnaar = null
@@ -131,15 +149,18 @@ function Scherm({ s, ctx }: { s: TienState; ctx: KijkContext }) {
   if (s.fase === 'uitslag') {
     const rij = ctx.spelers
       .map((p) => ({ p, ms: s.tijden[p.uid] ?? 0 }))
-      .sort((a, b) => Math.abs(a.ms - DOEL * 1000) - Math.abs(b.ms - DOEL * 1000))
+      .sort((a, b) => Math.abs(a.ms - s.doel) - Math.abs(b.ms - s.doel))
     const magUitdelen = s.magUitdelen && s.winnaar === ctx.ik
 
     return (
       <>
         <div className="midden" style={{ gap: 8, alignItems: 'stretch' }}>
-          <h1 style={{ textAlign: 'center' }}>⏱ Ronde {s.ronde}</h1>
+          <div style={{ textAlign: 'center' }}>
+            <div className="kop-klein">Het doel was</div>
+            <h1 style={{ color: 'var(--goud)' }}>{toon(s.doel / 1000)}s</h1>
+          </div>
           {rij.map(({ p, ms }, i) => {
-            const af = (ms - DOEL * 1000) / 1000
+            const af = (ms - s.doel) / 1000
             return (
               <div
                 key={p.uid}
@@ -159,11 +180,11 @@ function Scherm({ s, ctx }: { s: TienState; ctx: KijkContext }) {
                   {['🥇', '🥈', '🥉'][i] ?? `${i + 1}.`} {p.emoji} <strong>{p.naam}</strong>
                 </span>
                 <span>
-                  <strong>{(ms / 1000).toFixed(2)}s</strong>
+                  <strong>{toon(ms / 1000)}s</strong>
                   <span className="klein zacht">
                     {' '}
-                    {af >= 0 ? '+' : ''}
-                    {af.toFixed(2)}
+                    {af >= 0 ? '+' : '−'}
+                    {toon(Math.abs(af))}
                   </span>
                 </span>
               </div>

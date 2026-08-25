@@ -9,10 +9,13 @@ import { Verdeler } from '../../ui/Verdeler'
    HiLo — bedacht door Diego
 
    Zeg hoger of lager dan de kaart die er ligt. Elke keer dat je goed zit
-   groeit je streak. Je mag op elk moment cashen: zoveel slokken als je
-   streak is, mag je uitdelen. Zit je fout, dan drink je 'm zelf.
+   groeit je streak. Stoppen kan niet: je gaat door tot je fout zit, en dán
+   mag je je hele streak uitdelen. Eén goed is één slok, zeventien goed is
+   zeventien slokken.
 
-   De hele spanning zit in "nog één keer".
+   Je drinkt dus nooit zelf. De spanning zit niet in het risico maar in hoe
+   ver je komt — en in dat iedereen zit te wachten tot jij er eindelijk naast
+   zit.
    ───────────────────────────────────────────────────────────── */
 
 type Uitkomst = 'goed' | 'fout' | 'gelijk'
@@ -44,9 +47,9 @@ export const hilo: GameModule<HiLoState> = {
   uitleg: 'Hoger of lager. Hoe langer je streak, hoe meer je mag uitdelen.',
   regels: [
     'Zeg of de volgende kaart hoger of lager is.',
-    'Goed? Je streak groeit. Cash wanneer je wil.',
-    'Cashen = je streak aan slokken uitdelen.',
-    'Fout? Je drinkt je hele streak zelf.',
+    'Goed? Je streak groeit en je gaat door.',
+    'Stoppen kan niet — je speelt tot je fout zit.',
+    'Fout? Je deelt je hele streak uit aan de rest.',
   ],
   minSpelers: 2,
   maxSpelers: 8,
@@ -98,8 +101,8 @@ export const hilo: GameModule<HiLoState> = {
       s.laatste = { van: oud, naar: nieuw, keuze: actie.type, uitkomst, wie: s.beurt }
 
       if (uitkomst === 'gelijk') {
-        // Zeldzaam en zuur, maar je streak blijft staan.
-        ctx.drink(s.beurt, 2, `gelijke kaart (${kaartKort(nieuw)})`)
+        // Gelijk telt niet mee, in geen van beide richtingen. Je streak blijft
+        // staan en je gaat gewoon door.
         return
       }
 
@@ -111,15 +114,12 @@ export const hilo: GameModule<HiLoState> = {
         return
       }
 
-      // Fout: je drinkt wat je had kunnen uitdelen.
-      ctx.drink(s.beurt, Math.max(1, s.streak), `zat fout bij ${kaartKort(nieuw)}`)
-      naarVolgende()
-      return
-    }
-
-    if (actie.type === 'cash') {
-      if (s.streak <= 0 || s.cashen !== null) return
-      s.cashen = s.streak
+      // Fout: je beurt is voorbij, maar je deelt wel uit wat je hebt opgebouwd.
+      if (s.streak > 0) {
+        s.cashen = s.streak
+      } else {
+        naarVolgende()
+      }
       return
     }
 
@@ -162,13 +162,13 @@ export const hilo: GameModule<HiLoState> = {
                 key={`${s.beurt}-${s.beurtenGespeeld}`}
                 totaal={ctx.slokAantal(s.cashen)}
                 ctx={ctx}
-                titel={`Streak van ${s.cashen} — deel uit`}
+                titel={`${s.cashen} goed op rij — deel uit`}
                 bijKlaar={(verdeling) => ctx.stuur('geef', { verdeling })}
               />
             ) : (
               <Kaartje style={{ textAlign: 'center' }}>
                 <h2 className="zacht">
-                  {speler?.naam} verdeelt {ctx.slok(s.cashen)}…
+                  {speler?.naam} haalde {s.cashen} en verdeelt {ctx.slok(s.cashen)}…
                 </h2>
               </Kaartje>
             )}
@@ -183,11 +183,11 @@ export const hilo: GameModule<HiLoState> = {
                 ▼ Lager
               </GroteKnop>
             </div>
-            <GroteKnop kleur="goud" uit={s.streak === 0} bijTik={() => ctx.stuur('cash')}>
+            <div className="klein zacht" style={{ textAlign: 'center' }}>
               {s.streak === 0
-                ? 'Nog niets te cashen'
-                : `💰 Cash — deel ${ctx.slok(s.streak)} uit`}
-            </GroteKnop>
+                ? 'Zit je fout, dan gebeurt er niets. Bouw eerst iets op.'
+                : `Zit je nu fout, dan deel je ${ctx.slok(s.streak)} uit.`}
+            </div>
           </div>
         ) : (
           <div className="onderaan">
@@ -219,7 +219,7 @@ function StreakMeter({ streak, ctx }: { streak: number; ctx: KijkContext }) {
       >
         {streak}
       </div>
-      <div className="zacht klein">te cashen: {ctx.slok(streak)}</div>
+      <div className="zacht klein">nu waard: {ctx.slok(streak)}</div>
     </div>
   )
 }
