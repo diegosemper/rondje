@@ -29,6 +29,17 @@ import { stapeltoren } from './stapeltoren'
 import { wiskunde } from './wiskunde'
 import { bierpong } from './bierpong'
 import { opbouwen } from './opbouwen'
+import { roodzwart } from './roodzwart'
+import { waterval } from './waterval'
+import { mexicanen } from './mexicanen'
+import { kleurenklap } from './kleurenklap'
+import { duel } from './duel'
+import { schudden } from './schudden'
+import { tienseconden } from './tienseconden'
+import { nognooit } from './nognooit'
+import { stellingen } from './stellingen'
+import { wiebenik } from './wiebenik'
+import { springen } from './springen'
 import { spiegel } from './spiegel'
 import { zwaartekracht } from './zwaartekracht'
 import { tweewaarheden } from './tweewaarheden'
@@ -48,14 +59,22 @@ export const ALLE_SPELLEN: GameModule[] = [
   blindekaart,
   ezelen,
   roulette,
+  roodzwart,
+  waterval,
+  mexicanen,
   tekenen,
   nummers,
   flappy,
   jetpack,
   snelweg,
   stapeltoren,
+  springen,
   bierpong,
   wiskunde,
+  kleurenklap,
+  tienseconden,
+  duel,
+  schudden,
   opbouwen,
   golflengte,
   sabotage,
@@ -68,6 +87,9 @@ export const ALLE_SPELLEN: GameModule[] = [
   eenentwintig,
   bom,
   gelijkdenken,
+  nognooit,
+  stellingen,
+  wiebenik,
   hilo,
   wievanons,
   snelstevinger,
