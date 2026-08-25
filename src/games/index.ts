@@ -39,6 +39,7 @@ import { tienseconden } from './tienseconden'
 import { nognooit } from './nognooit'
 import { stellingen } from './stellingen'
 import { wiebenik } from './wiebenik'
+import { dertig } from './dertig'
 import { springen } from './springen'
 import { pijlen } from './pijlen'
 import { spiegel } from './spiegel'
@@ -89,6 +90,7 @@ export const ALLE_SPELLEN: GameModule[] = [
   eenentwintig,
   bom,
   gelijkdenken,
+  dertig,
   nognooit,
   stellingen,
   wiebenik,
