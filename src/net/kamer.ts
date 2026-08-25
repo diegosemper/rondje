@@ -82,7 +82,7 @@ export function leesKamer(ruw: any, code: string): Kamer | null {
 
   const instelling: Instelling = {
     zwaarte: (ruw.instelling?.zwaarte ?? 'normaal') as Zwaarte,
-    spellen: ruw.instelling?.spellen ? lijst(ruw.instelling.spellen) : null,
+    uit: lijst(ruw.instelling?.uit),
   }
 
   return {
@@ -132,7 +132,8 @@ export async function maakKamer(uid: string, naam: string, emoji: string): Promi
 
     await set(ref(db(), pad(code)), {
       meta: { code, hostUid: uid, fase: 'lobby', gemaaktOp: serverTimestamp() },
-      instelling: { zwaarte: 'normaal' },
+      // Het testspel staat standaard uit; dat is geen echt spel.
+      instelling: { zwaarte: 'normaal', uit: 'testspel' },
       spelers: { [uid]: { naam, emoji, online: true, laatstGezien: serverTimestamp() } },
       volgorde: uid,
       score: { [uid]: { uitgedeeld: 0, gedronken: 0 } },
@@ -202,8 +203,9 @@ export async function zetZwaarte(code: string, zwaarte: Zwaarte): Promise<void> 
   await update(ref(db(), pad(code, 'instelling')), { zwaarte })
 }
 
-export async function zetSpellen(code: string, ids: string[] | null): Promise<void> {
-  await update(ref(db(), pad(code, 'instelling')), { spellen: ids ? ids.join(',') : null })
+/** Welke spellen staan uit. Lege lijst = alles doet mee. */
+export async function zetSpellenUit(code: string, ids: string[]): Promise<void> {
+  await update(ref(db(), pad(code, 'instelling')), { uit: ids.join(',') })
 }
 
 export async function zetFase(code: string, fase: Fase): Promise<void> {

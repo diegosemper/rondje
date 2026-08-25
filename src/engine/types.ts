@@ -47,8 +47,14 @@ export interface LogRegel {
 
 export interface Instelling {
   zwaarte: Zwaarte
-  /** null = alle spellen doen mee */
-  spellen: string[] | null
+  /**
+   * Spellen die de lobby heeft uitgezet.
+   *
+   * Bewust een lijst van wat er ÚIT staat, en niet van wat er aan staat: er
+   * komen nog tientallen spellen bij, en met een aan-lijst zou elk nieuw spel
+   * onzichtbaar blijven in lobby's die ooit iets hebben aangevinkt.
+   */
+  uit: string[]
 }
 
 export interface SpelBlok {

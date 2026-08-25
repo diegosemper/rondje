@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { Kamer, Zwaarte } from '../engine/types'
 import { SPELLEN } from '../engine/registry'
 import { ZWAARTE_LABEL, ZWAARTE_UITLEG } from '../engine/slokken'
-import { MAX_SPELERS, MIN_SPELERS, verlaatKamer, zetSpellen, zetZwaarte } from '../net/kamer'
+import { MAX_SPELERS, MIN_SPELERS, verlaatKamer, zetSpellenUit, zetZwaarte } from '../net/kamer'
 import { naarFase } from '../net/hostLoop'
 import { deelLink } from '../net/profiel'
 import { GroteKnop, Kaartje } from '../ui/Basis'
@@ -27,8 +27,8 @@ export function Lobby({
   const spelers = kamer.volgorde.map((u) => kamer.spelers[u]).filter(Boolean)
   const genoeg = spelers.length >= MIN_SPELERS
 
-  const aan = kamer.instelling.spellen
-  const isAan = (id: string) => (aan === null ? id !== 'testspel' : aan.includes(id))
+  const uit = kamer.instelling.uit
+  const isAan = (id: string) => !uit.includes(id)
 
   async function deel() {
     const link = deelLink(code)
@@ -46,9 +46,8 @@ export function Lobby({
   }
 
   function wisselSpel(id: string) {
-    const huidig = aan === null ? SPELLEN.filter((s) => s.id !== 'testspel').map((s) => s.id) : aan
-    const nieuw = huidig.includes(id) ? huidig.filter((x) => x !== id) : [...huidig, id]
-    zetSpellen(code, nieuw).catch(meldFout)
+    const nieuw = uit.includes(id) ? uit.filter((x) => x !== id) : [...uit, id]
+    zetSpellenUit(code, nieuw).catch(meldFout)
   }
 
   return (
@@ -119,6 +118,12 @@ export function Lobby({
                 >
                   <span>
                     <strong>{s.naam}</strong>
+                    {spelers.length < s.minSpelers && (
+                      <span className="klein" style={{ color: 'var(--goud)' }}>
+                        {' '}
+                        · vanaf {s.minSpelers} spelers
+                      </span>
+                    )}
                     <br />
                     <span className="klein zacht">{s.uitleg}</span>
                   </span>

@@ -1,5 +1,12 @@
 import type { Kamer } from '../engine/types'
-import { DUUR_TEKST, kiesWillekeurig, speelbaar, TAG_EMOJI } from '../engine/registry'
+import {
+  DUUR_TEKST,
+  kiesWillekeurig,
+  speelbaar,
+  SPELLEN,
+  TAG_EMOJI,
+  waaromNiet,
+} from '../engine/registry'
 import { maakRng } from '../engine/random'
 import { naarFase, startSpel } from '../net/hostLoop'
 import { verlaatKamer } from '../net/kamer'
@@ -17,7 +24,7 @@ export function SpelKiezer({
 }) {
   const benHost = kamer.meta.hostUid === uid
   const spelers = kamer.volgorde.map((u) => kamer.spelers[u]).filter(Boolean)
-  const lijst = speelbaar(spelers.length, kamer.instelling.spellen)
+  const lijst = speelbaar(spelers.length, kamer.instelling.uit)
 
   const stand = spelers
     .map((s) => ({ s, n: kamer.score[s.uid]?.gedronken ?? 0 }))
@@ -27,7 +34,7 @@ export function SpelKiezer({
 
   function dobbel() {
     const rng = maakRng(Date.now() & 0x7fffffff)
-    const keuze = kiesWillekeurig(rng, spelers.length, kamer.instelling.spellen, kamer.geschiedenis)
+    const keuze = kiesWillekeurig(rng, spelers.length, kamer.instelling.uit, kamer.geschiedenis)
     if (keuze) startSpel(kamer, keuze.id).catch(meldFout)
   }
 
@@ -60,26 +67,29 @@ export function SpelKiezer({
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
         {lijst.length === 0 && (
-          <Kaartje>
-            <strong>Geen spel past bij {spelers.length} spelers.</strong>
+          <Kaartje style={{ borderColor: 'var(--goud)' }}>
+            <strong>Geen enkel spel kan nu.</strong>
             <div className="klein zacht">
-              Zet meer spellen aan in de lobby, of nodig iemand uit.
+              Nodig iemand uit, of zet spellen aan in de lobby.
             </div>
           </Kaartje>
         )}
 
-        {lijst.map((s) => {
+        {SPELLEN.map((s) => {
+          const blokkade = waaromNiet(s, spelers.length, kamer.instelling.uit)
           const gespeeld = kamer.geschiedenis.includes(s.id)
+          const klikbaar = benHost && !blokkade
+
           return (
             <button
               key={s.id}
               className="kaartje"
-              disabled={!benHost}
-              onClick={() => benHost && startSpel(kamer, s.id).catch(meldFout)}
+              disabled={!klikbaar}
+              onClick={() => klikbaar && startSpel(kamer, s.id).catch(meldFout)}
               style={{
                 textAlign: 'left',
-                opacity: gespeeld ? 0.55 : 1,
-                cursor: benHost ? 'pointer' : 'default',
+                opacity: blokkade ? 0.4 : gespeeld ? 0.6 : 1,
+                cursor: klikbaar ? 'pointer' : 'default',
               }}
             >
               <div className="balk">
@@ -87,11 +97,16 @@ export function SpelKiezer({
                   {s.tags.map((t) => TAG_EMOJI[t] ?? '').join('')} {s.naam}
                 </strong>
                 <span className="klein zacht">
-                  {gespeeld ? 'geweest · ' : ''}
+                  {gespeeld && !blokkade ? 'geweest · ' : ''}
                   {DUUR_TEKST[s.duur]}
                 </span>
               </div>
               <div className="klein zacht">{s.uitleg}</div>
+              {blokkade && (
+                <div className="klein" style={{ color: 'var(--goud)', marginTop: 3 }}>
+                  🔒 {blokkade}
+                </div>
+              )}
             </button>
           )
         })}

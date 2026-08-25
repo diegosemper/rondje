@@ -10,14 +10,24 @@ export function geefSpel(id: string): GameModule | undefined {
   return perId.get(id)
 }
 
-/** Spellen die met dit aantal spelers te doen zijn, en die de lobby toestaat. */
-export function speelbaar(aantalSpelers: number, toegestaan: string[] | null): GameModule[] {
-  return SPELLEN.filter((s) => {
-    if (s.id === 'testspel') return toegestaan?.includes('testspel') ?? false
-    if (aantalSpelers < s.minSpelers || aantalSpelers > s.maxSpelers) return false
-    if (toegestaan && !toegestaan.includes(s.id)) return false
-    return true
-  })
+/** Waarom een spel nu niet kan. `null` betekent: het kan gewoon. */
+export function waaromNiet(
+  spel: GameModule,
+  aantalSpelers: number,
+  uit: string[],
+): string | null {
+  if (uit.includes(spel.id)) return 'uitgezet in de lobby'
+  if (aantalSpelers < spel.minSpelers) {
+    const tekort = spel.minSpelers - aantalSpelers
+    return `vanaf ${spel.minSpelers} spelers — nog ${tekort} nodig`
+  }
+  if (aantalSpelers > spel.maxSpelers) return `hoogstens ${spel.maxSpelers} spelers`
+  return null
+}
+
+/** Spellen die nu écht gespeeld kunnen worden. */
+export function speelbaar(aantalSpelers: number, uit: string[]): GameModule[] {
+  return SPELLEN.filter((s) => waaromNiet(s, aantalSpelers, uit) === null)
 }
 
 /**
@@ -27,10 +37,10 @@ export function speelbaar(aantalSpelers: number, toegestaan: string[] | null): G
 export function kiesWillekeurig(
   rng: () => number,
   aantalSpelers: number,
-  toegestaan: string[] | null,
+  uit: string[],
   geschiedenis: string[],
 ): GameModule | null {
-  const kandidaten = speelbaar(aantalSpelers, toegestaan)
+  const kandidaten = speelbaar(aantalSpelers, uit)
   if (kandidaten.length === 0) return null
 
   const vers = kandidaten.filter((s) => !geschiedenis.includes(s.id))
