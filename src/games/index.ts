@@ -8,6 +8,10 @@ import { bussen } from './bussen'
 import { kingsen } from './kingsen'
 import { imposter } from './imposter'
 import { dealer } from './dealer'
+import { ketting } from './ketting'
+import { eenentwintig } from './eenentwintig'
+import { bom } from './bom'
+import { gelijkdenken } from './gelijkdenken'
 
 /**
  * Alle spellen van Rondje.
@@ -20,6 +24,10 @@ export const ALLE_SPELLEN: GameModule[] = [
   kingsen,
   imposter,
   dealer,
+  ketting,
+  eenentwintig,
+  bom,
+  gelijkdenken,
   hilo,
   wievanons,
   snelstevinger,
