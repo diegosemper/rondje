@@ -8,17 +8,20 @@
    · niets om te lezen tijdens het spel
    ───────────────────────────────────────────────────────────── */
 
+/* Alles draait op deze handvol kleuren. Ze omzetten van donkergrijs naar
+   warm hout kleurde in één klap alle 42 spellen mee — de spelschermen zijn
+   nooit per stuk aangepast. */
 :root {
-  --achtergrond: #0b0b10;
-  --vlak: #16161f;
-  --vlak-hoog: #21212e;
-  --rand: #2e2e40;
+  --achtergrond: #2c1808;
+  --vlak: #6a3f14;
+  --vlak-hoog: #8b5720;
+  --rand: #b9843c;
 
-  --tekst: #f4f4f8;
-  --tekst-zacht: #9a9ab0;
+  --tekst: #ffeecd;
+  --tekst-zacht: #d3ab77;
 
-  --goud: #f5b942;
-  --goud-donker: #6b4d12;
+  --goud: #ffd166;
+  --goud-donker: #7a4e0e;
   --rood: #e8453c;
   --rood-donker: #6d1d19;
   --groen: #35c46b;
@@ -46,7 +49,15 @@ body,
 }
 
 body {
-  background: var(--achtergrond);
+  /* Een stilstaande kroegondergrond op élk scherm. Zonder bewegende
+     lichtvlekken: die staan alleen op het begin- en opstartscherm, want
+     tijdens een spel moet je een kaart kunnen aflezen. */
+  background:
+    radial-gradient(ellipse 80% 45% at 50% -8%, rgba(255, 196, 92, 0.22), transparent 70%),
+    radial-gradient(ellipse 95% 55% at 50% 42%, rgba(168, 100, 31, 0.55), transparent 78%),
+    linear-gradient(180deg, #5a3410 0%, #3a210b 55%, #241306 100%);
+  background-color: var(--achtergrond);
+  background-attachment: fixed;
   color: var(--tekst);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif;
   font-size: 17px;
@@ -145,6 +156,7 @@ button {
   cursor: pointer;
 }
 
+/* Knoppen als plaquettes: ze staan iets op en zakken in als je drukt. */
 .knop {
   display: flex;
   align-items: center;
@@ -154,47 +166,74 @@ button {
   min-height: 64px;
   padding: 16px 20px;
   border-radius: var(--straal);
-  background: var(--vlak-hoog);
+  background: linear-gradient(180deg, #9a6329, #6f4318);
   color: var(--tekst);
   font-size: 20px;
-  font-weight: 700;
-  border: 1px solid var(--rand);
-  transition: transform 0.06s ease, filter 0.12s ease;
+  font-weight: 800;
+  border: 2px solid rgba(255, 220, 160, 0.3);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 230, 180, 0.22),
+    0 4px 0 #40240a,
+    0 8px 16px rgba(0, 0, 0, 0.35);
+  transition: transform 0.06s ease, box-shadow 0.06s ease;
 }
 
-.knop:active {
-  transform: scale(0.97);
-  filter: brightness(1.15);
+.knop:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 230, 180, 0.2),
+    0 1px 0 #40240a,
+    0 3px 8px rgba(0, 0, 0, 0.35);
 }
 
 .knop:disabled {
-  opacity: 0.35;
-  transform: none;
+  filter: grayscale(0.45) brightness(0.75);
+  opacity: 0.65;
+  box-shadow: none;
 }
 
 .knop.goud {
-  background: var(--goud);
-  color: #1a1205;
-  border-color: transparent;
+  background: linear-gradient(180deg, #fff2c4 0%, #ffd166 40%, #eda01c 100%);
+  color: #4a2a0d;
+  border-color: #fff6dd;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.6),
+    0 5px 0 #a86c10,
+    0 9px 18px rgba(0, 0, 0, 0.4);
 }
 
 .knop.rood {
-  background: var(--rood);
+  background: linear-gradient(180deg, #f4675e, #c92f26);
   color: #fff;
-  border-color: transparent;
+  border-color: rgba(255, 200, 195, 0.5);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.3),
+    0 5px 0 #7d1a15,
+    0 9px 18px rgba(0, 0, 0, 0.4);
 }
 
 .knop.groen {
-  background: var(--groen);
+  background: linear-gradient(180deg, #5adb87, #23a455);
   color: #05230f;
-  border-color: transparent;
+  border-color: rgba(210, 255, 225, 0.5);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.35),
+    0 5px 0 #146334,
+    0 9px 18px rgba(0, 0, 0, 0.4);
 }
 
 .knop.leeg {
-  background: transparent;
-  border-color: var(--rand);
+  background: rgba(0, 0, 0, 0.22);
+  border-color: rgba(255, 220, 160, 0.28);
+  color: var(--tekst-zacht);
   font-size: 17px;
   min-height: 52px;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.knop.leeg:active:not(:disabled) {
+  transform: none;
+  filter: brightness(1.2);
 }
 
 .knop.enorm {
@@ -212,11 +251,18 @@ button {
 
 /* ── Vlakken ────────────────────────────────────────────────── */
 
+/* Vlakken zijn houten panelen met een lichte bies, net als op het
+   beginscherm. Zo hoeft geen enkel spel zijn eigen opmaak te kennen. */
 .kaartje {
-  background: var(--vlak);
-  border: 1px solid var(--rand);
+  background:
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.06) 0 2px, transparent 2px 9px),
+    linear-gradient(180deg, #8b5720, #6a3f14);
+  border: 2px solid #b9843c;
   border-radius: var(--straal);
-  padding: 16px;
+  padding: 14px;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 220, 160, 0.22),
+    0 4px 12px rgba(0, 0, 0, 0.35);
 }
 
 .balk {
@@ -987,15 +1033,17 @@ button {
   min-width: 60px;
   padding: 8px 6px;
   border-radius: var(--straal-klein);
-  background: var(--vlak);
-  border: 2px solid transparent;
+  background: linear-gradient(180deg, #9a6329, #6f4318);
+  border: 2px solid rgba(255, 220, 160, 0.22);
   font-size: 12px;
   text-align: center;
 }
 
 .speler.actief {
-  border-color: var(--goud);
-  background: var(--goud-donker);
+  border-color: #fff0cc;
+  background: linear-gradient(180deg, #ffd276, #f0a020);
+  color: #4a2a0d;
+  box-shadow: 0 0 18px rgba(255, 180, 60, 0.55);
 }
 
 .speler.offline {
@@ -1067,23 +1115,34 @@ button {
   color: var(--goud);
 }
 
+/* Invoervelden als ingelegde plaatjes: donker en verzonken in het hout. */
 input,
 select {
   width: 100%;
-  min-height: 60px;
+  min-height: 58px;
   padding: 14px 16px;
   font: inherit;
-  font-size: 20px;
+  font-size: 19px;
+  font-weight: 600;
   color: var(--tekst);
-  background: var(--vlak);
-  border: 1px solid var(--rand);
+  background: linear-gradient(180deg, #4a2a0d, #331c07);
+  border: 2px solid #b9843c;
   border-radius: var(--straal);
+  box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.45);
   outline: none;
+}
+
+input::placeholder {
+  color: rgba(255, 238, 205, 0.35);
+  font-weight: 500;
 }
 
 input:focus,
 select:focus {
   border-color: var(--goud);
+  box-shadow:
+    inset 0 3px 8px rgba(0, 0, 0, 0.45),
+    0 0 0 3px rgba(255, 209, 102, 0.25);
 }
 
 input.code-invoer {
@@ -1134,9 +1193,10 @@ input.code-invoer {
 }
 
 .balkje {
-  height: 8px;
+  height: 10px;
   border-radius: 99px;
-  background: var(--rand);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 220, 160, 0.2);
   overflow: hidden;
 }
 

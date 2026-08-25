@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Feest } from '../ui/Feest'
+import { Kroeg } from '../ui/Kroeg'
 
 /* ─────────────────────────────────────────────────────────────
    Het opstartscherm.
@@ -67,7 +67,7 @@ export function Splash({ tekst, ondertitel }: { tekst?: string; ondertitel?: str
 
   return (
     <>
-      <Feest />
+      <Kroeg />
       <div className="scherm">
         <div className="midden" style={{ gap: 22 }}>
           <img
