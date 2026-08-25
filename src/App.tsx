@@ -4,6 +4,7 @@ import { useKamer, useUid } from './net/useKamer'
 import { useHostLoop } from './net/hostLoop'
 import { bewaarCode, codeUitUrl, leesCode } from './net/profiel'
 import { Setup } from './schermen/Setup'
+import { Splash } from './schermen/Splash'
 import { Start } from './schermen/Start'
 import { Lobby } from './schermen/Lobby'
 import { SpelKiezer } from './schermen/SpelKiezer'
@@ -28,6 +29,14 @@ function Inhoud() {
   const [code, zetCode] = useState<string | null>(() => codeUitUrl() ?? leesCode())
 
   const { kamer, prive, laden, weg } = useKamer(code, uid)
+
+  // Het opstartscherm blijft even staan, ook als de verbinding meteen klaar
+  // is. Een laadscherm dat één frame flitst is lelijker dan geen laadscherm.
+  const [opgewarmd, zetOpgewarmd] = useState(false)
+  useEffect(() => {
+    const id = setTimeout(() => zetOpgewarmd(true), 1900)
+    return () => clearTimeout(id)
+  }, [])
 
   // De host draait de spellogica. Op andere telefoons doet dit niets.
   useHostLoop(kamer, uid)
@@ -65,15 +74,15 @@ function Inhoud() {
     )
   }
 
-  if (!uid) return <Bezig tekst="Verbinden…" />
+  if (!uid || !opgewarmd) return <Splash />
 
   // Nog geen lobby, of ik zit er niet (meer) in.
   if (!code || (!laden && (!kamer || !kamer.spelers[uid]))) {
-    if (code && laden) return <Bezig tekst="Lobby laden…" />
+    if (code && laden) return <Splash ondertitel={`lobby ${code}`} />
     return <Start uid={uid} beginCode={codeUitUrl() ?? code} bijBinnen={ganaarLobby} />
   }
 
-  if (!kamer) return <Bezig tekst="Lobby laden…" />
+  if (!kamer) return <Splash ondertitel={`lobby ${code}`} />
 
   switch (kamer.meta.fase) {
     case 'lobby':
@@ -91,13 +100,3 @@ function Inhoud() {
   }
 }
 
-function Bezig({ tekst }: { tekst: string }) {
-  return (
-    <div className="scherm">
-      <div className="midden">
-        <div style={{ fontSize: 54 }}>🍺</div>
-        <h2 className="zacht">{tekst}</h2>
-      </div>
-    </div>
-  )
-}

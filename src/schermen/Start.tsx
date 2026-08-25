@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { EMOJIS, joinKamer, maakKamer, MAX_SPELERS } from '../net/kamer'
 import { bewaarProfiel, leesEmoji, leesNaam } from '../net/profiel'
 import { GroteKnop } from '../ui/Basis'
+import { Feest } from '../ui/Feest'
 
 export function Start({
   uid,
@@ -54,20 +55,17 @@ export function Start({
   }
 
   return (
-    <div className="scherm">
+    <>
+      <Feest />
+      <div className="scherm">
       <div style={{ textAlign: 'center', paddingTop: 4 }}>
         <img
           src={`${import.meta.env.BASE_URL}logo-512.png`}
           alt="DORST!"
           width={148}
           height={148}
-          style={{
-            width: 148,
-            height: 148,
-            maxWidth: '46vw',
-            borderRadius: 28,
-            boxShadow: '0 10px 28px rgba(0,0,0,.45)',
-          }}
+          className="logo"
+          style={{ width: 148, height: 148, maxWidth: '44vw' }}
         />
         <div className="zacht klein" style={{ marginTop: 8 }}>
           Drankspellen voor je hele groep, in één lobby
@@ -133,7 +131,8 @@ export function Start({
         <GroteKnop uit={!naamOk || code.trim().length !== 4 || bezig} bijTik={meedoen}>
           Meedoen
         </GroteKnop>
+        </div>
       </div>
-    </div>
+    </>
   )
 }
