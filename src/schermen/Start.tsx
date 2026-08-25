@@ -2,19 +2,18 @@ import { useState } from 'react'
 import { EMOJIS, joinKamer, maakKamer, MAX_SPELERS } from '../net/kamer'
 import { bewaarProfiel, leesEmoji, leesNaam } from '../net/profiel'
 import { pastBijGroep, SPELLEN } from '../engine/registry'
-import { GroteKnop } from '../ui/Basis'
-import { Feest } from '../ui/Feest'
+import { tril } from '../ui/Basis'
+import { Kroeg } from '../ui/Kroeg'
 
 /* ─────────────────────────────────────────────────────────────
-   Het beginscherm.
+   Het beginscherm, in kroegstijl.
 
-   Drie dingen achter elkaar: wie ben je, met hoeveel zijn jullie, en maak je
-   een lobby of doe je mee. In die volgorde, want je moet weten wie je bent
+   Twee genummerde planken onder elkaar — wie ben je, met hoeveel zijn jullie —
+   en daaronder beginnen. In die volgorde, want je moet weten wie je bent
    voordat de rest ergens op slaat.
 
-   Het aantal spelers is puur een filter op de spellijst. Kies je twee, dan
-   verdwijnen de spellen die er meer nodig hebben helemaal uit beeld in plaats
-   van dat je ze grijs ziet staan.
+   De poppetjes staan in een strip die je opzij schuift in plaats van in een
+   raster: dat scheelt een kwart scherm en er passen er zo veel meer in.
    ───────────────────────────────────────────────────────────── */
 
 const AANTALLEN = [2, 3, 4, 5, 6, 7, 8]
@@ -31,7 +30,6 @@ export function Start({
   const [naam, zetNaam] = useState(leesNaam)
   const [emoji, zetEmoji] = useState(leesEmoji)
   const [aantal, zetAantal] = useState(4)
-  const [open, zetOpen] = useState(false)
   const [code, zetCode] = useState(beginCode ?? '')
   const [bezig, zetBezig] = useState(false)
   const [fout, zetFout] = useState<string | null>(null)
@@ -46,8 +44,7 @@ export function Start({
     zetFout(null)
     try {
       bewaarProfiel(naam.trim(), emoji)
-      const nieuw = await maakKamer(uid, naam.trim(), emoji, aantal)
-      bijBinnen(nieuw)
+      bijBinnen(await maakKamer(uid, naam.trim(), emoji, aantal))
     } catch (e: any) {
       zetFout(e?.message ?? 'Er ging iets mis')
     } finally {
@@ -75,110 +72,105 @@ export function Start({
 
   return (
     <>
-      <Feest />
-      <div className="scherm">
+      <Kroeg />
+      <div className="scherm" style={{ gap: 12 }}>
         <div style={{ textAlign: 'center' }}>
           <img
             src={`${import.meta.env.BASE_URL}logo-512.png`}
             alt="DORST!"
-            width={112}
-            height={112}
+            width={96}
+            height={96}
             className="logo"
-            style={{ width: 112, height: 112, maxWidth: '34vw' }}
+            style={{ width: 96, height: 96, maxWidth: '28vw' }}
           />
+          <div className="kroeg-kop" style={{ marginTop: 4 }}>
+            Spel starten
+          </div>
         </div>
 
-        {/* ── Wie ben je ── */}
-        <div className="paneel">
-          <div className="paneel-kop">
-            <span className="kop-klein">1 · Wie ben je?</span>
-            <span className="klein zacht">tik op je poppetje</span>
+        {/* ── 1 · Wie ben je ── */}
+        <div className="plank">
+          <div className="plank-kop">
+            1 · Wie ben je?
+            <small>tik op je poppetje</small>
           </div>
 
-          <div style={{ display: 'flex', gap: 10, alignItems: 'stretch' }}>
-            <button
-              className={`emoji-groot ${open ? 'open' : ''}`}
-              onClick={() => zetOpen(!open)}
-              aria-label="Kies een poppetje"
-            >
-              {emoji}
-            </button>
-            <input
-              style={{ flex: 1 }}
-              value={naam}
-              onChange={(e) => zetNaam(e.target.value.slice(0, 12))}
-              placeholder="Je naam"
-              autoComplete="off"
-              autoCapitalize="words"
-            />
-          </div>
-
-          {open && (
-            <div className="emoji-strip">
-              {EMOJIS.map((e) => (
-                <button
-                  key={e}
-                  className={`emoji-knop ${e === emoji ? 'gekozen' : ''}`}
-                  onClick={() => {
-                    zetEmoji(e)
-                    zetOpen(false)
-                  }}
-                >
-                  {e}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* ── Met hoeveel ── */}
-        <div className="paneel">
-          <div className="paneel-kop">
-            <span className="kop-klein">2 · Met hoeveel spelen jullie?</span>
-            <span className="klein zacht">
-              {passend} van de {totaal} spellen
-            </span>
-          </div>
-
-          <div className="aantal-rij">
-            {AANTALLEN.map((n) => (
+          <div className="poppetjes">
+            {EMOJIS.map((e) => (
               <button
-                key={n}
-                className={`aantal-knop ${n === aantal ? 'gekozen' : ''}`}
-                onClick={() => zetAantal(n)}
+                key={e}
+                className={`poppetje ${e === emoji ? 'gekozen' : ''}`}
+                onClick={() => {
+                  tril(8)
+                  zetEmoji(e)
+                }}
               >
-                {n}
-                {n === MAX_SPELERS ? '' : ''}
+                {e}
               </button>
             ))}
           </div>
 
-          <div className="klein zacht" style={{ marginTop: 6 }}>
+          <div className="lint">
+            <input
+              value={naam}
+              onChange={(e) => zetNaam(e.target.value.slice(0, 12))}
+              placeholder="je naam"
+              autoComplete="off"
+              autoCapitalize="words"
+            />
+          </div>
+        </div>
+
+        {/* ── 2 · Met hoeveel ── */}
+        <div className="plank">
+          <div className="plank-kop">
+            2 · Met hoeveel spelen jullie?
+            <small>
+              {passend} van de {totaal} spellen
+            </small>
+          </div>
+
+          <div className="munten">
+            {AANTALLEN.map((n) => (
+              <button
+                key={n}
+                className={`munt ${n === aantal ? 'gekozen' : ''}`}
+                onClick={() => {
+                  tril(8)
+                  zetAantal(n)
+                }}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+
+          <div className="bordje">
             {aantal === 2
-              ? 'Met z’n tweeën vallen de spellen af die een groep nodig hebben, zoals Kingsen en De Imposter.'
+              ? 'Met z’n tweeën vallen de groepsspellen af, zoals Kingsen en De Imposter.'
               : 'Je kunt dit later in de lobby nog aanpassen.'}
           </div>
         </div>
 
         {fout && (
-          <div className="kaartje" style={{ borderColor: 'var(--rood)', color: 'var(--rood)' }}>
+          <div className="bordje" style={{ maxWidth: '100%', color: '#8c1f18', fontWeight: 700 }}>
             {fout}
           </div>
         )}
 
         {/* ── Beginnen ── */}
         <div className="onderaan" style={{ marginTop: 'auto' }}>
-          <GroteKnop kleur="goud" enorm uit={!naamOk || bezig} bijTik={nieuweLobby}>
+          <button className="plaat" disabled={!naamOk || bezig} onClick={nieuweLobby}>
             🍻 Nieuwe lobby
-          </GroteKnop>
+          </button>
 
-          <div className="of-streep">
-            <span>of doe mee met een code</span>
+          <div className="kroeg-kop" style={{ marginTop: 4 }}>
+            of doe mee met een code
           </div>
 
           <div className="rij" style={{ alignItems: 'stretch' }}>
             <input
-              className="code-invoer"
+              className="codeplaat"
               style={{ flex: 2 }}
               value={code}
               onChange={(e) =>
@@ -190,12 +182,14 @@ export function Start({
               autoCorrect="off"
               spellCheck={false}
             />
-            <GroteKnop
-              uit={!naamOk || code.trim().length !== 4 || bezig}
-              bijTik={meedoen}
+            <button
+              className="plaat hout"
+              style={{ flex: 1 }}
+              disabled={!naamOk || code.trim().length !== 4 || bezig}
+              onClick={meedoen}
             >
               Meedoen
-            </GroteKnop>
+            </button>
           </div>
         </div>
       </div>

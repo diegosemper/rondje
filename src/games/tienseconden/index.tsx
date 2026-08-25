@@ -12,8 +12,9 @@ import { Verdeler } from '../../ui/Verdeler'
    je niet kunt zien en stopt hem als je denkt dat je er bent. Geen klok, geen
    balkje, niets.
 
-   Het doel wisselt met opzet: op een vaste tien seconden leer je binnen twee
-   rondes het ritme, en dan is er niets meer aan. Op 47,3 moet je echt tellen.
+   Het doel staat in de gedeelde spelstand, dus iedereen telt naar hetzelfde
+   getal. Het wisselt met opzet per ronde: op een vaste tien seconden heb je
+   binnen twee rondes het ritme te pakken en is er niets meer aan.
 
    De meting gebeurt op je eigen telefoon en gaat niet over het netwerk: een
    halve seconde vertraging zou hier het hele verschil zijn.
@@ -43,14 +44,25 @@ interface TienState {
   klaar: boolean
 }
 
-/** Een doel tussen 10,0 en 90,0 seconden, op een tiende. */
+/** Een doel tussen 10,0 en 90,0 seconden, op een tiende nauwkeurig. */
 function nieuwDoel(ctx: SpelContext): number {
   return tussen(ctx.rng, DOEL_MIN * 10, DOEL_MAX * 10) * 100
 }
 
+/**
+ * Het doel van deze ronde, met vangnet.
+ *
+ * Een potje dat begon vóórdat dit veld bestond heeft geen doel in zijn
+ * spelstand. Zonder deze val zou daar NaN op het scherm komen.
+ */
+function doelVan(s: TienState): number {
+  return typeof s.doel === 'number' && s.doel > 0 ? s.doel : DOEL_MIN * 1000
+}
+
 function rondAf(s: TienState, ctx: SpelContext) {
+  const doel = doelVan(s)
   const rij = ctx.spelers
-    .map((p) => ({ uid: p.uid, af: Math.abs((s.tijden[p.uid] ?? 999999) - s.doel) }))
+    .map((p) => ({ uid: p.uid, af: Math.abs((s.tijden[p.uid] ?? 999999) - doel) }))
     .sort((a, b) => a.af - b.af)
 
   s.winnaar = rij[0]?.uid ?? null
@@ -58,7 +70,7 @@ function rondAf(s: TienState, ctx: SpelContext) {
 
   rij.forEach((r, i) => {
     if (i === 0) return
-    ctx.drink(r.uid, Math.min(MAX_STRAF, i), `${(r.af / 1000).toFixed(1)}s ernaast`)
+    ctx.drink(r.uid, Math.min(MAX_STRAF, i), `${toon(r.af / 1000)}s ernaast`)
   })
   if (s.winnaar) s.magUitdelen = true
 }
@@ -145,11 +157,12 @@ function Scherm({ s, ctx }: { s: TienState; ctx: KijkContext }) {
   const [loopt, zetLoopt] = useState(false)
   const startRef = useRef(0)
   const ikKlaar = s.tijden[ctx.ik] !== undefined
+  const doel = doelVan(s)
 
   if (s.fase === 'uitslag') {
     const rij = ctx.spelers
       .map((p) => ({ p, ms: s.tijden[p.uid] ?? 0 }))
-      .sort((a, b) => Math.abs(a.ms - s.doel) - Math.abs(b.ms - s.doel))
+      .sort((a, b) => Math.abs(a.ms - doel) - Math.abs(b.ms - doel))
     const magUitdelen = s.magUitdelen && s.winnaar === ctx.ik
 
     return (
@@ -157,10 +170,10 @@ function Scherm({ s, ctx }: { s: TienState; ctx: KijkContext }) {
         <div className="midden" style={{ gap: 8, alignItems: 'stretch' }}>
           <div style={{ textAlign: 'center' }}>
             <div className="kop-klein">Het doel was</div>
-            <h1 style={{ color: 'var(--goud)' }}>{toon(s.doel / 1000)}s</h1>
+            <h1 style={{ color: 'var(--goud)' }}>{toon(doel / 1000)}s</h1>
           </div>
           {rij.map(({ p, ms }, i) => {
-            const af = (ms - s.doel) / 1000
+            const af = (ms - doel) / 1000
             return (
               <div
                 key={p.uid}
@@ -198,7 +211,7 @@ function Scherm({ s, ctx }: { s: TienState; ctx: KijkContext }) {
               key={s.ronde}
               totaal={ctx.slokAantal(WINST_UITDELEN)}
               ctx={ctx}
-              titel="Dichtst bij tien — deel uit"
+              titel="Dichtst bij het doel — deel uit"
               bijKlaar={(verdeling) => ctx.stuur('geef', { verdeling })}
             />
           ) : s.magUitdelen ? (
@@ -226,7 +239,7 @@ function Scherm({ s, ctx }: { s: TienState; ctx: KijkContext }) {
           Ronde {s.ronde}/{RONDES}
         </span>
         <span className="kop-klein">
-          doel {toon(s.doel / 1000)}s · {s.klaarMet.length}/{ctx.spelers.length}
+          doel {toon(doel / 1000)}s · {s.klaarMet.length}/{ctx.spelers.length}
         </span>
       </div>
 
@@ -240,14 +253,14 @@ function Scherm({ s, ctx }: { s: TienState; ctx: KijkContext }) {
             color: loopt ? 'var(--tekst)' : 'var(--goud)',
           }}
         >
-          {loopt ? '???' : `${toon(s.doel / 1000)}s`}
+          {loopt ? '???' : `${toon(doel / 1000)}s`}
         </div>
         <div className="klein zacht">
           {ikKlaar
             ? 'Ingeleverd — wachten op de rest'
             : loopt
-              ? `Tellen maar. Je ziet niets. Doel: ${toon(s.doel / 1000)}s`
-              : 'Onthoud dat getal — straks zie je het niet meer'}
+              ? `Tellen maar. Je ziet niets. Doel: ${toon(doel / 1000)}s`
+              : 'Iedereen telt naar hetzelfde getal'}
         </div>
         <SpelerBalk spelers={ctx.spelers} actief={s.klaarMet} />
       </div>
@@ -256,7 +269,7 @@ function Scherm({ s, ctx }: { s: TienState; ctx: KijkContext }) {
         {ikKlaar ? (
           <Kaartje style={{ textAlign: 'center' }}>
             <span className="zacht">
-              Jij zat op {((s.tijden[ctx.ik] ?? 0) / 1000).toFixed(2)}s
+              Jij zat op {toon((s.tijden[ctx.ik] ?? 0) / 1000)}s
             </span>
           </Kaartje>
         ) : loopt ? (
