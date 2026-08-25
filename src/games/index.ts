@@ -40,6 +40,7 @@ import { nognooit } from './nognooit'
 import { stellingen } from './stellingen'
 import { wiebenik } from './wiebenik'
 import { dertig } from './dertig'
+import { hitster } from './hitster'
 import { springen } from './springen'
 import { pijlen } from './pijlen'
 import { spiegel } from './spiegel'
@@ -67,6 +68,7 @@ export const ALLE_SPELLEN: GameModule[] = [
   mexicanen,
   tekenen,
   nummers,
+  hitster,
   flappy,
   jetpack,
   snelweg,
