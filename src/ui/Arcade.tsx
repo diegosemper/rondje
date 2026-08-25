@@ -18,6 +18,8 @@ import { maakRng } from '../engine/random'
      tien meter.
    ───────────────────────────────────────────────────────────── */
 
+export type Richting = 'links' | 'rechts' | 'boven' | 'onder'
+
 export interface Invoer {
   ingedrukt: boolean
   /** eenmalig waar op de stap direct na een tik */
@@ -25,7 +27,12 @@ export interface Invoer {
   /** waar op het veld je het laatst tikte, van 0 tot 1 */
   x: number
   y: number
+  /** eenmalig gezet op de stap direct na een afgeronde veeg */
+  veeg: Richting | null
 }
+
+/** Hoe ver je moet vegen voordat het als veeg telt, als deel van de breedte. */
+const VEEG_DREMPEL = 0.07
 
 export interface ArcadeSpel<W> {
   /** de beginwereld, met een toevalsgenerator die voor iedereen gelijk is */
@@ -68,6 +75,8 @@ export function Arcadeveld<W>({
   const tikBuffer = useRef(false)
   const doodGemeld = useRef(false)
   const plek = useRef({ x: 0.5, y: 0.5 })
+  const veegStart = useRef<{ x: number; y: number } | null>(null)
+  const veegBuffer = useRef<Richting | null>(null)
 
   const aftellen = Math.max(0, Math.ceil((startOp - nu) / 1000))
 
@@ -120,11 +129,14 @@ export function Arcadeveld<W>({
         while (schuld >= STAP) {
           const netGetikt = tikBuffer.current
           tikBuffer.current = false
+          const veeg = veegBuffer.current
+          veegBuffer.current = null
           const isDood = spel.stap(wereld, STAP, {
             ingedrukt: ingedrukt.current,
             netGetikt,
             x: plek.current.x,
             y: plek.current.y,
+            veeg,
           })
           schuld -= STAP
           if (isDood || speeltijd > maxSeconden) {
@@ -183,12 +195,33 @@ export function Arcadeveld<W>({
           }
           ingedrukt.current = true
           tikBuffer.current = true
+          veegStart.current = { x: e.clientX, y: e.clientY }
         }}
-        onPointerUp={() => {
+        onPointerUp={(e) => {
           ingedrukt.current = false
+          const start = veegStart.current
+          veegStart.current = null
+          if (!start) return
+
+          const r = e.currentTarget.getBoundingClientRect()
+          const dx = (e.clientX - start.x) / r.width
+          const dy = (e.clientY - start.y) / r.height
+          if (Math.hypot(dx, dy) < VEEG_DREMPEL) return
+
+          // De grootste van de twee bepaalt de richting: schuin vegen wordt
+          // dus altijd op één kant afgerond in plaats van genegeerd.
+          veegBuffer.current =
+            Math.abs(dx) > Math.abs(dy)
+              ? dx > 0
+                ? 'rechts'
+                : 'links'
+              : dy > 0
+                ? 'onder'
+                : 'boven'
         }}
         onPointerCancel={() => {
           ingedrukt.current = false
+          veegStart.current = null
         }}
         style={{
           position: 'relative',

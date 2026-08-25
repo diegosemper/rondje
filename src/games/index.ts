@@ -40,6 +40,7 @@ import { nognooit } from './nognooit'
 import { stellingen } from './stellingen'
 import { wiebenik } from './wiebenik'
 import { springen } from './springen'
+import { pijlen } from './pijlen'
 import { spiegel } from './spiegel'
 import { zwaartekracht } from './zwaartekracht'
 import { tweewaarheden } from './tweewaarheden'
@@ -69,6 +70,7 @@ export const ALLE_SPELLEN: GameModule[] = [
   snelweg,
   stapeltoren,
   springen,
+  pijlen,
   bierpong,
   wiskunde,
   kleurenklap,

@@ -55,6 +55,16 @@ export interface Instelling {
    * onzichtbaar blijven in lobby's die ooit iets hebben aangevinkt.
    */
   uit: string[]
+  /**
+   * Met hoeveel mensen je van plan bent te spelen.
+   *
+   * Puur om de lijst te filteren: op 2 verdwijnen de spellen die er meer nodig
+   * hebben helemaal uit beeld, in plaats van dat je ze grijs ziet staan. Boven
+   * de 2 zie je alles. Wie er écht in de lobby zit bepaalt daarnaast nog steeds
+   * of een spel te starten is — anders begin je Kingsen met z'n tweeën en loopt
+   * het vast.
+   */
+  verwacht: number
 }
 
 export interface SpelBlok {

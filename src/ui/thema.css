@@ -383,6 +383,90 @@ button {
   }
 }
 
+/* ── Panelen op het beginscherm ─────────────────────────────── */
+
+.paneel {
+  background: linear-gradient(180deg, rgba(33, 33, 46, 0.9), rgba(22, 22, 31, 0.9));
+  border: 1px solid var(--rand);
+  border-radius: var(--straal);
+  padding: 14px;
+  backdrop-filter: blur(6px);
+}
+
+.paneel-kop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.naamkaartje {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 99px;
+  background: var(--goud-donker);
+  border: 1px solid var(--goud);
+  font-size: 13px;
+  max-width: 55%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.aantal-rij {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+}
+
+.aantal-knop {
+  aspect-ratio: 1;
+  border-radius: var(--straal-klein);
+  background: var(--vlak-hoog);
+  border: 1px solid var(--rand);
+  color: var(--tekst);
+  font-size: 17px;
+  font-weight: 800;
+  transition: transform 0.08s ease;
+}
+
+.aantal-knop.gekozen {
+  background: var(--goud);
+  border-color: var(--goud);
+  color: #1a1205;
+  transform: scale(1.08);
+}
+
+.of-streep {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--tekst-zacht);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.of-streep::before,
+.of-streep::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--rand);
+}
+
+/* Het emoji-raster wat luchtiger op het beginscherm. */
+.paneel .emoji-knop {
+  font-size: 24px;
+}
+
+.paneel .emoji-knop.gekozen {
+  transform: scale(1.12);
+}
+
 /* ── De boom van Bussen ─────────────────────────────────────── */
 
 .boom {

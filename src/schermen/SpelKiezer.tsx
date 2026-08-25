@@ -2,6 +2,7 @@ import type { Kamer } from '../engine/types'
 import {
   DUUR_TEKST,
   kiesWillekeurig,
+  pastBijGroep,
   speelbaar,
   SPELLEN,
   TAG_EMOJI,
@@ -75,7 +76,7 @@ export function SpelKiezer({
           </Kaartje>
         )}
 
-        {SPELLEN.map((s) => {
+        {SPELLEN.filter((s) => pastBijGroep(s, kamer.instelling.verwacht)).map((s) => {
           const blokkade = waaromNiet(s, spelers.length, kamer.instelling.uit)
           const gespeeld = kamer.geschiedenis.includes(s.id)
           const klikbaar = benHost && !blokkade

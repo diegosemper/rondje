@@ -83,6 +83,7 @@ export function leesKamer(ruw: any, code: string): Kamer | null {
   const instelling: Instelling = {
     zwaarte: (ruw.instelling?.zwaarte ?? 'normaal') as Zwaarte,
     uit: lijst(ruw.instelling?.uit),
+    verwacht: ruw.instelling?.verwacht ?? MAX_SPELERS,
   }
 
   return {
@@ -123,7 +124,12 @@ export function leesKamer(ruw: any, code: string): Kamer | null {
 
 /* ── Schrijven ──────────────────────────────────────────────── */
 
-export async function maakKamer(uid: string, naam: string, emoji: string): Promise<string> {
+export async function maakKamer(
+  uid: string,
+  naam: string,
+  emoji: string,
+  verwacht: number = MAX_SPELERS,
+): Promise<string> {
   // Probeer een paar codes; de kans op botsing is klein maar niet nul.
   for (let poging = 0; poging < 8; poging++) {
     const code = maakCode()
@@ -133,7 +139,7 @@ export async function maakKamer(uid: string, naam: string, emoji: string): Promi
     await set(ref(db(), pad(code)), {
       meta: { code, hostUid: uid, fase: 'lobby', gemaaktOp: serverTimestamp() },
       // Het testspel staat standaard uit; dat is geen echt spel.
-      instelling: { zwaarte: 'normaal', uit: 'testspel' },
+      instelling: { zwaarte: 'normaal', uit: 'testspel', verwacht },
       spelers: { [uid]: { naam, emoji, online: true, laatstGezien: serverTimestamp() } },
       volgorde: uid,
       score: { [uid]: { uitgedeeld: 0, gedronken: 0 } },
@@ -201,6 +207,11 @@ export async function verlaatKamer(code: string, uid: string): Promise<void> {
 
 export async function zetZwaarte(code: string, zwaarte: Zwaarte): Promise<void> {
   await update(ref(db(), pad(code, 'instelling')), { zwaarte })
+}
+
+/** Met hoeveel mensen je van plan bent te spelen; filtert de spellijst. */
+export async function zetVerwacht(code: string, verwacht: number): Promise<void> {
+  await update(ref(db(), pad(code, 'instelling')), { verwacht })
 }
 
 /** Welke spellen staan uit. Lege lijst = alles doet mee. */

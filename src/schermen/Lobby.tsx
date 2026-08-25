@@ -1,8 +1,15 @@
 import { useState } from 'react'
 import type { Kamer, Zwaarte } from '../engine/types'
-import { SPELLEN } from '../engine/registry'
+import { pastBijGroep, SPELLEN } from '../engine/registry'
 import { ZWAARTE_LABEL, ZWAARTE_UITLEG } from '../engine/slokken'
-import { MAX_SPELERS, MIN_SPELERS, verlaatKamer, zetSpellenUit, zetZwaarte } from '../net/kamer'
+import {
+  MAX_SPELERS,
+  MIN_SPELERS,
+  verlaatKamer,
+  zetSpellenUit,
+  zetVerwacht,
+  zetZwaarte,
+} from '../net/kamer'
 import { naarFase } from '../net/hostLoop'
 import { deelLink } from '../net/profiel'
 import { GroteKnop, Kaartje } from '../ui/Basis'
@@ -101,6 +108,28 @@ export function Lobby({
             </div>
             <div className="klein zacht" style={{ marginTop: 6 }}>
               {ZWAARTE_UITLEG[kamer.instelling.zwaarte]}
+            </div>
+          </div>
+
+          <div>
+            <div className="paneel-kop">
+              <span className="kop-klein">Met hoeveel spelen jullie?</span>
+              <span className="klein zacht">
+                {SPELLEN.filter((s) => s.id !== 'testspel' && pastBijGroep(s, kamer.instelling.verwacht))
+                  .length}{' '}
+                spellen
+              </span>
+            </div>
+            <div className="aantal-rij">
+              {[2, 3, 4, 5, 6, 7, 8].map((n) => (
+                <button
+                  key={n}
+                  className={`aantal-knop ${n === kamer.instelling.verwacht ? 'gekozen' : ''}`}
+                  onClick={() => zetVerwacht(code, n).catch(meldFout)}
+                >
+                  {n}
+                </button>
+              ))}
             </div>
           </div>
 

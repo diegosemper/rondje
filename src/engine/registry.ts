@@ -10,6 +10,17 @@ export function geefSpel(id: string): GameModule | undefined {
   return perId.get(id)
 }
 
+/**
+ * Past dit spel bij het aantal waarmee je van plan bent te spelen?
+ *
+ * Dit is het filter dat de lijst kort houdt: kies je 2, dan zie je de spellen
+ * die er meer nodig hebben helemaal niet meer. Los daarvan kijkt waaromNiet()
+ * nog naar wie er écht in de lobby zit.
+ */
+export function pastBijGroep(spel: GameModule, verwacht: number): boolean {
+  return spel.minSpelers <= verwacht
+}
+
 /** Waarom een spel nu niet kan. `null` betekent: het kan gewoon. */
 export function waaromNiet(
   spel: GameModule,
