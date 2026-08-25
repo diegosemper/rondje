@@ -12,6 +12,10 @@ import { ketting } from './ketting'
 import { eenentwintig } from './eenentwintig'
 import { bom } from './bom'
 import { gelijkdenken } from './gelijkdenken'
+import { pyramide } from './pyramide'
+import { blindekaart } from './blindekaart'
+import { ezelen } from './ezelen'
+import { roulette } from './roulette'
 
 /**
  * Alle spellen van Rondje.
@@ -24,6 +28,10 @@ export const ALLE_SPELLEN: GameModule[] = [
   kingsen,
   imposter,
   dealer,
+  pyramide,
+  blindekaart,
+  ezelen,
+  roulette,
   ketting,
   eenentwintig,
   bom,
