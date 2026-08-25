@@ -18,6 +18,10 @@ import { ezelen } from './ezelen'
 import { roulette } from './roulette'
 import { tekenen } from './tekenen'
 import { nummers } from './nummers'
+import { sabotage } from './sabotage'
+import { golflengte } from './golflengte'
+import { alfabet } from './alfabet'
+import { verbodenwoord } from './verbodenwoord'
 import { spiegel } from './spiegel'
 import { zwaartekracht } from './zwaartekracht'
 import { tweewaarheden } from './tweewaarheden'
@@ -39,6 +43,10 @@ export const ALLE_SPELLEN: GameModule[] = [
   roulette,
   tekenen,
   nummers,
+  golflengte,
+  sabotage,
+  verbodenwoord,
+  alfabet,
   spiegel,
   tweewaarheden,
   zwaartekracht,
