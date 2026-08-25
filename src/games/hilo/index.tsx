@@ -3,6 +3,7 @@ import { volgende } from '../../engine/beurten'
 import type { Actie, GameModule, KijkContext, SpelContext } from '../../engine/types'
 import { Speelkaart } from '../../ui/Kaart'
 import { GroteKnop, Kaartje, SpelerBalk } from '../../ui/Basis'
+import { Verdeler } from '../../ui/Verdeler'
 
 /* ─────────────────────────────────────────────────────────────
    HiLo — bedacht door Diego
@@ -123,9 +124,16 @@ export const hilo: GameModule<HiLoState> = {
     }
 
     if (actie.type === 'geef') {
-      const doel: string = actie.payload?.uid
-      if (s.cashen === null || !doel || !volgorde.includes(doel)) return
-      ctx.deelUit(s.beurt, doel, s.cashen, `streak van ${s.cashen}`)
+      if (s.cashen === null) return
+      const verdeling: Record<string, number> = actie.payload?.verdeling
+      if (!verdeling || typeof verdeling !== 'object') return
+
+      // De aantallen komen van de Verdeler en zijn al omgerekend naar de
+      // zwaarte-instelling, dus niet nog een keer omrekenen.
+      for (const [uid, aantal] of Object.entries(verdeling)) {
+        if (!volgorde.includes(uid) || uid === s.beurt) continue
+        ctx.deelUitPrecies(s.beurt, uid, aantal, `streak van ${s.cashen}`)
+      }
       naarVolgende()
       return
     }
@@ -149,25 +157,20 @@ export const hilo: GameModule<HiLoState> = {
 
         {s.cashen !== null ? (
           <div className="onderaan">
-            <h2 style={{ textAlign: 'center' }}>
-              {mijnBeurt
-                ? `Wie krijgt ${ctx.slok(s.cashen)}?`
-                : `${speler?.naam} deelt ${ctx.slok(s.cashen)} uit…`}
-            </h2>
-            {mijnBeurt && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                {ctx.spelers
-                  .filter((p) => p.uid !== ctx.ik)
-                  .map((p) => (
-                    <GroteKnop
-                      key={p.uid}
-                      kleur="goud"
-                      bijTik={() => ctx.stuur('geef', { uid: p.uid })}
-                    >
-                      {p.emoji} {p.naam}
-                    </GroteKnop>
-                  ))}
-              </div>
+            {mijnBeurt ? (
+              <Verdeler
+                key={`${s.beurt}-${s.beurtenGespeeld}`}
+                totaal={ctx.slokAantal(s.cashen)}
+                ctx={ctx}
+                titel={`Streak van ${s.cashen} — deel uit`}
+                bijKlaar={(verdeling) => ctx.stuur('geef', { verdeling })}
+              />
+            ) : (
+              <Kaartje style={{ textAlign: 'center' }}>
+                <h2 className="zacht">
+                  {speler?.naam} verdeelt {ctx.slok(s.cashen)}…
+                </h2>
+              </Kaartje>
             )}
           </div>
         ) : mijnBeurt ? (

@@ -14,6 +14,7 @@ import { klokTekst, startKlok, voortgang, type Klok } from '../../engine/timer'
 import type { Actie, GameModule, KijkContext, SpelContext } from '../../engine/types'
 import { Speelkaart } from '../../ui/Kaart'
 import { Balkje, GroteKnop, Kaartje, SpelerBalk } from '../../ui/Basis'
+import { Verdeler } from '../../ui/Verdeler'
 
 /* ─────────────────────────────────────────────────────────────
    BUSSEN — de variant van Diego's vriendengroep
@@ -206,6 +207,25 @@ function beoordeel(hand: Kaart[], nieuw: Kaart, vraagNr: number, keuze: Keuze): 
 /** Zebra en regenboog zijn veel moeilijker, dus die leveren wat op. */
 function isRisicoGok(keuze: Keuze): boolean {
   return keuze === 'zebra' || keuze === 'regenboog'
+}
+
+/**
+ * Verwerkt een verdeling van de Verdeler. De aantallen zijn al omgerekend
+ * naar de zwaarte-instelling, dus deelUitPrecies en niet deelUit.
+ */
+function verdeel(
+  ctx: SpelContext,
+  actie: Actie,
+  volgorde: string[],
+  reden: string,
+): boolean {
+  const verdeling: Record<string, number> = actie.payload?.verdeling
+  if (!verdeling || typeof verdeling !== 'object') return false
+  for (const [uid, aantal] of Object.entries(verdeling)) {
+    if (!volgorde.includes(uid) || uid === actie.uid) continue
+    ctx.deelUitPrecies(actie.uid, uid, aantal, reden)
+  }
+  return true
 }
 
 /** Klaar met deze vraag? Dan iedereen door naar de volgende. */
@@ -568,9 +588,7 @@ export const bussen: GameModule<BussenState> = {
     // Uitdelen na een goed geraden zebra of regenboog.
     if (s.fase === 'vragen' && actie.type === 'geef') {
       if (s.bonus !== actie.uid) return
-      const doel = actie.payload?.uid
-      if (!doel || !volgorde.includes(doel)) return
-      ctx.deelUit(actie.uid, doel, VRAAG_INZET[3], 'zebra/regenboog goed')
+      if (!verdeel(ctx, actie, volgorde, 'zebra/regenboog goed')) return
       s.bonus = null
       volgendeVrager(s, ctx, volgorde, actie.uid)
       return
@@ -580,7 +598,6 @@ export const bussen: GameModule<BussenState> = {
 
     if (s.fase === 'boom') {
       const plek = s.boom[s.boomIndex]
-      const inzet = inzetVan(plek)
       const waarde = plek.kaart!.waarde
 
       if (s.boomFase === 'leeg') {
@@ -625,15 +642,14 @@ export const bussen: GameModule<BussenState> = {
         }
 
         if (actie.type !== 'geef' || actie.uid !== aanZet) return
-        const doel = actie.payload?.uid
-        if (!doel || !volgorde.includes(doel)) return
-
-        ctx.deelUit(
-          actie.uid,
-          doel,
-          inzet,
+        const gelukt = verdeel(
+          ctx,
+          actie,
+          volgorde,
           `boom rij ${plek.rij}${plek.horizontaal ? ' (dubbel)' : ''}`,
         )
+        if (!gelukt) return
+
         s.uitdeelIndex++
         if (s.uitdeelIndex >= s.uitdeelVolgorde.length) volgendePlek(s, ctx)
         return
@@ -759,8 +775,12 @@ function Vragen({ s, ctx }: { s: BussenState; ctx: KijkContext }) {
 
       {magUitdelen ? (
         <div className="onderaan">
-          <h2 style={{ textAlign: 'center' }}>Wie krijgt {ctx.slok(VRAAG_INZET[3])}?</h2>
-          <SpelerKnoppen ctx={ctx} bijKeuze={(uid) => ctx.stuur('geef', { uid })} />
+          <Verdeler
+            totaal={ctx.slokAantal(VRAAG_INZET[3])}
+            ctx={ctx}
+            titel="Goed geraden — deel uit"
+            bijKlaar={(verdeling) => ctx.stuur('geef', { verdeling })}
+          />
         </div>
       ) : mijnBeurt ? (
         <div className="onderaan">
@@ -919,10 +939,15 @@ function Boom({ s, ctx }: { s: BussenState; ctx: KijkContext }) {
       {s.boomFase === 'uitdelen' && (
         <div className="onderaan" style={{ marginTop: 'auto' }}>
           {aanZet === ctx.ik ? (
-            <>
-              <h2 style={{ textAlign: 'center' }}>Wie krijgt {ctx.slok(inzet)}?</h2>
-              <SpelerKnoppen ctx={ctx} bijKeuze={(uid) => ctx.stuur('geef', { uid })} />
-            </>
+            <Verdeler
+              // Nieuwe sleutel per beurt, zodat het verdeelscherm leeg begint
+              // als dezelfde speler twee kaarten achter elkaar legde.
+              key={`${s.boomIndex}-${s.uitdeelIndex}`}
+              totaal={ctx.slokAantal(inzet)}
+              ctx={ctx}
+              titel={`Rij ${plek.rij}${plek.horizontaal ? ' · dubbel' : ''} — deel uit`}
+              bijKlaar={(verdeling) => ctx.stuur('geef', { verdeling })}
+            />
           ) : (
             <Kaartje style={{ textAlign: 'center' }}>
               <span className="zacht">
@@ -1025,25 +1050,6 @@ function HandKnoppen({
   )
 }
 
-function SpelerKnoppen({
-  ctx,
-  bijKeuze,
-}: {
-  ctx: KijkContext
-  bijKeuze: (uid: string) => void
-}) {
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-      {ctx.spelers
-        .filter((p) => p.uid !== ctx.ik)
-        .map((p) => (
-          <GroteKnop key={p.uid} kleur="goud" bijTik={() => bijKeuze(p.uid)}>
-            {p.emoji} {p.naam}
-          </GroteKnop>
-        ))}
-    </div>
-  )
-}
 
 /* ── Steen, papier, schaar ──────────────────────────────────── */
 

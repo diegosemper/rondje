@@ -42,6 +42,7 @@ export function Spelen({
       },
       slok: (n) => slokTekst(berekenSlokken(n, zwaarte), zwaarte),
       slokKort: (n) => slokKort(berekenSlokken(n, zwaarte), zwaarte),
+      slokAantal: (n) => berekenSlokken(n, zwaarte),
       naam: (u) => kamer.spelers[u]?.naam ?? '?',
       speler: (u) => kamer.spelers[u],
       ik_speler: () => kamer.spelers[uid],

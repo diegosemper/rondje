@@ -61,6 +61,15 @@ function maakContext(kamer: Kamer, seed: number, eff: Effecten): SpelContext {
     )
   }
 
+  const geef = (van: string, naar: string, aantal: number, reden?: string) => {
+    if (aantal <= 0) return
+    eff.uitgedeeld[van] = (eff.uitgedeeld[van] ?? 0) + aantal
+    eff.gedronken[naar] = (eff.gedronken[naar] ?? 0) + aantal
+    eff.logs.push(
+      `${naam(van)} geeft ${naam(naar)} ${slokTekst(aantal, zwaarte)}${reden ? ` — ${reden}` : ''}`,
+    )
+  }
+
   return {
     spelers,
     zwaarte,
@@ -70,13 +79,11 @@ function maakContext(kamer: Kamer, seed: number, eff: Effecten): SpelContext {
     drink,
 
     deelUit(van, naar, ruw, reden) {
-      const aantal = berekenSlokken(ruw, zwaarte)
-      if (aantal <= 0) return
-      eff.uitgedeeld[van] = (eff.uitgedeeld[van] ?? 0) + aantal
-      eff.gedronken[naar] = (eff.gedronken[naar] ?? 0) + aantal
-      eff.logs.push(
-        `${naam(van)} geeft ${naam(naar)} ${slokTekst(aantal, zwaarte)}${reden ? ` — ${reden}` : ''}`,
-      )
+      geef(van, naar, berekenSlokken(ruw, zwaarte), reden)
+    },
+
+    deelUitPrecies(van, naar, aantal, reden) {
+      geef(van, naar, Math.max(0, Math.round(aantal)), reden)
     },
 
     iedereenDrinkt(ruw, reden, behalve = []) {

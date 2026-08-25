@@ -129,6 +129,12 @@ export interface SpelContext {
   drink(uid: string, aantal: number, reden?: string): void
   /** speler `van` deelt slokken uit aan `naar` */
   deelUit(van: string, naar: string, aantal: number, reden?: string): void
+  /**
+   * Zelfde, maar het aantal is al omgerekend naar de zwaarte-instelling.
+   * Nodig bij het verdelen: de speler verdeelt op zijn scherm de aantallen
+   * die hij ziet, dus die mogen niet nóg een keer omgerekend worden.
+   */
+  deelUitPrecies(van: string, naar: string, aantal: number, reden?: string): void
   /** iedereen drinkt, optioneel behalve een paar uid's */
   iedereenDrinkt(aantal: number, reden?: string, behalve?: string[]): void
 
@@ -169,6 +175,8 @@ export interface KijkContext {
   slok(n: number): string
   /** korte variant: "3 slok" / "3 pt" */
   slokKort(n: number): string
+  /** hetzelfde getal, maar dan als getal — om mee te rekenen bij het verdelen */
+  slokAantal(n: number): number
 
   naam(uid: string): string
   speler(uid: string): Speler | undefined
