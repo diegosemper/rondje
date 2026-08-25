@@ -105,6 +105,14 @@ export function leesKamer(ruw: any, code: string): Kamer | null {
           state: ruw.spel.stateJson ? JSON.parse(ruw.spel.stateJson) : null,
         }
       : null,
+    drinkgate: ruw.drinkgate
+      ? {
+          id: ruw.drinkgate.id ?? '?',
+          wachtOp: ruw.drinkgate.wachtOpJson ? JSON.parse(ruw.drinkgate.wachtOpJson) : {},
+          klaar: ruw.drinkgate.klaar ?? {},
+          sinds: ruw.drinkgate.sinds ?? 0,
+        }
+      : null,
     score: ruw.score ?? {},
     log,
     skip: ruw.skip ?? {},
@@ -237,6 +245,13 @@ export async function zetSkip(code: string, uid: string, aan: boolean): Promise<
 
 export async function wisSkip(code: string): Promise<void> {
   await remove(ref(db(), pad(code, 'skip')))
+}
+
+/* ── Drinkpauze ─────────────────────────────────────────────── */
+
+/** "Ik heb gedronken" — het spel gaat pas door als iedereen dit getikt heeft. */
+export async function zetGedronken(code: string, uid: string): Promise<void> {
+  await set(ref(db(), pad(code, 'drinkgate', 'klaar', uid)), true)
 }
 
 /* ── "Snap ik" op het uitlegscherm ──────────────────────────── */

@@ -3,10 +3,10 @@ import type { Kamer, KijkContext } from '../engine/types'
 import { geefSpel } from '../engine/registry'
 import { berekenSlokken, slokKort, slokTekst } from '../engine/slokken'
 import { stopSpel } from '../net/hostLoop'
-import { stuurActie, zetSkip } from '../net/kamer'
+import { stuurActie, zetGedronken, zetSkip } from '../net/kamer'
 import { useNu } from '../net/useKamer'
 import { GroteKnop, Kaartje } from '../ui/Basis'
-import { DrinkScherm } from '../ui/DrinkScherm'
+import { DrinkPauze } from '../ui/DrinkScherm'
 import { meldFout } from '../ui/Fout'
 
 export function Spelen({
@@ -66,10 +66,30 @@ export function Spelen({
     )
   }
 
+  // Er wordt gedronken: het spel ligt stil. Bewust vóór het spelscherm, zodat
+  // aftelklokken in het spel niet doorlopen terwijl iedereen zit te drinken.
+  if (kamer.drinkgate) {
+    return (
+      <DrinkPauze
+        gate={kamer.drinkgate}
+        ik={uid}
+        spelers={spelers}
+        zwaarte={zwaarte}
+        benIkHost={benHost}
+        bijGedronken={() => zetGedronken(code, uid).catch(meldFout)}
+        bijDoorgaan={() => {
+          // Iemand is even weg. De host kan de boel weer aanzwengelen door
+          // namens de achterblijvers te bevestigen.
+          for (const u of Object.keys(kamer.drinkgate!.wachtOp)) {
+            zetGedronken(code, u).catch(meldFout)
+          }
+        }}
+      />
+    )
+  }
+
   return (
     <div className="scherm">
-      <DrinkScherm gedronken={kamer.score[uid]?.gedronken ?? 0} zwaarte={zwaarte} />
-
       <div className="balk">
         <span className="kop-klein">{mod.naam}</span>
         <button

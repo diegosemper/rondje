@@ -9,7 +9,7 @@ import {
   increment,
 } from 'firebase/database'
 import { db, nu } from './firebase'
-import { pad, padRuw } from './kamer'
+import { pad, padRuw, stuurActie } from './kamer'
 import { geefSpel } from '../engine/registry'
 import { stripGeheim, kopie } from '../engine/geheim'
 import { maakRng, nieuweSeed } from '../engine/random'
@@ -149,6 +149,27 @@ async function schrijfWeg(
     u[padRuw(code, 'prive', uid)] = data === null ? null : JSON.stringify(data)
   }
 
+  // Vallen er slokken? Dan gaat het spel op pauze tot iedereen die moet
+  // drinken heeft bevestigd. Loopt er al een pauze, dan tellen we erbij op.
+  const drinkers = Object.keys(eff.gedronken)
+  if (drinkers.length > 0 && kamer.meta.fase === 'spel') {
+    const lopend = kamer.drinkgate
+    const wachtOp: Record<string, number> = { ...(lopend?.wachtOp ?? {}) }
+    for (const [uid, n] of Object.entries(eff.gedronken)) {
+      wachtOp[uid] = (wachtOp[uid] ?? 0) + n
+    }
+    u[pad(code, 'drinkgate')] = {
+      // Altijd een nieuwe id, ook als we bij een lopende pauze optellen. De
+      // host gebruikt de id om te onthouden dat hij al "iedereen klaar" heeft
+      // gemeld; bij dezelfde id zou hij dat na een aanvulling niet nog eens doen.
+      id: push(ref(db(), pad(code, 'log'))).key!,
+      wachtOpJson: JSON.stringify(wachtOp),
+      sinds: lopend?.sinds ?? nu(),
+      // Wie al bevestigd had moet opnieuw: er zijn slokken bijgekomen.
+      klaar: null,
+    }
+  }
+
   const t = nu()
   eff.logs.forEach((tekst, i) => {
     const sleutel = push(ref(db(), pad(code, 'log'))).key!
@@ -185,6 +206,26 @@ function controleerPaden(u: Record<string, any>): void {
       }
     }
   }
+}
+
+/**
+ * Schuift elke aftelklok in een spelstand op met de tijd dat er gedronken is.
+ *
+ * Zonder dit zou de race in Bussen al afgelopen zijn tegen de tijd dat
+ * iedereen zijn slokken op heeft. Werkt op elk object dat eruitziet als een
+ * Klok, waar het ook in de toestand zit — dus elk spel krijgt dit gratis.
+ */
+function schuifKlokken(waarde: any, ms: number): void {
+  if (!waarde || typeof waarde !== 'object') return
+  if (Array.isArray(waarde)) {
+    for (const item of waarde) schuifKlokken(item, ms)
+    return
+  }
+  if (typeof waarde.eind === 'number' && typeof waarde.duurMs === 'number') {
+    waarde.eind += ms
+    return
+  }
+  for (const kind of Object.values(waarde)) schuifKlokken(kind, ms)
 }
 
 /* ── Commando's die de host kan geven ───────────────────────── */
@@ -289,7 +330,46 @@ export function useHostLoop(kamer: Kamer | null, uid: string | null): void {
       const huidig = kamerRef.current
       const wisActie = () => remove(ref(db(), padRuw(code!, 'acties', sleutel)))
 
-      if (!huidig?.spel || huidig.spel.klaar || huidig.meta.fase !== 'spel') {
+      if (!huidig) {
+        await wisActie()
+        return
+      }
+
+      const actie: Actie = {
+        id: sleutel,
+        uid: ruw.uid,
+        type: ruw.type,
+        payload: ruw.payloadJson ? JSON.parse(ruw.payloadJson) : undefined,
+        ts: ruw.ts ?? nu(),
+      }
+
+      // Iedereen heeft gedronken: pauze eruit en de klokken bijstellen.
+      //
+      // Dit moet vóór alle andere controles staan. Viel de laatste slok van
+      // een spel, dan is `spel.klaar` al waar — en zou een controle erboven
+      // dit wegfilteren en de pauze voor eeuwig laten staan.
+      if (actie.type === '_hervat') {
+        const speeltNog = !!huidig.spel && stateRef.current != null
+        let hervat: any
+        if (speeltNog) {
+          hervat = kopie(stateRef.current)
+          schuifKlokken(hervat, Math.max(0, actie.payload?.pauzeMs ?? 0))
+          stateRef.current = hervat
+        }
+        await schrijfWeg(huidig, speeltNog ? hervat : undefined, leegEffect(), {
+          [pad(code!, 'drinkgate')]: null,
+        })
+        await wisActie()
+        return
+      }
+
+      // Zolang er gedronken wordt, ligt het spel stil.
+      if (huidig.drinkgate) {
+        await wisActie()
+        return
+      }
+
+      if (!huidig.spel || huidig.spel.klaar || huidig.meta.fase !== 'spel') {
         await wisActie()
         return
       }
@@ -304,14 +384,6 @@ export function useHostLoop(kamer: Kamer | null, uid: string | null): void {
       if (stateRef.current == null) {
         const snap = await get(ref(db(), padRuw(code!, 'hostState')))
         stateRef.current = snap.val() ? JSON.parse(snap.val()) : huidig.spel.state
-      }
-
-      const actie: Actie = {
-        id: sleutel,
-        uid: ruw.uid,
-        type: ruw.type,
-        payload: ruw.payloadJson ? JSON.parse(ruw.payloadJson) : undefined,
-        ts: ruw.ts ?? nu(),
       }
 
       const werk = kopie(stateRef.current)
@@ -330,6 +402,26 @@ export function useHostLoop(kamer: Kamer | null, uid: string | null): void {
       stop()
     }
   }, [benHost, code])
+
+  // Drinkpauze bewaken: is iedereen klaar met drinken, dan gaat het spel door.
+  const gateGedaan = useRef<string | null>(null)
+  useEffect(() => {
+    if (!benHost || !code || !kamer || !uid) return
+    const gate = kamer.drinkgate
+    if (!gate) {
+      gateGedaan.current = null
+      return
+    }
+    // Wachten heeft geen zin op iemand die weg is.
+    const nodig = Object.keys(gate.wachtOp).filter(
+      (u) => kamer.spelers[u] && kamer.spelers[u].online,
+    )
+    const klaar = nodig.every((u) => gate.klaar[u])
+    if (!klaar || gateGedaan.current === gate.id) return
+
+    gateGedaan.current = gate.id
+    stuurActie(code, uid, '_hervat', { pauzeMs: nu() - gate.sinds }).catch(meldFout)
+  }, [benHost, code, kamer, uid])
 
   // Skip: de host skipt meteen, een gast stelt voor en bij meer dan de helft
   // gaat de app door.

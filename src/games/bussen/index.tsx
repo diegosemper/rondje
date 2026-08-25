@@ -43,6 +43,9 @@ const KANS_HORIZONTAAL = 0.4
 const RACE_SEC = 8
 /** Hoe lang een kaart die niemand heeft in beeld blijft. */
 const LEEG_SEC = 2.5
+/** Steen-papier-schaar: kiezen, en hoe lang de uitslag blijft staan. */
+const SPS_SEC = 10
+const SPS_TOON_SEC = 3.5
 
 const VRAAG_INZET = [1, 2, 3, 4]
 
@@ -81,14 +84,25 @@ interface Legging {
   ts: number
 }
 
+interface SpsRonde {
+  kandidaten: string[]
+  /** wie er al gekozen heeft — het gebaar zelf blijft geheim tot de onthulling */
+  gekozen: string[]
+  ronde: number
+  uitslag: { keuzes: Record<string, Gebaar>; veilig: string[]; gelijkspel: boolean } | null
+}
+
 interface BussenState {
-  fase: 'vragen' | 'boom' | 'bus' | 'klaar'
+  fase: 'vragen' | 'boom' | 'sps' | 'bus' | 'klaar'
   stapel: Stapel
 
   _geheim: {
     handen: Record<string, Kaart[]>
     boomKaarten: Kaart[]
+    spsKeuzes: Record<string, Gebaar>
   }
+
+  sps: SpsRonde | null
 
   /** hoeveel kaarten iedereen nog heeft — dit mag iedereen zien */
   handGrootte: Record<string, number>
@@ -276,7 +290,7 @@ function volgendePlek(s: BussenState, ctx: SpelContext) {
   s.klok = null
 
   if (s.boomIndex >= s.boom.length) {
-    startBus(s, ctx)
+    bepaalChauffeur(s, ctx)
     return
   }
   opentVolgendeBoomkaart(s, ctx)
@@ -295,25 +309,44 @@ function gezienInBus(s: BussenState): number[] {
   return uit
 }
 
-/** Trekt een kaart met een waarde die nog niet in de bus ligt. */
-function trekUniek(s: BussenState, ctx: SpelContext, gezien: number[]): Kaart {
+/**
+ * Trekt een kaart met een waarde die er nog niet ligt.
+ *
+ * Gebruikt op twee plekken: bij het opbouwen van de boom (elf verschillende
+ * waarden, zodat er bijna altijd wel iemand kan opleggen) en in de bus.
+ */
+function trekUniek(stapel: Stapel, rng: () => number, gezien: number[]): Kaart {
   const opzij: Kaart[] = []
-  let kaart = trek(s.stapel, ctx.rng)
+  let kaart = trek(stapel, rng)
   let pogingen = 0
   while (gezien.includes(kaart.waarde) && pogingen < 80) {
     opzij.push(kaart)
-    kaart = trek(s.stapel, ctx.rng)
+    kaart = trek(stapel, rng)
     pogingen++
   }
   // De afgekeurde kaarten terug op de aflegstapel, zodat het deck niet opraakt.
-  if (opzij.length) leggAf(s.stapel, ...opzij)
+  if (opzij.length) leggAf(stapel, ...opzij)
   return kaart
 }
 
-function startBus(s: BussenState, ctx: SpelContext) {
-  s.fase = 'bus'
+/* ── Steen, papier, schaar ──────────────────────────────────── */
 
-  // Wie de meeste kaarten overhoudt, rijdt. Gelijkspel: het lot beslist.
+type Gebaar = 'steen' | 'papier' | 'schaar'
+
+const GEBAREN: Gebaar[] = ['steen', 'papier', 'schaar']
+const GEBAAR_EMOJI: Record<Gebaar, string> = { steen: '✊', papier: '✋', schaar: '✌️' }
+
+/** Slaat a het gebaar b? */
+function slaat(a: Gebaar, b: Gebaar): boolean {
+  return (
+    (a === 'steen' && b === 'schaar') ||
+    (a === 'schaar' && b === 'papier') ||
+    (a === 'papier' && b === 'steen')
+  )
+}
+
+/** Wie houdt de meeste kaarten over? Bij gelijkspel: steen-papier-schaar. */
+function bepaalChauffeur(s: BussenState, ctx: SpelContext) {
   let meeste = -1
   let kandidaten: string[] = []
   for (const p of ctx.spelers) {
@@ -325,7 +358,79 @@ function startBus(s: BussenState, ctx: SpelContext) {
       kandidaten.push(p.uid)
     }
   }
-  s.chauffeur = kandidaten[Math.floor(ctx.rng() * kandidaten.length)]
+
+  if (kandidaten.length === 1) {
+    s.chauffeur = kandidaten[0]
+    ctx.log(`${ctx.naam(s.chauffeur)} houdt ${meeste} kaarten over`)
+    startBus(s, ctx)
+    return
+  }
+
+  ctx.log(
+    `Gelijk met ${meeste} kaarten: ${kandidaten.map(ctx.naam).join(', ')} — steen, papier, schaar!`,
+  )
+  startSps(s, ctx, kandidaten)
+}
+
+function startSps(s: BussenState, ctx: SpelContext, kandidaten: string[]) {
+  s.fase = 'sps'
+  s.sps = { kandidaten, gekozen: [], ronde: (s.sps?.ronde ?? 0) + 1, uitslag: null }
+  s._geheim.spsKeuzes = {}
+  s.klok = startKlok(SPS_SEC, ctx.nu)
+}
+
+function beslisSps(s: BussenState, ctx: SpelContext) {
+  const sps = s.sps!
+  const keuzes = s._geheim.spsKeuzes
+
+  // Wie niet op tijd koos, krijgt er een van het lot.
+  for (const uid of sps.kandidaten) {
+    if (!keuzes[uid]) keuzes[uid] = GEBAREN[Math.floor(ctx.rng() * 3)]
+  }
+
+  const gebruikt = [...new Set(sps.kandidaten.map((u) => keuzes[u]))]
+
+  // Allemaal hetzelfde, of alle drie de gebaren: niemand wint. Opnieuw.
+  if (gebruikt.length !== 2) {
+    sps.uitslag = { keuzes: { ...keuzes }, veilig: [], gelijkspel: true }
+  } else {
+    const [a, b] = gebruikt
+    const winnend = slaat(a, b) ? a : b
+    const veilig = sps.kandidaten.filter((u) => keuzes[u] === winnend)
+    sps.uitslag = { keuzes: { ...keuzes }, veilig, gelijkspel: false }
+  }
+
+  s.klok = startKlok(SPS_TOON_SEC, ctx.nu)
+}
+
+function naSps(s: BussenState, ctx: SpelContext) {
+  const sps = s.sps!
+  const uitslag = sps.uitslag!
+
+  if (uitslag.gelijkspel) {
+    startSps(s, ctx, sps.kandidaten)
+    return
+  }
+
+  const over = sps.kandidaten.filter((u) => !uitslag.veilig.includes(u))
+  for (const veilig of uitslag.veilig) ctx.log(`${ctx.naam(veilig)} is de bus ontlopen`)
+
+  if (over.length === 1) {
+    s.chauffeur = over[0]
+    s.sps = null
+    startBus(s, ctx)
+    return
+  }
+  if (over.length === 0) {
+    // Kan niet, maar voor de zekerheid: dan doen we het gewoon opnieuw.
+    startSps(s, ctx, sps.kandidaten)
+    return
+  }
+  startSps(s, ctx, over)
+}
+
+function startBus(s: BussenState, ctx: SpelContext) {
+  s.fase = 'bus'
 
   // Een willekeurige kaart bepaalt de lengte van de bus.
   const lengteKaart = trek(s.stapel, ctx.rng)
@@ -346,7 +451,7 @@ function startBus(s: BussenState, ctx: SpelContext) {
   for (const p of ctx.spelers) ctx.zetPrive(p.uid, null)
 
   ctx.log(
-    `${ctx.naam(s.chauffeur)} rijdt de bus — ${kaartKort(lengteKaart)} geeft ${s.busLengte} kaarten` +
+    `${ctx.naam(s.chauffeur!)} rijdt de bus — ${kaartKort(lengteKaart)} geeft ${s.busLengte} kaarten` +
       (s.checkpointIndex > 0 ? `, checkpoint op ${s.checkpointIndex + 1}` : ''),
   )
 }
@@ -372,7 +477,17 @@ export const bussen: GameModule<BussenState> = {
   init(ctx) {
     const stapel = nieuweStapel(ctx.rng)
     const boom = bouwBoom(ctx.rng)
-    const boomKaarten: Kaart[] = boom.map(() => trek(stapel, ctx.rng))
+
+    // Elke boomkaart een andere waarde. Ligt er al een 9, dan wordt er
+    // doorgetrokken tot er iets anders komt — zo dekt de boom bijna alle
+    // waarden en kan er veel vaker iemand opleggen.
+    const boomKaarten: Kaart[] = []
+    const gebruikteWaarden: number[] = []
+    for (let i = 0; i < boom.length; i++) {
+      const kaart = trekUniek(stapel, ctx.rng, gebruikteWaarden)
+      boomKaarten.push(kaart)
+      gebruikteWaarden.push(kaart.waarde)
+    }
 
     const handen: Record<string, Kaart[]> = {}
     const handGrootte: Record<string, number> = {}
@@ -384,7 +499,8 @@ export const bussen: GameModule<BussenState> = {
     return {
       fase: 'vragen',
       stapel,
-      _geheim: { handen, boomKaarten },
+      _geheim: { handen, boomKaarten, spsKeuzes: {} },
+      sps: null,
       handGrootte,
 
       vraagNr: 0,
@@ -524,13 +640,42 @@ export const bussen: GameModule<BussenState> = {
       }
     }
 
+    /* ── Tussenstap: steen, papier, schaar ──────────────────── */
+
+    if (s.fase === 'sps' && s.sps) {
+      const sps = s.sps
+
+      if (sps.uitslag) {
+        if (actie.type === 'sps-verder') naSps(s, ctx)
+        return
+      }
+
+      if (actie.type === 'sps-kies') {
+        if (!sps.kandidaten.includes(actie.uid)) return
+        const gebaar: Gebaar = actie.payload?.gebaar
+        if (!GEBAREN.includes(gebaar)) return
+
+        s._geheim.spsKeuzes[actie.uid] = gebaar
+        if (!sps.gekozen.includes(actie.uid)) sps.gekozen.push(actie.uid)
+
+        if (sps.kandidaten.every((u) => sps.gekozen.includes(u))) beslisSps(s, ctx)
+        return
+      }
+
+      if (actie.type === 'sps-sluit') {
+        beslisSps(s, ctx)
+        return
+      }
+      return
+    }
+
     /* ── Fase 3: de bus ─────────────────────────────────────── */
 
     if (s.fase === 'bus' && (actie.type === 'hoger' || actie.type === 'lager')) {
       if (actie.uid !== s.chauffeur) return
 
       const vorige = s.busPositie === 0 ? s.busStart! : s.busRij[s.busPositie - 1]!
-      const nieuw = trekUniek(s, ctx, gezienInBus(s))
+      const nieuw = trekUniek(s.stapel, ctx.rng, gezienInBus(s))
       const goed = (actie.type === 'hoger') === (nieuw.waarde > vorige.waarde)
 
       if (goed) {
@@ -569,6 +714,7 @@ export const bussen: GameModule<BussenState> = {
   View({ state: s, ctx }) {
     if (s.fase === 'vragen') return <Vragen s={s} ctx={ctx} />
     if (s.fase === 'boom') return <Boom s={s} ctx={ctx} />
+    if (s.fase === 'sps') return <Sps s={s} ctx={ctx} />
     return <Bus s={s} ctx={ctx} />
   },
 }
@@ -896,6 +1042,118 @@ function SpelerKnoppen({
           </GroteKnop>
         ))}
     </div>
+  )
+}
+
+/* ── Steen, papier, schaar ──────────────────────────────────── */
+
+function Sps({ s, ctx }: { s: BussenState; ctx: KijkContext }) {
+  const sps = s.sps!
+  const uitslag = sps.uitslag
+  const doeMee = sps.kandidaten.includes(ctx.ik)
+  const ikGekozen = sps.gekozen.includes(ctx.ik)
+
+  useHostKlok(ctx, !uitslag, s.klok?.eind ?? 0, 'sps-sluit')
+  useHostKlok(ctx, !!uitslag, s.klok?.eind ?? 0, 'sps-verder')
+
+  return (
+    <>
+      <div style={{ textAlign: 'center' }}>
+        <div className="kop-klein">Gelijkspel — wie moet de bus in?</div>
+        <h1>Steen, papier, schaar</h1>
+        {sps.ronde > 1 && <div className="klein zacht">ronde {sps.ronde}</div>}
+      </div>
+
+      {uitslag ? (
+        <>
+          <div className="midden" style={{ gap: 10, alignItems: 'stretch' }}>
+            {sps.kandidaten.map((uid) => {
+              const veilig = uitslag.veilig.includes(uid)
+              return (
+                <div
+                  key={uid}
+                  className="kaartje balk"
+                  style={{
+                    borderColor: uitslag.gelijkspel
+                      ? undefined
+                      : veilig
+                        ? 'var(--groen)'
+                        : 'var(--rood)',
+                    background: uitslag.gelijkspel
+                      ? undefined
+                      : veilig
+                        ? 'var(--groen-donker)'
+                        : 'var(--rood-donker)',
+                  }}
+                >
+                  <span style={{ fontSize: 34 }}>{GEBAAR_EMOJI[uitslag.keuzes[uid]]}</span>
+                  <strong>{ctx.naam(uid)}</strong>
+                  <span className="klein">
+                    {uitslag.gelijkspel ? '' : veilig ? 'vrij' : 'blijft'}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+          <Kaartje style={{ textAlign: 'center' }}>
+            <h2>{uitslag.gelijkspel ? 'Gelijkspel — nog een keer' : 'Volgende ronde…'}</h2>
+          </Kaartje>
+        </>
+      ) : (
+        <>
+          <div className="midden" style={{ gap: 12 }}>
+            <div className="reusachtig" style={{ fontSize: 'clamp(36px,12vw,64px)' }}>
+              {klokTekst(s.klok, ctx.nu)}
+            </div>
+            <Balkje waarde={1 - voortgang(s.klok, ctx.nu)} />
+            <div className="klein zacht">
+              {sps.gekozen.length} van {sps.kandidaten.length} gekozen
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+              {sps.kandidaten.map((uid) => (
+                <span
+                  key={uid}
+                  className="kaartje"
+                  style={{
+                    padding: '6px 12px',
+                    opacity: sps.gekozen.includes(uid) ? 1 : 0.4,
+                    borderColor: sps.gekozen.includes(uid) ? 'var(--goud)' : undefined,
+                  }}
+                >
+                  {ctx.speler(uid)?.emoji} {ctx.naam(uid)}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="onderaan">
+            {doeMee ? (
+              ikGekozen ? (
+                <Kaartje style={{ textAlign: 'center' }}>
+                  <h2 className="zacht">🤫 Je keuze staat vast</h2>
+                </Kaartje>
+              ) : (
+                <div className="rij">
+                  {GEBAREN.map((g) => (
+                    <GroteKnop
+                      key={g}
+                      enorm
+                      bijTik={() => ctx.stuur('sps-kies', { gebaar: g })}
+                    >
+                      {GEBAAR_EMOJI[g]}
+                    </GroteKnop>
+                  ))}
+                </div>
+              )
+            ) : (
+              <Kaartje style={{ textAlign: 'center' }}>
+                <span className="zacht">Jij bent veilig. Kijken maar.</span>
+              </Kaartje>
+            )}
+          </div>
+        </>
+      )}
+    </>
   )
 }
 

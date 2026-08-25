@@ -62,6 +62,22 @@ export interface SpelBlok {
   begonOp: number
 }
 
+/**
+ * De drinkpauze.
+ *
+ * Zodra er slokken vallen, staat het spel stil tot iedereen die moet drinken
+ * op "Gedronken" heeft getikt. Zonder dit heeft niemand tijd om ook echt te
+ * drinken — je moet meteen weer opletten of de volgende kaart van jou is.
+ */
+export interface Drinkgate {
+  id: string
+  /** uid → hoeveel slokken, al omgerekend naar de zwaarte-instelling */
+  wachtOp: Record<string, number>
+  klaar: Record<string, boolean>
+  /** wanneer de pauze begon, om de klokken van het spel op te schuiven */
+  sinds: number
+}
+
 export interface Kamer {
   meta: {
     code: string
@@ -74,6 +90,8 @@ export interface Kamer {
   /** tafelvolgorde: uid's in de volgorde waarin de beurt rondgaat */
   volgorde: string[]
   spel: SpelBlok | null
+  /** staat het spel stil omdat er gedronken wordt? */
+  drinkgate: Drinkgate | null
   score: Record<string, Score>
   log: LogRegel[]
   /** uid's die op skip hebben gedrukt bij het huidige spel */
