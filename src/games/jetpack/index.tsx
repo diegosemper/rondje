@@ -95,11 +95,12 @@ const jetpackSpel: ArcadeSpel<Wereld> = {
     return w
   },
 
-  stap(w, dt, ingedrukt) {
-    w.vy += (ingedrukt ? STUWKRACHT : ZWAARTEKRACHT) * dt
+  stap(w, dt, invoer) {
+    const stuwt = invoer.ingedrukt
+    w.vy += (stuwt ? STUWKRACHT : ZWAARTEKRACHT) * dt
     w.vy = Math.max(-MAX_VAL, Math.min(MAX_VAL, w.vy))
     w.y += w.vy * dt
-    w.vlam = ingedrukt ? Math.min(1, w.vlam + dt * 8) : Math.max(0, w.vlam - dt * 8)
+    w.vlam = stuwt ? Math.min(1, w.vlam + dt * 8) : Math.max(0, w.vlam - dt * 8)
 
     w.snelheid = Math.min(MAX_SNELHEID, w.snelheid + VERSNELLING * dt)
     const verplaatsing = w.snelheid * dt

@@ -24,6 +24,9 @@ import { alfabet } from './alfabet'
 import { verbodenwoord } from './verbodenwoord'
 import { flappy } from './flappy'
 import { jetpack } from './jetpack'
+import { snelweg } from './snelweg'
+import { stapeltoren } from './stapeltoren'
+import { wiskunde } from './wiskunde'
 import { spiegel } from './spiegel'
 import { zwaartekracht } from './zwaartekracht'
 import { tweewaarheden } from './tweewaarheden'
@@ -47,6 +50,9 @@ export const ALLE_SPELLEN: GameModule[] = [
   nummers,
   flappy,
   jetpack,
+  snelweg,
+  stapeltoren,
+  wiskunde,
   golflengte,
   sabotage,
   verbodenwoord,

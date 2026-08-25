@@ -18,13 +18,25 @@ import { maakRng } from '../engine/random'
      tien meter.
    ───────────────────────────────────────────────────────────── */
 
+export interface Invoer {
+  ingedrukt: boolean
+  /** eenmalig waar op de stap direct na een tik */
+  netGetikt: boolean
+  /** waar op het veld je het laatst tikte, van 0 tot 1 */
+  x: number
+  y: number
+}
+
 export interface ArcadeSpel<W> {
   /** de beginwereld, met een toevalsgenerator die voor iedereen gelijk is */
   maak(rng: () => number): W
   /** één stap. Geef `true` terug als de speler dood is. */
-  stap(wereld: W, dt: number, ingedrukt: boolean, netGetikt: boolean): boolean
+  stap(wereld: W, dt: number, invoer: Invoer): boolean
   teken(wereld: W, c: CanvasRenderingContext2D, breedte: number, hoogte: number): void
+  /** de score, in gehele getallen */
   afstand(wereld: W): number
+  /** wat er achter de score staat. Standaard meters. */
+  eenheid?: string
 }
 
 /** Vaste stap van 120 keer per seconde: zelfde uitkomst op elke telefoon. */
@@ -55,6 +67,7 @@ export function Arcadeveld<W>({
   const ingedrukt = useRef(false)
   const tikBuffer = useRef(false)
   const doodGemeld = useRef(false)
+  const plek = useRef({ x: 0.5, y: 0.5 })
 
   const aftellen = Math.max(0, Math.ceil((startOp - nu) / 1000))
 
@@ -107,7 +120,12 @@ export function Arcadeveld<W>({
         while (schuld >= STAP) {
           const netGetikt = tikBuffer.current
           tikBuffer.current = false
-          const isDood = spel.stap(wereld, STAP, ingedrukt.current, netGetikt)
+          const isDood = spel.stap(wereld, STAP, {
+            ingedrukt: ingedrukt.current,
+            netGetikt,
+            x: plek.current.x,
+            y: plek.current.y,
+          })
           schuld -= STAP
           if (isDood || speeltijd > maxSeconden) {
             if (!doodGemeld.current) {
@@ -130,13 +148,14 @@ export function Arcadeveld<W>({
 
         // De teller staat op het canvas en niet in React: die zestig keer per
         // seconde laten hertekenen zou het spel juist haperend maken.
-        const meters = Math.round(spel.afstand(wereld))
+        const score = Math.round(spel.afstand(wereld))
+        const tekst = `${score} ${spel.eenheid ?? 'm'}`
         c.font = `700 ${Math.round(h * 0.075)}px system-ui, sans-serif`
         c.textBaseline = 'top'
         c.fillStyle = 'rgba(0,0,0,.45)'
-        c.fillText(`${meters} m`, 13, 11)
+        c.fillText(tekst, 13, 11)
         c.fillStyle = '#f5b942'
-        c.fillText(`${meters} m`, 12, 10)
+        c.fillText(tekst, 12, 10)
       }
 
       if (!stop) requestAnimationFrame(lus)
@@ -157,6 +176,11 @@ export function Arcadeveld<W>({
         ref={doosRef}
         onPointerDown={(e) => {
           e.currentTarget.setPointerCapture(e.pointerId)
+          const r = e.currentTarget.getBoundingClientRect()
+          plek.current = {
+            x: (e.clientX - r.left) / r.width,
+            y: (e.clientY - r.top) / r.height,
+          }
           ingedrukt.current = true
           tikBuffer.current = true
         }}
@@ -205,7 +229,9 @@ export function Arcadeveld<W>({
           >
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: 44 }}>💥</div>
-              <h2>{afstand} m</h2>
+              <h2>
+                {afstand} {spel.eenheid ?? 'm'}
+              </h2>
               <div className="klein">wachten op de rest…</div>
             </div>
           </div>

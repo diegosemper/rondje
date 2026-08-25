@@ -76,8 +76,8 @@ const flappySpel: ArcadeSpel<Wereld> = {
     return w
   },
 
-  stap(w, dt, _ingedrukt, netGetikt) {
-    if (netGetikt) w.vy = FLADDER
+  stap(w, dt, invoer) {
+    if (invoer.netGetikt) w.vy = FLADDER
 
     w.vy += ZWAARTEKRACHT * dt
     w.y += w.vy * dt
