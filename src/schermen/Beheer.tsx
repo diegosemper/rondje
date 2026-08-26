@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { isIngesteld } from '../net/firebase'
+import { useUid } from '../net/useKamer'
 import type { Beheer as BeheerStand } from '../net/beheer'
 import {
   benIkBeheerder,
@@ -10,6 +12,7 @@ import {
 import { OPEN } from '../dicht'
 import { GroteKnop, Kaartje } from '../ui/Basis'
 import { Kroeg } from '../ui/Kroeg'
+import { Setup } from './Setup'
 
 /* -----------------------------------------------------------------
    HET BEHEERSCHERM
@@ -21,6 +24,39 @@ import { Kroeg } from '../ui/Kroeg'
    Bewust een scherm met precies een ding erop. Je pakt dit erbij als je snel
    de deur dicht wil doen, niet om er in te gaan zitten rommelen.
    ----------------------------------------------------------------- */
+
+/**
+ * Het hele beheerscherm als losse app, voor beheer.html.
+ *
+ * Geen opstartscherm met grappige teksten hier: je pakt dit erbij om snel de
+ * deur dicht te doen, niet om ernaar te kijken.
+ */
+export function BeheerApp() {
+  const { uid, fout } = useUid()
+
+  if (!isIngesteld()) return <Setup />
+
+  if (fout) {
+    return (
+      <div className="scherm">
+        <h1>Geen verbinding</h1>
+        <Kaartje style={{ borderColor: 'var(--rood)' }}>{fout}</Kaartje>
+      </div>
+    )
+  }
+
+  if (!uid) {
+    return (
+      <div className="scherm">
+        <div className="midden">
+          <p className="zacht">Even verbinden…</p>
+        </div>
+      </div>
+    )
+  }
+
+  return <Beheer uid={uid} />
+}
 
 type Rol = 'kijken' | 'beheerder' | 'mag-aanmelden' | 'bezet'
 

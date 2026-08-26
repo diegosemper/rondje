@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="nl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#0b0b10" />
+    <meta name="robots" content="noindex, nofollow" />
+
+    <title>DORST! beheer</title>
+
+    <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+
+    <!--
+      Met opzet geen manifest en geen apple-mobile-web-app-capable, anders dan
+      bij index.html. Twee redenen, allebei uit de praktijk:
+
+      1. Een manifest heeft een start_url ("./"), en die gebruikt de telefoon
+         als je een snelkoppeling op je startscherm zet. Je kwam dan op de
+         gewone app uit in plaats van op dit scherm.
+
+      2. Zonder die meta opent de snelkoppeling gewoon in de browser in plaats
+         van als losse app. Dat klinkt minder mooi, maar het is juist wat we
+         willen: een losse app krijgt op de iPhone zijn eigen opslag, en dan
+         ben je daarbinnen een andere gebruiker en dus geen beheerder meer.
+    -->
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/beheerMain.tsx"></script>
+  </body>
+</html>
