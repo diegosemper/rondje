@@ -1,5 +1,19 @@
 {
   "rules": {
+    "beheer": {
+      ".read": "auth != null",
+      ".write": "auth != null && root.child('beheerders').child(auth.uid).val() === true",
+      ".validate": "newData.hasChildren(['dicht', 'sinds'])"
+    },
+
+    "beheerders": {
+      ".read": "auth != null",
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid && !root.child('beheerders').exists()",
+        ".validate": "newData.val() === true"
+      }
+    },
+
     "rooms": {
       "$code": {
         "publiek": {

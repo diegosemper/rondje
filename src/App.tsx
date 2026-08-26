@@ -4,6 +4,7 @@ import { useKamer, useUid } from './net/useKamer'
 import { useHostLoop } from './net/hostLoop'
 import { bewaarCode, codeUitUrl, leesCode } from './net/profiel'
 import { useStatus } from './dicht'
+import { Beheer } from './schermen/Beheer'
 import { Dicht } from './schermen/Dicht'
 import { Setup } from './schermen/Setup'
 import { Splash } from './schermen/Splash'
@@ -19,30 +20,63 @@ import { Versiebalk } from './ui/Versie'
 
 /**
  * Het moment waarop de app geladen werd. Het opstartscherm rekent hiermee,
- * zodat de vraag "staan we open?" binnen die 1,9 seconde valt in plaats van
- * er bovenop te komen.
+ * zodat het aanmelden en de vraag "staan we open?" binnen die 1,9 seconde
+ * vallen in plaats van er bovenop te komen.
  */
 const GESTART = Date.now()
 
-export function App() {
-  const status = useStatus()
+/** Het verborgen beheerscherm, te bereiken via .../rondje/#beheer */
+function isBeheerLink(): boolean {
+  try {
+    return location.hash.replace('#', '').trim().toLowerCase() === 'beheer'
+  } catch {
+    return false
+  }
+}
 
-  // Eerst weten of we open zijn, dan pas de rest. Zo praat een dichte app
-  // helemaal niet met Firebase en komt er ook geen lobby op gang.
+export function App() {
+  const ingesteld = isIngesteld()
+  const { uid, fout } = useUid()
+  // Zonder werkende verbinding valt er niets uit de database te lezen; dan
+  // beslist status.json alleen, anders blijft de app hier hangen.
+  const status = useStatus(uid, !ingesteld || fout !== null)
+  // Eenmalig vastleggen: als de link straks opgeruimd wordt, blijf je toch
+  // op het beheerscherm.
+  const [beheer] = useState(isBeheerLink)
+
+  if (!ingesteld) return <Setup />
+  if (fout) return <GeenVerbinding fout={fout} />
+  if (!uid) return <Splash />
+
+  // Het beheerscherm werkt ook als de app dicht staat -- anders kan je hem
+  // niet meer openzetten zodra hij eenmaal dicht is.
+  if (beheer) return <Beheer uid={uid} />
+
   if (!status) return <Splash />
   if (status.dicht) return <Dicht status={status} />
 
   return (
     <>
       <FoutBanner />
-      <Inhoud />
+      <Inhoud uid={uid} />
     </>
   )
 }
 
-function Inhoud() {
-  const ingesteld = isIngesteld()
-  const { uid, fout } = useUid()
+function GeenVerbinding({ fout }: { fout: string }) {
+  return (
+    <div className="scherm">
+      <h1>Geen verbinding</h1>
+      <Kaartje style={{ borderColor: 'var(--rood)' }}>{fout}</Kaartje>
+      <p className="zacht klein">
+        Staat "Anoniem" aan bij Authentication in Firebase? En kloppen de gegevens in
+        <code> src/net/firebaseConfig.ts</code>?
+      </p>
+    </div>
+  )
+}
+
+function Inhoud({ uid }: { uid: string }) {
   const [code, zetCode] = useState<string | null>(() => codeUitUrl() ?? leesCode())
 
   const { kamer, prive, laden, weg } = useKamer(code, uid)
@@ -85,22 +119,7 @@ function Inhoud() {
     zetCode(null)
   }
 
-  if (!ingesteld) return <Setup />
-
-  if (fout) {
-    return (
-      <div className="scherm">
-        <h1>Geen verbinding</h1>
-        <Kaartje style={{ borderColor: 'var(--rood)' }}>{fout}</Kaartje>
-        <p className="zacht klein">
-          Staat "Anoniem" aan bij Authentication in Firebase? En kloppen de gegevens in
-          <code> src/net/firebaseConfig.ts</code>?
-        </p>
-      </div>
-    )
-  }
-
-  if (!uid || !opgewarmd) return <Splash />
+  if (!opgewarmd) return <Splash />
 
   // Nog geen lobby, of ik zit er niet (meer) in.
   if (!code || (!laden && (!kamer || !kamer.spelers[uid]))) {
@@ -142,4 +161,3 @@ function Scherm({
       return <Lobby kamer={kamer} uid={uid} bijVertrek={verlaat} />
   }
 }
-
