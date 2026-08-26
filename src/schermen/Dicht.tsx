@@ -1,13 +1,15 @@
-import { DICHT_TEKST, DICHT_TITEL } from '../dicht'
+import type { Status } from '../dicht'
 import { Kroeg } from '../ui/Kroeg'
 
 /**
  * Wat je ziet als de app dicht staat.
  *
  * Bewust een nette pagina en geen foutmelding: wie de link opent hoort te
- * begrijpen dat het aan ons ligt en niet aan hem.
+ * begrijpen dat het aan ons ligt en niet aan hem. De titel en de tekst komen
+ * uit status.json, zodat er iets anders kan staan zonder dat de code
+ * aangepast hoeft te worden.
  */
-export function Dicht() {
+export function Dicht({ status }: { status: Status }) {
   return (
     <>
       <Kroeg />
@@ -22,9 +24,9 @@ export function Dicht() {
             style={{ width: 128, height: 128, maxWidth: '38vw', filter: 'grayscale(0.5)' }}
           />
           <div style={{ fontSize: 54 }}>🔒</div>
-          <h1>{DICHT_TITEL}</h1>
+          <h1>{status.titel}</h1>
           <div className="bordje" style={{ maxWidth: 320, fontSize: 14, padding: '10px 14px' }}>
-            {DICHT_TEKST}
+            {status.tekst}
           </div>
         </div>
       </div>

@@ -3,7 +3,7 @@ import { isIngesteld } from './net/firebase'
 import { useKamer, useUid } from './net/useKamer'
 import { useHostLoop } from './net/hostLoop'
 import { bewaarCode, codeUitUrl, leesCode } from './net/profiel'
-import { DICHT } from './dicht'
+import { useStatus } from './dicht'
 import { Dicht } from './schermen/Dicht'
 import { Setup } from './schermen/Setup'
 import { Splash } from './schermen/Splash'
@@ -17,9 +17,20 @@ import { Kaartje } from './ui/Basis'
 import { FoutBanner } from './ui/Fout'
 import { Versiebalk } from './ui/Versie'
 
+/**
+ * Het moment waarop de app geladen werd. Het opstartscherm rekent hiermee,
+ * zodat de vraag "staan we open?" binnen die 1,9 seconde valt in plaats van
+ * er bovenop te komen.
+ */
+const GESTART = Date.now()
+
 export function App() {
-  // Dicht? Dan houdt het hier op: geen Firebase, geen lobby, niets.
-  if (DICHT) return <Dicht />
+  const status = useStatus()
+
+  // Eerst weten of we open zijn, dan pas de rest. Zo praat een dichte app
+  // helemaal niet met Firebase en komt er ook geen lobby op gang.
+  if (!status) return <Splash />
+  if (status.dicht) return <Dicht status={status} />
 
   return (
     <>
@@ -40,7 +51,8 @@ function Inhoud() {
   // is. Een laadscherm dat één frame flitst is lelijker dan geen laadscherm.
   const [opgewarmd, zetOpgewarmd] = useState(false)
   useEffect(() => {
-    const id = setTimeout(() => zetOpgewarmd(true), 1900)
+    const rest = Math.max(0, 1900 - (Date.now() - GESTART))
+    const id = setTimeout(() => zetOpgewarmd(true), rest)
     return () => clearTimeout(id)
   }, [])
 
