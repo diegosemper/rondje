@@ -1,12 +1,16 @@
 import { useEffect, useState } from 'react'
 import { isIngesteld } from '../net/firebase'
-import { useUid } from '../net/useKamer'
+import { useNu, useUid } from '../net/useKamer'
 import type { Beheer as BeheerStand } from '../net/beheer'
 import {
-  benIkBeheerder,
-  isErAlEenBeheerder,
+  DEUR_MS,
   meldJeAanAlsBeheerder,
   volgBeheer,
+  volgBenIkBeheerder,
+  volgDeur,
+  volgIsErEenBeheerder,
+  zetDeurDicht,
+  zetDeurOpen,
   zetDicht,
 } from '../net/beheer'
 import { OPEN } from '../dicht'
@@ -17,12 +21,12 @@ import { Setup } from './Setup'
 /* -----------------------------------------------------------------
    HET BEHEERSCHERM
 
-   Te bereiken via .../rondje/#beheer. Staat nergens een knop naartoe: als je
-   het adres niet kent, kom je er niet, en wie er wel komt kan er nog steeds
-   niets zonder beheerder te zijn.
+   Te bereiken via beheer.html. Staat nergens een knop naartoe: als je het
+   adres niet kent kom je er niet, en wie er wel komt kan er nog steeds niets
+   zonder beheerder te zijn.
 
    Bewust een scherm met precies een ding erop. Je pakt dit erbij als je snel
-   de deur dicht wil doen, niet om er in te gaan zitten rommelen.
+   de deur dicht wil doen, niet om erin te gaan zitten rommelen.
    ----------------------------------------------------------------- */
 
 /**
@@ -58,33 +62,21 @@ export function BeheerApp() {
   return <Beheer uid={uid} />
 }
 
-type Rol = 'kijken' | 'beheerder' | 'mag-aanmelden' | 'bezet'
-
 export function Beheer({ uid }: { uid: string }) {
-  const [rol, zetRol] = useState<Rol>('kijken')
+  const [ikBenBeheerder, zetIkBenBeheerder] = useState<boolean | null>(null)
+  const [erIsEenBeheerder, zetErIsEenBeheerder] = useState<boolean | null>(null)
+  const [deurSinds, zetDeurSinds] = useState(0)
   const [stand, zetStand] = useState<BeheerStand | null>(null)
   const [bezig, zetBezig] = useState(false)
   const [fout, zetFout] = useState<string | null>(null)
   const [tekst, zetTekst] = useState('')
   const [tekstAan, zetTekstAan] = useState(false)
 
-  // Wat ben ik hier: beheerder, de eerste die zich mag melden, of publiek?
-  useEffect(() => {
-    let levend = true
-    ;(async () => {
-      try {
-        if (await benIkBeheerder(uid)) return levend && zetRol('beheerder')
-        const bezet = await isErAlEenBeheerder()
-        if (levend) zetRol(bezet ? 'bezet' : 'mag-aanmelden')
-      } catch (e: any) {
-        if (levend) zetFout(String(e?.message ?? e))
-      }
-    })()
-    return () => {
-      levend = false
-    }
-  }, [uid])
+  const nu = useNu(500)
 
+  useEffect(() => volgBenIkBeheerder(uid, zetIkBenBeheerder), [uid])
+  useEffect(() => volgIsErEenBeheerder(zetErIsEenBeheerder), [])
+  useEffect(() => volgDeur(zetDeurSinds), [])
   useEffect(() => volgBeheer(zetStand), [])
 
   // De tekst in het invulvak volgt wat er staat, tot je hem zelf aanraakt.
@@ -93,25 +85,17 @@ export function Beheer({ uid }: { uid: string }) {
   }, [stand, tekstAan])
 
   const dicht = stand?.dicht ?? false
+  const deurRest = Math.max(0, deurSinds + DEUR_MS - nu)
+  const deurOpen = deurRest > 0
+  const deurSec = Math.ceil(deurRest / 1000)
+  const weetIkHet = ikBenBeheerder !== null && erIsEenBeheerder !== null
+  const magAanmelden = !ikBenBeheerder && (!erIsEenBeheerder || deurOpen)
 
-  async function meldAan() {
+  async function doe(wat: () => Promise<void>) {
     zetBezig(true)
     zetFout(null)
     try {
-      await meldJeAanAlsBeheerder(uid)
-      zetRol('beheerder')
-    } catch (e: any) {
-      zetFout(String(e?.message ?? e))
-    } finally {
-      zetBezig(false)
-    }
-  }
-
-  async function draai(naar: boolean) {
-    zetBezig(true)
-    zetFout(null)
-    try {
-      await zetDicht(uid, naar, stand?.titel || OPEN.titel, tekst.trim() || OPEN.tekst)
+      await wat()
     } catch (e: any) {
       zetFout(String(e?.message ?? e))
     } finally {
@@ -137,16 +121,27 @@ export function Beheer({ uid }: { uid: string }) {
             {stand === null ? 'nog nooit aan gedraaid' : dicht ? 'NU DICHT' : 'NU OPEN'}
           </div>
 
-          {rol === 'beheerder' && (
+          {!weetIkHet && <p className="zacht klein">Even kijken wie je bent…</p>}
+
+          {weetIkHet && ikBenBeheerder && (
             <>
               <GroteKnop
                 enorm
                 kleur={dicht ? 'groen' : 'rood'}
                 uit={bezig}
-                bijTik={() => draai(!dicht)}
+                bijTik={() =>
+                  doe(() =>
+                    zetDicht(uid, !dicht, stand?.titel || OPEN.titel, tekst.trim() || OPEN.tekst),
+                  )
+                }
               >
                 {bezig ? 'bezig…' : dicht ? 'ZET WEER OPEN' : 'ZET DICHT'}
               </GroteKnop>
+
+              <p className="zacht klein" style={{ maxWidth: 320 }}>
+                Werkt meteen. Wie de app al open heeft staan speelt zijn potje uit en merkt het pas
+                als hij hem opnieuw opstart.
+              </p>
 
               <button className="knop leeg klein" onClick={() => zetTekstAan((a) => !a)}>
                 {tekstAan ? 'tekst verbergen' : 'tekst aanpassen'}
@@ -169,32 +164,78 @@ export function Beheer({ uid }: { uid: string }) {
                 </>
               )}
 
-              <p className="zacht klein" style={{ maxWidth: 320 }}>
-                Werkt meteen. Wie de app al open heeft staan speelt zijn potje uit en merkt het pas
-                als hij hem opnieuw opstart.
-              </p>
+              <hr style={{ width: '100%', maxWidth: 320, opacity: 0.2 }} />
+
+              {deurOpen ? (
+                <>
+                  <Kaartje style={{ borderColor: 'var(--goud)' }}>
+                    <strong>De deur staat open — nog {deurSec} sec</strong>
+                    <div className="klein" style={{ marginTop: 6 }}>
+                      Open dit scherm nu op je snelkoppeling en druk daar op MAAK MIJ BEHEERDER.
+                    </div>
+                  </Kaartje>
+                  <button
+                    className="knop leeg klein"
+                    disabled={bezig}
+                    onClick={() => doe(zetDeurDicht)}
+                  >
+                    deur meteen weer dicht
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    className="knop leeg klein"
+                    disabled={bezig}
+                    onClick={() => doe(zetDeurOpen)}
+                  >
+                    laat nog een telefoon toe
+                  </button>
+                  <p className="zacht klein" style={{ maxWidth: 320 }}>
+                    Zet de deur vijf minuten open, zodat een snelkoppeling op je startscherm er ook
+                    bij mag. Die telt namelijk als een apart apparaat.
+                  </p>
+                </>
+              )}
             </>
           )}
 
-          {rol === 'mag-aanmelden' && (
+          {weetIkHet && magAanmelden && (
             <>
-              <Kaartje>
-                Er is nog geen beheerder. Meld je aan, dan ben jij de enige die deze schakelaar mag
-                gebruiken. Daarna kan niemand anders zich er meer bij zetten.
+              <Kaartje style={{ borderColor: 'var(--goud)' }}>
+                {erIsEenBeheerder ? (
+                  <>
+                    De deur staat open — nog {deurSec} sec. Druk nu op de knop, dan mag deze
+                    telefoon er ook aan.
+                  </>
+                ) : (
+                  <>
+                    Er is nog geen beheerder. Meld je aan, dan ben jij de enige die deze schakelaar
+                    mag gebruiken.
+                  </>
+                )}
               </Kaartje>
-              <GroteKnop enorm kleur="goud" uit={bezig} bijTik={meldAan}>
+              <GroteKnop
+                enorm
+                kleur="goud"
+                uit={bezig}
+                bijTik={() => doe(() => meldJeAanAlsBeheerder(uid))}
+              >
                 {bezig ? 'bezig…' : 'MAAK MIJ BEHEERDER'}
               </GroteKnop>
             </>
           )}
 
-          {rol === 'bezet' && (
+          {weetIkHet && !ikBenBeheerder && !magAanmelden && (
             <Kaartje style={{ borderColor: 'var(--rood)' }}>
-              Er is al een beheerder, en jij bent het niet. Op deze telefoon kan je alleen kijken.
+              <strong>Deze telefoon mag er nog niet aan</strong>
+              <div className="klein" style={{ marginTop: 6 }}>
+                Een snelkoppeling op je startscherm telt als een apart apparaat, ook al is het
+                dezelfde telefoon. Open dit scherm in je browser, waar het wél werkt, druk daar op
+                "laat nog een telefoon toe", en kom hier binnen vijf minuten terug.
+              </div>
             </Kaartje>
           )}
-
-          {rol === 'kijken' && <p className="zacht klein">Even kijken wie je bent…</p>}
 
           {fout && (
             <Kaartje style={{ borderColor: 'var(--rood)' }}>
