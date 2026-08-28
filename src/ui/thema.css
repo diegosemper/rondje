@@ -1481,51 +1481,64 @@ input.code-invoer {
 }
 
 /* ── De bus: blind een lengtekaart pakken ────────────────────
-   Vijf dichte kaarten naast elkaar. Je tikt er een aan, die draait om en de
-   waarde eronder is meteen het aantal kaarten van je bus. De vier die je liet
-   liggen zakken weg.                                                        */
+   Een heel dek waaiert uit over het scherm, alleen zonder de kaarten onder de
+   6. Je schuift er zijwaarts langs en tikt er een aan. De kaarten overlappen
+   elkaar, zoals een dek dat over tafel is uitgestreken.
 
-.trek-rij {
+   Het onthullen gebeurt buiten het dek: een schuifbaar vak knipt alles af wat
+   eruit steekt, en een kaart die omdraait steekt eruit.                     */
+
+.trek-dek {
   display: flex;
-  gap: 8px;
-  justify-content: center;
-  flex-wrap: wrap;
-  perspective: 800px;
+  align-items: center;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  width: 100%;
+  padding: 14px 16px 18px;
+  gap: 0;
+}
+
+.trek-dek::-webkit-scrollbar {
+  display: none;
 }
 
 .trek-kaart {
-  position: relative;
+  flex: 0 0 auto;
   display: block;
   padding: 0;
   border: 0;
   background: none;
   cursor: pointer;
-  transform-style: preserve-3d;
-  transition:
-    transform 480ms cubic-bezier(0.3, 0.8, 0.3, 1),
-    opacity 480ms ease;
+  /* De overlap. De eerste mag niet onder de rand vallen, dus die schuift niet. */
+  margin-left: -22px;
+  transition: transform 140ms ease;
 }
 
-.trek-kaart:disabled {
-  cursor: default;
+.trek-kaart:first-child {
+  margin-left: 0;
 }
 
+.trek-kaart .speelkaart {
+  box-shadow: 2px 0 6px rgba(0, 0, 0, 0.45);
+}
+
+.trek-kaart:not(:disabled):hover,
 .trek-kaart:not(:disabled):active {
-  transform: translateY(-8px);
-}
-
-.trek-kaart.gepakt {
-  transform: translateY(-10px) scale(1.25);
+  transform: translateY(-10px);
   z-index: 2;
 }
 
-.trek-kaart.gepakt.om {
-  transform: translateY(-10px) scale(1.25) rotateY(180deg);
+/* De gepakte kaart, groot in beeld, die zich omdraait. */
+.trek-onthul {
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 700ms cubic-bezier(0.3, 0.8, 0.3, 1);
 }
 
-.trek-kaart.weg {
-  opacity: 0.2;
-  transform: translateY(10px) scale(0.9);
+.trek-onthul.om {
+  transform: rotateY(180deg);
 }
 
 .trek-kant {
@@ -1541,7 +1554,7 @@ input.code-invoer {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .trek-kaart {
+  .trek-onthul {
     transition-duration: 1ms;
   }
 }

@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
+import { husselen } from '../../engine/random'
 import {
+  KLEUREN,
   isRood,
   kaartKort,
   leggAf,
@@ -71,8 +73,6 @@ const VRAAG_INZET = [1, 2, 3, 4]
 /** De lengtekaart ligt altijd tussen deze twee: een 6 tot en met een aas. */
 const BUS_MIN = 6
 const BUS_MAX = 14
-/** Hoeveel dichte kaarten je te kiezen krijgt voor die lengte. */
-const BUS_KEUZES = 5
 /** Vanaf deze lengte krijgt de bus een checkpoint. */
 const BUS_CHECKPOINT_VANAF = 9
 /** Hoe lang een kaart erover doet om op tafel te vallen. */
@@ -376,24 +376,24 @@ function bovenop(s: BussenState, plek: number): Kaart | null {
 }
 
 /**
- * Trekt een kaart waarvan de waarde binnen een bereik valt.
+ * Het dek waar je de lengte van de bus uit pakt.
  *
- * Voor de lengte van de bus: die moet tussen de 6 en de aas liggen. Vroeger
- * werd er gewoon een kaart getrokken en het getal daarna platgeslagen tussen
- * 6 en 12, maar dan is een 2 net zo goed een 6 en klopt "de kaart die je pakt
- * is de lengte" niet meer.
+ * Alle kaarten van 6 tot en met de aas, geschud: 36 stuks. Ze liggen dicht,
+ * dus je kiest blind, en welke je ook pakt, het wordt nooit korter dan zes.
+ *
+ * Dit staat los van de stapel waar het spel mee gespeeld wordt. Het is maar
+ * één kaart die je omdraait en meteen weer weglegt, en zo hoeft er niet met
+ * een half opgemaakt deck geschud te worden om er nog negen bruikbare waarden
+ * uit te persen.
  */
-function trekTussen(stapel: Stapel, rng: () => number, min: number, max: number): Kaart {
-  const opzij: Kaart[] = []
-  let kaart = trek(stapel, rng)
-  let pogingen = 0
-  while ((kaart.waarde < min || kaart.waarde > max) && pogingen < 80) {
-    opzij.push(kaart)
-    kaart = trek(stapel, rng)
-    pogingen++
+function lengteDek(rng: () => number): Kaart[] {
+  const kaarten: Kaart[] = []
+  for (const kleur of KLEUREN) {
+    for (let waarde = BUS_MIN; waarde <= BUS_MAX; waarde++) {
+      kaarten.push({ id: `${kleur}-${waarde}`, kleur, waarde })
+    }
   }
-  if (opzij.length) leggAf(stapel, ...opzij)
-  return kaart
+  return husselen(rng, kaarten)
 }
 
 /**
@@ -539,13 +539,9 @@ function naSps(s: BussenState, ctx: SpelContext) {
 function startBus(s: BussenState, ctx: SpelContext) {
   s.fase = 'bus'
 
-  // Een paar dichte kaarten om uit te kiezen. Ze liggen allemaal tussen de 6
-  // en de aas, dus welke je ook pakt, het wordt een bus van 6 tot 14 kaarten.
-  // Je ziet ze niet: je pakt er blind een en draait hem daarna om.
-  s.busKeuzes = []
-  for (let i = 0; i < BUS_KEUZES; i++) {
-    s.busKeuzes.push(trekTussen(s.stapel, ctx.rng, BUS_MIN, BUS_MAX))
-  }
+  // Een heel dek om uit te kiezen, alleen zonder de kaarten onder de 6. Je
+  // ziet ze niet: je schuift erlangs, pakt er blind een en draait hem om.
+  s.busKeuzes = lengteDek(ctx.rng)
 
   s.busSubfase = 'trekken'
   s.busGekozen = null
@@ -833,12 +829,6 @@ export const bussen: GameModule<BussenState> = {
         s.busGekozen = i
         s.busTrekOp = ctx.nu
         bouwBusRij(s, ctx, gepakt)
-
-        // De kaarten die je liet liggen gaan terug, zodat het deck klopt.
-        s.busKeuzes.forEach((k, j) => {
-          if (j !== i) leggAf(s.stapel, k)
-        })
-
         s.busSubfase = 'gooien'
         return
       }
@@ -1459,39 +1449,43 @@ function BusTrek({
           {gepakt ? 'Zoveel kaarten wordt het' : 'Pak een kaart — die bepaalt de lengte'}
         </div>
 
-        <div className="trek-rij">
-          {(s.busKeuzes ?? []).map((kaart, i) => {
-            const dezeGepakt = s.busGekozen === i
-            const weg = gepakt && !dezeGepakt
-            return (
-              <button
-                key={i}
-                className={`trek-kaart${dezeGepakt ? ' gepakt' : ''}${weg ? ' weg' : ''}${
-                  dezeGepakt && om ? ' om' : ''
-                }`}
-                disabled={!ikRij || gepakt}
-                onClick={() => ctx.stuur('trek', { index: i })}
-                aria-label={`Kaart ${i + 1}`}
-              >
-                <span className="trek-kant trek-voor">
-                  <Speelkaart maat="klein" dicht />
-                </span>
-                <span className="trek-kant trek-achter">
-                  <Speelkaart kaart={kaart} maat="klein" />
-                </span>
-              </button>
-            )
-          })}
-        </div>
+        {gepakt ? (
+          // Buiten het dek onthullen en niet erin: een schuifbaar vak knipt
+          // alles af wat eruit steekt, en een kaart die omdraait steekt eruit.
+          <>
+            <div className={`trek-onthul${om ? ' om' : ''}`}>
+              <span className="trek-kant trek-voor">
+                <Speelkaart maat="groot" dicht />
+              </span>
+              <span className="trek-kant trek-achter">
+                <Speelkaart kaart={s.busLengteKaart} maat="groot" />
+              </span>
+            </div>
 
-        {om && s.busLengteKaart && (
-          <div style={{ textAlign: 'center' }}>
-            <div className="lint">{s.busLengte} KAARTEN</div>
-            {s.checkpointIndex > 0 && (
-              <div className="klein zacht" style={{ marginTop: 6 }}>
-                Lang genoeg voor een checkpoint op kaart {s.checkpointIndex + 1}.
+            {om && s.busLengteKaart && (
+              <div style={{ textAlign: 'center' }}>
+                <div className="lint">{s.busLengte} KAARTEN</div>
+                {s.checkpointIndex > 0 && (
+                  <div className="klein zacht" style={{ marginTop: 6 }}>
+                    Lang genoeg voor een checkpoint op kaart {s.checkpointIndex + 1}.
+                  </div>
+                )}
               </div>
             )}
+          </>
+        ) : (
+          <div className="trek-dek">
+            {(s.busKeuzes ?? []).map((_, i) => (
+              <button
+                key={i}
+                className="trek-kaart"
+                disabled={!ikRij}
+                onClick={() => ctx.stuur('trek', { index: i })}
+                aria-label={`Kaart ${i + 1} van ${s.busKeuzes.length}`}
+              >
+                <Speelkaart maat="klein" dicht />
+              </button>
+            ))}
           </div>
         )}
       </div>
@@ -1504,7 +1498,7 @@ function BusTrek({
                 ? 'Zo lang wordt de rit…'
                 : 'Omdraaien…'
               : ikRij
-                ? 'Kies er een. Je ziet ze niet.'
+                ? 'Schuif erlangs en tik er een aan. Je ziet ze niet.'
                 : `${chauffeur?.naam} pakt een kaart…`}
           </span>
         </Kaartje>
