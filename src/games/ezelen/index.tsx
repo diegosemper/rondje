@@ -10,12 +10,22 @@ import { GroteKnop, Kaartje, SpelerBalk, tril } from '../../ui/Basis'
    EZELEN
 
    Iedereen heeft vier kaarten. Elke ronde kiest iedereen tegelijk één kaart
-   om naar links door te schuiven. Wie vier gelijke krijgt, tikt — en dan moet
-   de rest zo snel mogelijk volgen. De laatste drinkt.
+   om naar links door te schuiven. Wie vier gelijke krijgt legt stilletjes zijn
+   duim op tafel, en de rest moet dat zelf zien. Wie als laatste zijn duim
+   neerlegt, drinkt.
 
-   Het gemene zit erin dat je niet weet wanneer het losbarst. Je zit naar je
-   eigen kaarten te turen terwijl iemand allang zit te wachten tot jij het
-   doorhebt.
+   HET STAAT ALLEEN OP ZIJN EIGEN SCHERM. Dat is het hele spel: de app zegt
+   tegen niemand anders dat er iemand zit te wachten. Er verschijnt geen alarm,
+   er verandert geen kleur, de kaarten blijven gewoon doorgaan. Je moet het aan
+   tafel opmerken, en dat lukt niet als je naar je telefoon zit te turen.
+
+   Daarom loopt het duimenrondje ook naast het doorschuiven en niet erna: zou
+   het spel stilvallen zodra er iemand duim legt, dan wisten de anderen het
+   meteen.
+
+   Wie te vroeg duim legt terwijl er nog niemand vier heeft, betaalt daarvoor.
+   Zonder die straf zou je gewoon meteen je duim neer kunnen leggen en elke
+   ronde winnen.
 
    Er wordt met opzet niet uit een gewoon dek gedeeld. Bij vier spelers gaan er
    zestien kaarten rond, en die veranderen nooit meer -- je schuift ze alleen
@@ -28,14 +38,17 @@ import { GroteKnop, Kaartje, SpelerBalk, tril } from '../../ui/Basis'
 
 const HAND = 4
 const RONDES = 3
-const RACE_SEC = 5
+/** Zo lang krijgt de tafel om het op te merken. */
+const RACE_SEC = 8
 const STRAF_LAATSTE = 3
+/** Duim leggen terwijl er nog niets aan de hand is. */
+const STRAF_VALSE_START = 2
 const MAX_WISSELS = 20
 
 interface EzelState {
   stapel: Stapel
   ronde: number
-  fase: 'wisselen' | 'race' | 'uitslag'
+  fase: 'wisselen' | 'uitslag'
 
   _geheim: {
     handen: Record<string, Kaart[]>
@@ -47,9 +60,13 @@ interface EzelState {
   klaar: string[]
   wissels: number
 
+  /** wie als eerste vier gelijke had en zijn duim neerlegde */
   roeper: string | null
   klok: Klok | null
+  /** wanneer ieders duim op tafel ging */
   getikt: Record<string, number>
+  /** wie te vroeg was; die weten dat er niets liep */
+  telaat: string[]
   verliezer: string | null
 
   afgelopen: boolean
@@ -92,6 +109,7 @@ function nieuweRonde(s: EzelState, ctx: SpelContext) {
   s.roeper = null
   s.klok = null
   s.getikt = {}
+  s.telaat = []
   s.verliezer = null
   deelHanden(s, ctx)
 }
@@ -103,29 +121,41 @@ function heeftVier(hand: Kaart[]): boolean {
 
 function rondAf(s: EzelState, ctx: SpelContext) {
   const volgorde = ctx.spelers.map((p) => p.uid)
+  s.fase = 'uitslag'
+  s.klok = null
+
+  // Wie zijn duim helemaal niet neerlegde heeft het simpelweg gemist. Zijn dat
+  // er meerdere, dan drinken ze allemaal -- er is geen reden om er één uit te
+  // kiezen die het net iets erger deed dan de rest.
+  const gemist = volgorde.filter((uid) => s.getikt[uid] === undefined)
+  if (gemist.length > 0) {
+    s.verliezer = gemist[gemist.length - 1]
+    for (const uid of gemist) ctx.drink(uid, STRAF_LAATSTE, 'had zijn duim er niet op')
+    return
+  }
+
   let traagste: string | null = null
   let traagsteTijd = -1
   for (const uid of volgorde) {
-    const t = s.getikt[uid] ?? Number.MAX_SAFE_INTEGER
+    const t = s.getikt[uid] ?? 0
     if (t > traagsteTijd) {
       traagsteTijd = t
       traagste = uid
     }
   }
   s.verliezer = traagste
-  s.fase = 'uitslag'
-  if (traagste) ctx.drink(traagste, STRAF_LAATSTE, 'tikte als laatste')
+  if (traagste) ctx.drink(traagste, STRAF_LAATSTE, 'was als laatste met zijn duim')
 }
 
 export const ezelen: GameModule<EzelState> = {
   id: 'ezelen',
   naam: 'Ezelen',
-  uitleg: 'Schuif kaarten door tot je er vier gelijk hebt. De traagste drinkt.',
+  uitleg: 'Schuif door tot je er vier gelijk hebt. Dan stil je duim op tafel.',
   regels: [
-    'Iedereen heeft vier kaarten.',
-    'Kies er één om door te schuiven.',
-    'Vier gelijke? Tik zo snel mogelijk.',
-    'Zodra iemand tikt moet de rest volgen — de laatste drinkt.',
+    'Iedereen heeft vier kaarten. Kies er één om door te schuiven.',
+    'Vier gelijke? Leg stil je duim op tafel — zeg niets.',
+    'Alleen jij ziet dat. De rest moet het aan tafel opmerken.',
+    'Wie als laatste zijn duim neerlegt, drinkt.',
   ],
   minSpelers: 3,
   maxSpelers: 8,
@@ -144,6 +174,7 @@ export const ezelen: GameModule<EzelState> = {
       roeper: null,
       klok: null,
       getikt: {},
+      telaat: [],
       verliezer: null,
       afgelopen: false,
     }
@@ -185,8 +216,9 @@ export const ezelen: GameModule<EzelState> = {
         s.klaar = []
         s.wissels++
 
-        // Niemand komt eruit? Dan houdt het een keer op.
-        if (s.wissels >= MAX_WISSELS) {
+        // Niemand komt eruit? Dan houdt het een keer op. Loopt er een
+        // duimenrondje, dan wachten we dat eerst af.
+        if (s.wissels >= MAX_WISSELS && !s.roeper) {
           ctx.log('Twintig keer geschoven en niemand had vier gelijke')
           s.fase = 'uitslag'
           s.verliezer = null
@@ -194,29 +226,34 @@ export const ezelen: GameModule<EzelState> = {
         return
       }
 
-      /* Vier gelijke — de race begint */
-      if (actie.type === 'roep') {
-        const hand = s._geheim.handen[actie.uid] ?? []
-        if (!heeftVier(hand)) return
-        s.roeper = actie.uid
-        s.fase = 'race'
-        s.klok = startKlok(RACE_SEC, ctx.nu)
-        s.getikt = { [actie.uid]: actie.ts }
-        return
-      }
-      return
-    }
-
-    if (s.fase === 'race') {
-      if (actie.type === 'tik') {
+      /* Duim op tafel. Voor wie vier gelijke heeft begint het hiermee; voor de
+         rest is dit het moment dat ze het doorhebben. Het doorschuiven gaat
+         ondertussen gewoon door, want anders zou het stilvallen van het spel
+         verraden dat er iets aan de hand is. */
+      if (actie.type === 'duim') {
         if (s.getikt[actie.uid] !== undefined) return
+
+        if (!s.roeper) {
+          // Nog niemand met vier gelijke. Heb jij ze wel, dan begint het nu.
+          if (heeftVier(s._geheim.handen[actie.uid] ?? [])) {
+            s.roeper = actie.uid
+            s.klok = startKlok(RACE_SEC, ctx.nu)
+            s.getikt[actie.uid] = actie.ts
+            return
+          }
+          // Te vroeg. Dat kost je, anders leg je gewoon meteen je duim neer.
+          if (!s.telaat.includes(actie.uid)) s.telaat.push(actie.uid)
+          ctx.drink(actie.uid, STRAF_VALSE_START, 'legde zijn duim neer voor niets')
+          return
+        }
+
         s.getikt[actie.uid] = actie.ts
-        if (!volgorde.every((u) => s.getikt[u] !== undefined)) return
-        rondAf(s, ctx)
+        if (volgorde.every((u) => s.getikt[u] !== undefined)) rondAf(s, ctx)
         return
       }
+
       if (actie.type === 'sluit-race') {
-        rondAf(s, ctx)
+        if (s.roeper) rondAf(s, ctx)
         return
       }
       return
@@ -238,42 +275,14 @@ export const ezelen: GameModule<EzelState> = {
   isKlaar: (s) => s.afgelopen,
 
   View({ state: s, ctx }) {
-    useHostKlok(ctx, s.fase === 'race', s.klok?.eind ?? 0, 'sluit-race')
+    // Loopt er een duimenrondje, dan sluit de host het na RACE_SEC af.
+    useHostKlok(ctx, s.fase === 'wisselen' && !!s.roeper, s.klok?.eind ?? 0, 'sluit-race')
 
     const hand: Kaart[] = ctx.prive?.hand ?? []
     const ikKlaar = s.klaar.includes(ctx.ik)
     const vier = heeftVier(hand)
-
-    if (s.fase === 'race') {
-      const ikGetikt = s.getikt[ctx.ik] !== undefined
-      return (
-        <>
-          <div className="midden" style={{ gap: 10 }}>
-            <div style={{ fontSize: 60 }}>🚨</div>
-            <h1>{ctx.naam(s.roeper ?? '')} heeft ze!</h1>
-            <div className="klein zacht">
-              {Object.keys(s.getikt).length} van {ctx.spelers.length} getikt
-            </div>
-          </div>
-          <div className="onderaan">
-            <GroteKnop
-              kleur={ikGetikt ? 'leeg' : 'groen'}
-              enorm
-              uit={ikGetikt}
-              bijTik={() => {
-                tril(15)
-                ctx.stuur('tik')
-              }}
-            >
-              {ikGetikt ? '✓ Je was er op tijd' : 'TIK!'}
-            </GroteKnop>
-            <div className="klein zacht" style={{ textAlign: 'center' }}>
-              De laatste drinkt {ctx.slok(STRAF_LAATSTE)}.
-            </div>
-          </div>
-        </>
-      )
-    }
+    const ikDuim = s.getikt?.[ctx.ik] !== undefined
+    const ikTelaat = (s.telaat ?? []).includes(ctx.ik)
 
     if (s.fase === 'uitslag') {
       const rij = ctx.spelers
@@ -285,7 +294,9 @@ export const ezelen: GameModule<EzelState> = {
         <>
           <div className="midden" style={{ gap: 8, alignItems: 'stretch' }}>
             <h2 style={{ textAlign: 'center' }}>
-              {s.verliezer ? `${ctx.naam(s.verliezer)} was het traagst` : 'Niemand kreeg er vier'}
+              {s.verliezer
+                ? `${ctx.naam(s.verliezer)} was als laatste`
+                : 'Niemand kreeg er vier'}
             </h2>
             {s.verliezer &&
               rij.map(({ p, t }, i) => (
@@ -302,7 +313,7 @@ export const ezelen: GameModule<EzelState> = {
                     {p.uid === s.roeper && ' 🚨'}
                   </span>
                   <span className="klein zacht">
-                    {t === undefined ? 'tikte niet' : `+${Math.max(0, t - start)} ms`}
+                    {t === undefined ? 'duim bleef liggen' : `+${Math.max(0, t - start)} ms`}
                   </span>
                 </div>
               ))}
@@ -359,17 +370,37 @@ export const ezelen: GameModule<EzelState> = {
         </div>
 
         <div className="onderaan">
+          {/* Wat hier staat is alleen voor jou. Heeft iemand anders vier
+              gelijke, dan verandert er op dit scherm helemaal niets -- dat is
+              precies de bedoeling. */}
+          {vier && !ikDuim && (
+            <Kaartje style={{ textAlign: 'center', borderColor: 'var(--goud)' }}>
+              <strong style={{ color: 'var(--goud)' }}>Je hebt ze alle vier</strong>
+              <div className="klein zacht">
+                Leg je duim op tafel. Zeg niets — ze moeten het zelf zien.
+              </div>
+            </Kaartje>
+          )}
+
           <GroteKnop
-            kleur={vier ? 'goud' : 'leeg'}
-            enorm={vier}
-            uit={!vier}
+            kleur={ikDuim ? 'leeg' : vier ? 'goud' : 'grijs'}
+            enorm={vier && !ikDuim}
+            uit={ikDuim}
             bijTik={() => {
               tril(30)
-              ctx.stuur('roep')
+              ctx.stuur('duim')
             }}
           >
-            {vier ? '🚨 IK HEB ZE — TIK!' : 'Nog geen vier gelijke'}
+            {ikDuim ? '✓ Je duim ligt' : '✋ Duim op tafel'}
           </GroteKnop>
+
+          <div className="klein zacht" style={{ textAlign: 'center' }}>
+            {ikDuim
+              ? `De laatste drinkt ${ctx.slok(STRAF_LAATSTE)}.`
+              : ikTelaat
+                ? 'Er lag nog niemands duim. Kijk naar de tafel, niet naar je scherm.'
+                : `Zie je een duim liggen? Leg de jouwe erbij. Te vroeg kost ${ctx.slokKort(STRAF_VALSE_START)}.`}
+          </div>
         </div>
       </>
     )
