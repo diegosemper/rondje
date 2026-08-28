@@ -161,8 +161,6 @@ interface BussenState {
   busLengte: number
   /** eerst een lengtekaart pakken, dan gooien, dan pas rijden */
   busSubfase: 'trekken' | 'gooien' | 'rijden'
-  /** de dichte kaarten waar je er blind een uit pakt */
-  busKeuzes: Kaart[]
   /** welke daarvan je pakte, of null zolang je nog moet kiezen */
   busGekozen: number | null
   /** wanneer je hem pakte, in servertijd — omdraaien duurt even */
@@ -389,10 +387,15 @@ function bovenop(s: BussenState, plek: number): Kaart | null {
  * Alle kaarten van 6 tot en met de aas, geschud: 36 stuks. Ze liggen dicht,
  * dus je kiest blind, en welke je ook pakt, het wordt nooit korter dan zes.
  *
- * Dit staat los van de stapel waar het spel mee gespeeld wordt. Het is maar
- * één kaart die je omdraait en meteen weer weglegt, en zo hoeft er niet met
- * een half opgemaakt deck geschud te worden om er nog negen bruikbare waarden
- * uit te persen.
+ * Dit dek wordt pas gemaakt op het moment dat er iemand een kaart aantikt, en
+ * het staat dus niet in de spelstand. Dat is met opzet: zolang alles op zijn
+ * rug ligt hoeft niemand te weten wat er onder ligt, en zo kan een potje dat
+ * al liep ook niet blijven hangen op een dek dat het ooit had opgeslagen.
+ *
+ * Het staat ook los van de stapel waar het spel mee gespeeld wordt. Het is
+ * maar één kaart die je omdraait en meteen weer weglegt, en zo hoeft er niet
+ * met een half opgemaakt deck geschud te worden om er nog negen bruikbare
+ * waarden uit te persen.
  */
 function lengteDek(rng: () => number): Kaart[] {
   const kaarten: Kaart[] = []
@@ -547,9 +550,6 @@ function naSps(s: BussenState, ctx: SpelContext) {
 function startBus(s: BussenState, ctx: SpelContext) {
   s.fase = 'bus'
 
-  // Een heel dek om uit te kiezen, alleen zonder de kaarten onder de 6. Je
-  // ziet ze niet: je schuift erlangs, pakt er blind een en draait hem om.
-  s.busKeuzes = lengteDek(ctx.rng)
 
   s.busSubfase = 'trekken'
   s.busGekozen = null
@@ -662,7 +662,6 @@ export const bussen: GameModule<BussenState> = {
       busLengteKaart: null,
       busLengte: BUS_MIN,
       busSubfase: 'trekken',
-      busKeuzes: [],
       busGekozen: null,
       busTrekOp: 0,
       busWorp: null,
@@ -822,8 +821,6 @@ export const bussen: GameModule<BussenState> = {
       // potje op een leeg scherm blijven staan.
       if (
         !s.busSubfase ||
-        !s.busKeuzes?.length ||
-        (s.busSubfase === 'trekken' && s.busKeuzes.length !== LENGTE_DEK) ||
         (s.busSubfase === 'rijden' &&
           (!s.busStapels ||
             s.busStapels.length !== s.busLengte ||
@@ -839,11 +836,13 @@ export const bussen: GameModule<BussenState> = {
         // dus zonder die eerste stap zou een lege keuze stilletjes de eerste
         // kaart pakken.
         const i = actie.payload?.index
-        if (typeof i !== 'number' || !Number.isInteger(i) || i < 0 || i >= s.busKeuzes.length) {
+        if (typeof i !== 'number' || !Number.isInteger(i) || i < 0 || i >= LENGTE_DEK) {
           return
         }
 
-        const gepakt = s.busKeuzes[i]
+        // Nú pas krijgt het dek waarde. Tot dit moment lagen er alleen maar
+        // ruggen op tafel, en die hoeven niet te weten wat ze zijn.
+        const gepakt = lengteDek(ctx.rng)[i]
         s.busGekozen = i
         s.busTrekOp = ctx.nu
         bouwBusRij(s, ctx, gepakt)
@@ -1502,13 +1501,13 @@ function BusTrek({
           </>
         ) : (
           <div className="trek-dek">
-            {(s.busKeuzes ?? []).map((_, i) => (
+            {Array.from({ length: LENGTE_DEK }).map((_, i) => (
               <button
                 key={i}
                 className="trek-kaart"
                 disabled={!ikRij}
                 onClick={() => ctx.stuur('trek', { index: i })}
-                aria-label={`Kaart ${i + 1} van ${s.busKeuzes.length}`}
+                aria-label={`Kaart ${i + 1} van ${LENGTE_DEK}`}
               >
                 <Speelkaart maat="klein" dicht />
               </button>
@@ -1525,7 +1524,7 @@ function BusTrek({
                 ? 'Zo lang wordt de rit…'
                 : 'Omdraaien…'
               : ikRij
-                ? `Schuif langs de ${s.busKeuzes?.length ?? 0} kaarten en tik er een aan.`
+                ? `Schuif langs de ${LENGTE_DEK} kaarten en tik er een aan.`
                 : `${chauffeur?.naam} pakt een kaart…`}
           </span>
         </Kaartje>
