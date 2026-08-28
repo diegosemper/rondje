@@ -7,6 +7,7 @@ import {
   type Stapel,
 } from '../../engine/deck'
 import { volgende } from '../../engine/beurten'
+import { husselen } from '../../engine/random'
 import type { Actie, GameModule, KijkContext, SpelContext } from '../../engine/types'
 import { Speelkaart } from '../../ui/Kaart'
 import { GroteKnop, Kaartje, SpelerBalk } from '../../ui/Basis'
@@ -24,9 +25,18 @@ import { GroteKnop, Kaartje, SpelerBalk } from '../../ui/Basis'
    · Raden drie mensen achter elkaar mis, dan mag de dealer eindelijk door en
      wordt de volgende in de kring dealer.
 
-   Wat de app oplost: na de hint verdwijnen de onmogelijke waarden vanzelf.
-   Aan een tafel zit iedereen dat op zijn vingers te tellen, en daar komt
-   altijd gedoe van.
+   ÉÉN DEK, EN ALLES BLIJFT LIGGEN. Elke kaart die geweest is komt open op
+   tafel, goed of fout geraden. Er zijn dus maar vier achten, en als je er al
+   drie hebt zien liggen weet je dat de kans klein is. Daar draait het spel om.
+
+   Ligt een waarde er vier keer, in alle vier de vormen, dan moet degene die
+   op dat moment aan het raden was een minigame verzinnen: automerken
+   opnoemen, juffen, chwazi, dat werk. De app doet een paar suggesties maar
+   houdt verder zijn mond -- dat is aan de tafel.
+
+   Wat de app oplost: na de hint verdwijnen de onmogelijke waarden vanzelf, en
+   een waarde die al vier keer ligt kan je niet meer kiezen. Aan een tafel zit
+   iedereen dat op zijn vingers te tellen, en daar komt altijd gedoe van.
    ───────────────────────────────────────────────────────────── */
 
 /** Wie 7 of 8 zegt als eerste gok betaalt er meteen voor. */
@@ -39,7 +49,38 @@ const DEALER_STRAF_TWEEDE = 2
 /** Zoveel missers achter elkaar en de dealer is verlost. */
 const MISSERS_VOOR_WISSEL = 3
 
-const MAX_KAARTEN = 24
+/** Eén dek, en je speelt hem uit. */
+const DEK_GROOTTE = 52
+/** Zoveel van een waarde en het dek is er doorheen. */
+const PER_WAARDE = 4
+
+/**
+ * Zetjes voor wie een minigame moet verzinnen.
+ *
+ * Bewust suggesties en geen voorschrift: het leukste komt van de tafel zelf.
+ * Ze staan er alleen voor het moment dat iedereen je aankijkt en je hoofd
+ * leeg is.
+ */
+const MINIGAME_IDEEEN = [
+  'Automerken opnoemen — de kring rond tot iemand vastloopt',
+  'Chwazi: iedereen een vinger op het scherm, wie eruit rolt drinkt',
+  'Juffen',
+  'Categorie noemen: bier, chips, snacks — wie stokt drinkt',
+  'Ik ga op reis en ik neem mee',
+  'Rijmen op een woord, de kring rond',
+  'Nederlandse artiesten opnoemen',
+  'Voetbalclubs uit de eredivisie',
+  'Steen-papier-schaar-toernooi, verliezer drinkt',
+  'Films opnoemen met hetzelfde woord erin',
+  'Tot 20 tellen met zijn allen, maar niemand tegelijk',
+  'Nooit gedacht dat ik hier zou zitten — bekentenisronde',
+  'Duimen op tafel, laatste drinkt',
+  'Wie het langst een gek gezicht volhoudt zonder lachen',
+  'Landen opnoemen die aan Nederland grenzen — grapje, gewoon landen',
+  'Iedereen een woord, samen één zin, wie hem verpest drinkt',
+  'Merken chips of snoep, de kring rond',
+  'Bijnamen verzinnen voor elkaar, slechtste drinkt',
+]
 
 interface FtdState {
   stapel: Stapel
@@ -48,7 +89,11 @@ interface FtdState {
 
   _geheim: { kaart: Kaart | null }
 
-  fase: 'gokken' | 'onthuld'
+  fase: 'gokken' | 'onthuld' | 'minigame'
+  /** alles wat geweest is, open op tafel */
+  tafel: Kaart[]
+  /** gezet zodra een waarde vier keer ligt */
+  minigame: { waarde: number; uid: string; ideeen: string[] } | null
   /** de eerste gok, zodra die gedaan is */
   gok1: number | null
   hint: 'hoger' | 'lager' | null
@@ -82,6 +127,11 @@ function volgendeGokker(volgorde: string[], huidig: string, dealer: string): str
   return huidig
 }
 
+/** Hoe vaak die waarde al open op tafel ligt. */
+export function aantalOpTafel(tafel: Kaart[], waarde: number): number {
+  return tafel.filter((k) => k.waarde === waarde).length
+}
+
 function nieuweKaart(s: FtdState, ctx: SpelContext) {
   const kaart = trek(s.stapel, ctx.rng)
   s._geheim.kaart = kaart
@@ -98,6 +148,44 @@ function nieuweKaart(s: FtdState, ctx: SpelContext) {
   }
 }
 
+/**
+ * De kaart gaat open op tafel, en als hij een waarde compleet maakt volgt er
+ * een minigame. Wie op dat moment aan het raden was mag hem verzinnen.
+ */
+function legOpTafel(s: FtdState, ctx: SpelContext, kaart: Kaart, gokker: string) {
+  s.tafel.push(kaart)
+
+  if (aantalOpTafel(s.tafel, kaart.waarde) < PER_WAARDE) return
+
+  const ideeen = husselen(ctx.rng, [...MINIGAME_IDEEEN]).slice(0, 3)
+  s.minigame = { waarde: kaart.waarde, uid: gokker, ideeen }
+  ctx.log(
+    `Alle vier de ${waardeTekst(kaart.waarde)}'s liggen — ${ctx.naam(gokker)} verzint een minigame`,
+  )
+}
+
+/** Dek op? Klaar. Anders de beurt door en een nieuwe kaart. */
+function volgendeKaart(s: FtdState, ctx: SpelContext, volgorde: string[]) {
+  if (s.getrokken >= DEK_GROOTTE) {
+    s.klaar = true
+    ctx.wisPrive()
+    ctx.klaar()
+    return
+  }
+
+  if (s.missers >= MISSERS_VOOR_WISSEL) {
+    const oud = s.dealer
+    s.dealer = volgende(volgorde, s.dealer)
+    s.missers = 0
+    s.gokker = volgendeGokker(volgorde, s.dealer, s.dealer)
+    ctx.log(`${ctx.naam(oud)} is verlost — ${ctx.naam(s.dealer)} is nu dealer`)
+  } else {
+    s.gokker = volgendeGokker(volgorde, s.gokker, s.dealer)
+  }
+
+  nieuweKaart(s, ctx)
+}
+
 /* ── Het spel ───────────────────────────────────────────────── */
 
 export const dealer: GameModule<FtdState> = {
@@ -109,10 +197,11 @@ export const dealer: GameModule<FtdState> = {
     'Raad de waarde. 7 of 8 mag, maar kost meteen 1.',
     'Hoger of lager, dan nog één kans.',
     'Mis? Je drinkt het verschil met de echte kaart.',
+    'Alles blijft open liggen. Vier dezelfde? Verzin een minigame.',
   ],
   minSpelers: 3,
   maxSpelers: 8,
-  duur: 'middel',
+  duur: 'lang',
   tags: ['kaarten', 'geluk'],
   privescherm: true,
 
@@ -128,6 +217,8 @@ export const dealer: GameModule<FtdState> = {
       hint: null,
       laag: 2,
       hoog: 14,
+      tafel: [],
+      minigame: null,
       missers: 0,
       getrokken: 0,
       laatste: null,
@@ -147,6 +238,8 @@ export const dealer: GameModule<FtdState> = {
 
       const gok = Number(actie.payload?.waarde)
       if (!Number.isInteger(gok) || gok < s.laag || gok > s.hoog) return
+      // Ligt die waarde er al vier keer, dan kan de kaart het niet zijn.
+      if (aantalOpTafel(s.tafel, gok) >= PER_WAARDE) return
 
       const eerste = s.gok1 === null
 
@@ -167,6 +260,7 @@ export const dealer: GameModule<FtdState> = {
           slokken: straf,
         }
         s.missers = 0
+        legOpTafel(s, ctx, kaart, actie.uid)
         s.fase = 'onthuld'
         return
       }
@@ -189,29 +283,26 @@ export const dealer: GameModule<FtdState> = {
       ctx.drink(actie.uid, verschil, `zat ${verschil} naast ${kaartKort(kaart)}`)
       s.laatste = { gokker: actie.uid, gok, kaart, goed: false, poging: 2, slokken: verschil }
       s.missers++
+      legOpTafel(s, ctx, kaart, actie.uid)
       s.fase = 'onthuld'
       return
     }
 
+    // De minigame staat tussen twee kaarten in: eerst spelen, dan meteen door
+    // naar de volgende kaart. Nog een keer de oude uitslag laten zien zou een
+    // tik kosten waar niemand op zit te wachten.
+    if (s.fase === 'minigame' && actie.type === 'verder') {
+      s.minigame = null
+      volgendeKaart(s, ctx, volgorde)
+      return
+    }
+
     if (s.fase === 'onthuld' && actie.type === 'verder') {
-      if (s.getrokken >= MAX_KAARTEN) {
-        s.klaar = true
-        ctx.wisPrive()
-        ctx.klaar()
+      if (s.minigame) {
+        s.fase = 'minigame'
         return
       }
-
-      if (s.missers >= MISSERS_VOOR_WISSEL) {
-        const oud = s.dealer
-        s.dealer = volgende(volgorde, s.dealer)
-        s.missers = 0
-        s.gokker = volgendeGokker(volgorde, s.dealer, s.dealer)
-        ctx.log(`${ctx.naam(oud)} is verlost — ${ctx.naam(s.dealer)} is nu dealer`)
-      } else {
-        s.gokker = volgendeGokker(volgorde, s.gokker, s.dealer)
-      }
-
-      nieuweKaart(s, ctx)
+      volgendeKaart(s, ctx, volgorde)
       return
     }
   },
@@ -229,7 +320,7 @@ export const dealer: GameModule<FtdState> = {
       <>
         <div className="balk">
           <span className="kop-klein">
-            Kaart {s.getrokken}/{MAX_KAARTEN}
+            Kaart {s.getrokken}/{DEK_GROOTTE}
           </span>
           <span className="kop-klein">
             Missers{' '}
@@ -245,7 +336,11 @@ export const dealer: GameModule<FtdState> = {
           🎴 dealer: {dealerSpeler?.naam} · 🎯 raadt: {gokSpeler?.naam}
         </div>
 
-        {s.fase === 'onthuld' ? (
+        <Tafel s={s} />
+
+        {s.fase === 'minigame' ? (
+          <Minigame s={s} ctx={ctx} />
+        ) : s.fase === 'onthuld' ? (
           <Onthuld s={s} ctx={ctx} ikDealer={ikDealer} />
         ) : (
           <>
@@ -315,23 +410,28 @@ function Waardeknoppen({ s, ctx }: { s: FtdState; ctx: KijkContext }) {
     >
       {mogelijk.map((w) => {
         const kost = s.gok1 === null && MIDDEN.includes(w)
+        // Ligt hij er al vier keer, dan kan de kaart het niet zijn.
+        const op = aantalOpTafel(s.tafel, w) >= PER_WAARDE
         return (
           <button
             key={w}
+            disabled={op}
             onClick={() => ctx.stuur('gok', { waarde: w })}
             style={{
               minHeight: 56,
               borderRadius: 'var(--straal-klein)',
-              background: kost ? 'var(--goud-donker)' : 'var(--vlak-hoog)',
-              border: `1px solid ${kost ? 'var(--goud)' : 'var(--rand)'}`,
-              color: 'var(--tekst)',
+              background: op ? 'transparent' : kost ? 'var(--goud-donker)' : 'var(--vlak-hoog)',
+              border: `1px solid ${op ? 'var(--rand)' : kost ? 'var(--goud)' : 'var(--rand)'}`,
+              color: op ? 'var(--tekst-zacht)' : 'var(--tekst)',
+              opacity: op ? 0.35 : 1,
+              textDecoration: op ? 'line-through' : undefined,
               fontSize: 22,
               fontWeight: 800,
               position: 'relative',
             }}
           >
             {waardeTekst(w)}
-            {kost && (
+            {kost && !op && (
               <span
                 style={{
                   position: 'absolute',
@@ -389,11 +489,93 @@ function Onthuld({
       <div className="onderaan">
         {ikDealer || ctx.benIkHost ? (
           <GroteKnop kleur="goud" enorm bijTik={() => ctx.stuur('verder')}>
-            {s.getrokken >= MAX_KAARTEN ? 'Klaar' : 'Volgende kaart'}
+            {s.getrokken >= DEK_GROOTTE ? 'Klaar' : 'Volgende kaart'}
           </GroteKnop>
         ) : (
           <Kaartje style={{ textAlign: 'center' }}>
             <span className="zacht">{ctx.naam(s.dealer)} pakt de volgende kaart…</span>
+          </Kaartje>
+        )}
+      </div>
+    </>
+  )
+}
+
+/**
+ * Wat er tot nu toe op tafel ligt, per waarde.
+ *
+ * Dit is het hart van het spel geworden: er zijn vier achten, en als er al
+ * drie liggen weet je genoeg. Aan een echte tafel ligt het er ook, alleen zit
+ * daar iedereen te turven.
+ */
+function Tafel({ s }: { s: FtdState }) {
+  const waarden: number[] = []
+  for (let w = 2; w <= 14; w++) waarden.push(w)
+
+  return (
+    <div className="ftd-tafel">
+      {waarden.map((w) => {
+        const aantal = aantalOpTafel(s.tafel, w)
+        const op = aantal >= PER_WAARDE
+        return (
+          <div key={w} className={`ftd-vak${op ? ' op' : ''}${aantal > 0 ? ' geweest' : ''}`}>
+            <span className="ftd-waarde">{waardeTekst(w)}</span>
+            <span className="ftd-punten">
+              {Array.from({ length: PER_WAARDE }).map((_, i) => (
+                <i key={i} className={i < aantal ? 'aan' : undefined} />
+              ))}
+            </span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+/**
+ * Vier dezelfde op tafel: er moet een minigame komen.
+ *
+ * De app bemoeit zich er verder niet mee. Hij zegt wie er aan de beurt is,
+ * geeft drie zetjes voor als je hoofd leeg is, en gaat dan weer opzij.
+ */
+function Minigame({ s, ctx }: { s: FtdState; ctx: KijkContext }) {
+  const m = s.minigame!
+  const wie = ctx.speler(m.uid)
+  const ikBenHet = ctx.ik === m.uid
+
+  return (
+    <>
+      <div className="midden" style={{ gap: 14 }}>
+        <div style={{ fontSize: 52 }}>🎉</div>
+        <div className="lint">ALLE VIER DE {waardeTekst(m.waarde)}&apos;S</div>
+
+        <h2 style={{ textAlign: 'center' }}>
+          {ikBenHet ? 'Jij verzint een minigame' : `${wie?.emoji} ${wie?.naam} verzint een minigame`}
+        </h2>
+
+        <Kaartje style={{ maxWidth: 340 }}>
+          <div className="kop-klein" style={{ marginBottom: 8 }}>
+            Geen idee? Bijvoorbeeld
+          </div>
+          {m.ideeen.map((idee, i) => (
+            <div key={i} className="klein" style={{ marginBottom: 6 }}>
+              · {idee}
+            </div>
+          ))}
+          <div className="klein zacht" style={{ marginTop: 8 }}>
+            Of iets van jullie zelf — dat is altijd beter.
+          </div>
+        </Kaartje>
+      </div>
+
+      <div className="onderaan">
+        {ikBenHet || ctx.benIkHost ? (
+          <GroteKnop kleur="goud" enorm bijTik={() => ctx.stuur('verder')}>
+            Gespeeld — verder
+          </GroteKnop>
+        ) : (
+          <Kaartje style={{ textAlign: 'center' }}>
+            <span className="zacht">{wie?.naam} bedenkt iets…</span>
           </Kaartje>
         )}
       </div>

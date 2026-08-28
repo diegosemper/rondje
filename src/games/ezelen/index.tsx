@@ -1,4 +1,5 @@
-import { nieuweStapel, trek, type Kaart, type Stapel } from '../../engine/deck'
+import { KLEUREN, nieuweStapel, type Kaart, type Stapel } from '../../engine/deck'
+import { husselen } from '../../engine/random'
 import { useHostKlok } from '../../engine/hooks'
 import { startKlok, type Klok } from '../../engine/timer'
 import type { Actie, GameModule, SpelContext } from '../../engine/types'
@@ -15,6 +16,14 @@ import { GroteKnop, Kaartje, SpelerBalk, tril } from '../../ui/Basis'
    Het gemene zit erin dat je niet weet wanneer het losbarst. Je zit naar je
    eigen kaarten te turen terwijl iemand allang zit te wachten tot jij het
    doorhebt.
+
+   Er wordt met opzet niet uit een gewoon dek gedeeld. Bij vier spelers gaan er
+   zestien kaarten rond, en die veranderen nooit meer -- je schuift ze alleen
+   door. Zaten er toevallig nergens vier gelijke tussen, dan kan niemand er ooit
+   uit komen en zit je twintig keer te schuiven voor niets. Daarom wordt er per
+   speler één waarde gekozen en gaan alle vier de vormen daarvan het spel in.
+   Zo ligt er altijd voor iedereen een setje klaar; de vraag is alleen wie het
+   het eerst bij elkaar heeft.
    ───────────────────────────────────────────────────────────── */
 
 const HAND = 4
@@ -46,14 +55,33 @@ interface EzelState {
   afgelopen: boolean
 }
 
+/**
+ * Bouwt het dek voor dit potje: per speler één waarde, in alle vier de vormen.
+ *
+ * Precies zoveel kaarten als er nodig zijn, geen kaart meer. Daarmee is er
+ * altijd een oplossing -- iedereen zou in theorie vier gelijke kunnen krijgen
+ * -- en dat is niet zo als je zomaar uit een vol dek deelt.
+ */
+function bouwDek(rng: () => number, aantalSpelers: number): Kaart[] {
+  const waarden: number[] = []
+  for (let w = 2; w <= 14; w++) waarden.push(w)
+
+  const gekozen = husselen(rng, waarden).slice(0, aantalSpelers)
+
+  const kaarten: Kaart[] = []
+  for (const waarde of gekozen) {
+    for (const kleur of KLEUREN) kaarten.push({ id: `${kleur}-${waarde}`, kleur, waarde })
+  }
+  return husselen(rng, kaarten)
+}
+
 function deelHanden(s: EzelState, ctx: SpelContext) {
-  s.stapel = nieuweStapel(ctx.rng)
-  for (const p of ctx.spelers) {
-    const hand: Kaart[] = []
-    for (let i = 0; i < HAND; i++) hand.push(trek(s.stapel, ctx.rng))
+  const dek = bouwDek(ctx.rng, ctx.spelers.length)
+  ctx.spelers.forEach((p, i) => {
+    const hand = dek.slice(i * HAND, i * HAND + HAND)
     s._geheim.handen[p.uid] = hand
     ctx.zetPrive(p.uid, { hand })
-  }
+  })
 }
 
 function nieuweRonde(s: EzelState, ctx: SpelContext) {

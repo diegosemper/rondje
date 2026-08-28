@@ -1578,3 +1578,64 @@ input.code-invoer {
     transition-duration: 1ms;
   }
 }
+
+/* ── Fuck the Dealer: wat er op tafel ligt ───────────────────
+   Dertien vakjes, één per waarde, met vier stipjes eronder. Elke kaart die
+   geweest is kleurt er een. Vier stipjes betekent op: die kaart kan niet meer
+   komen, en aan tafel volgt er dan een minigame.                            */
+
+.ftd-tafel {
+  display: grid;
+  grid-template-columns: repeat(13, 1fr);
+  gap: 2px;
+  width: 100%;
+}
+
+.ftd-vak {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 0 3px;
+  border: 1px solid var(--rand);
+  border-radius: 4px;
+  background: var(--vlak);
+  opacity: 0.55;
+}
+
+.ftd-vak.geweest {
+  opacity: 1;
+  background: var(--vlak-hoog);
+}
+
+.ftd-vak.op {
+  border-color: var(--goud);
+  background: var(--goud-donker);
+}
+
+.ftd-waarde {
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--tekst);
+}
+
+.ftd-vak.op .ftd-waarde {
+  color: var(--goud);
+}
+
+.ftd-punten {
+  display: flex;
+  gap: 1px;
+}
+
+.ftd-punten i {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--rand);
+}
+
+.ftd-punten i.aan {
+  background: var(--goud);
+}
