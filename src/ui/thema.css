@@ -1639,3 +1639,33 @@ input.code-invoer {
 .ftd-punten i.aan {
   background: var(--goud);
 }
+
+/* ── Het teken voor een spel ─────────────────────────────────
+   Een eigen plaatje per spel, in een rond vlakje zodat de rij een vaste
+   linkerkant houdt. Emoji verschillen nogal in breedte; zonder vast vak
+   schuiven alle namen ten opzichte van elkaar.                             */
+
+.spel-teken {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin-right: 2px;
+  border-radius: 50%;
+  background: var(--vlak-hoog);
+  border: 1px solid var(--rand);
+  font-size: 16px;
+  line-height: 1;
+  vertical-align: -8px;
+}
+
+.spelrij .spel-teken {
+  width: 24px;
+  height: 24px;
+  font-size: 13px;
+  vertical-align: -6px;
+}
+
+.spelrij .uit .spel-teken {
+  opacity: 0.5;
+}

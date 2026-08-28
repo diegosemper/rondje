@@ -1,11 +1,12 @@
+import { useMemo } from 'react'
 import type { Kamer } from '../engine/types'
 import {
   DUUR_TEKST,
+  gehusseldeSpellen,
   kiesWillekeurig,
   pastBijGroep,
   speelbaar,
-  SPELLEN,
-  TAG_EMOJI,
+  spelEmoji,
   waaromNiet,
 } from '../engine/registry'
 import { maakRng } from '../engine/random'
@@ -26,6 +27,10 @@ export function SpelKiezer({
   const benHost = kamer.meta.hostUid === uid
   const spelers = kamer.volgorde.map((u) => kamer.spelers[u]).filter(Boolean)
   const lijst = speelbaar(spelers.length, kamer.instelling.uit)
+
+  // Door elkaar, maar vast per lobby: de lijst mag niet verspringen terwijl je
+  // aan het kiezen bent.
+  const volgorde = useMemo(() => gehusseldeSpellen(kamer.meta.code), [kamer.meta.code])
 
   const stand = spelers
     .map((s) => ({ s, n: kamer.score[s.uid]?.gedronken ?? 0 }))
@@ -76,7 +81,7 @@ export function SpelKiezer({
           </Kaartje>
         )}
 
-        {SPELLEN.filter((s) => pastBijGroep(s, kamer.instelling.verwacht)).map((s) => {
+        {volgorde.filter((s) => pastBijGroep(s, kamer.instelling.verwacht)).map((s) => {
           const blokkade = waaromNiet(s, spelers.length, kamer.instelling.uit)
           const gespeeld = kamer.geschiedenis.includes(s.id)
           const klikbaar = benHost && !blokkade
@@ -95,7 +100,7 @@ export function SpelKiezer({
             >
               <div className="balk">
                 <strong style={{ fontSize: 19 }}>
-                  {s.tags.map((t) => TAG_EMOJI[t] ?? '').join('')} {s.naam}
+                  <span className="spel-teken">{spelEmoji(s.id)}</span> {s.naam}
                 </strong>
                 <span className="klein zacht">
                   {gespeeld && !blokkade ? 'geweest · ' : ''}

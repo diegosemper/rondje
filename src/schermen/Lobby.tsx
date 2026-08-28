@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Kamer, Zwaarte } from '../engine/types'
-import { pastBijGroep, SPELLEN } from '../engine/registry'
+import { pastBijGroep, spelEmoji, SPELLEN } from '../engine/registry'
 import { ZWAARTE_LABEL, ZWAARTE_UITLEG } from '../engine/slokken'
 import {
   MAX_SPELERS,
@@ -176,6 +176,7 @@ export function Lobby({
                       onClick={() => wisselSpel(s.id)}
                     >
                       <span className={aan && !teWeinig ? '' : 'uit'} style={{ minWidth: 0 }}>
+                        <span className="spel-teken">{spelEmoji(s.id)}</span>{' '}
                         <strong>{s.naam}</strong>
                         {teWeinig && (
                           <span style={{ color: '#ffd166', fontSize: 12 }}>
