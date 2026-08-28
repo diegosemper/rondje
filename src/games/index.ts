@@ -29,7 +29,6 @@ import { stapeltoren } from './stapeltoren'
 import { wiskunde } from './wiskunde'
 import { bierpong } from './bierpong'
 import { opbouwen } from './opbouwen'
-import { roodzwart } from './roodzwart'
 import { waterval } from './waterval'
 import { mexicanen } from './mexicanen'
 import { kleurenklap } from './kleurenklap'
@@ -44,8 +43,9 @@ import { hitster } from './hitster'
 import { springen } from './springen'
 import { pijlen } from './pijlen'
 import { spiegel } from './spiegel'
-// Zwaartekracht staat bewust niet in de lijst: eruit gehaald op verzoek. De
-// code staat er nog, dus terugzetten is deze regel en de import weer aanzetten.
+// Zwaartekracht en Rood of Zwart staan bewust niet in de lijst: eruit gehaald
+// op verzoek, te saai bevonden. De code staat er nog, dus terugzetten is de
+// import weer aanzetten en de naam in de lijst hieronder terugzetten.
 import { tweewaarheden } from './tweewaarheden'
 
 /**
@@ -63,7 +63,6 @@ export const ALLE_SPELLEN: GameModule[] = [
   blindekaart,
   ezelen,
   roulette,
-  roodzwart,
   waterval,
   mexicanen,
   tekenen,

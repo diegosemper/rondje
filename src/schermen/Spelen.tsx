@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { Kamer, KijkContext } from '../engine/types'
 import { geefSpel } from '../engine/registry'
 import { berekenSlokken, slokKort, slokTekst } from '../engine/slokken'
@@ -51,6 +51,21 @@ export function Spelen({
     [uid, benHost, spelers, zwaarte, prive, nu, code, kamer.spelers],
   )
 
+  // Sommige spellen willen eerst iets laten zien voordat het slokkenscherm
+  // eroverheen valt. Zonder zo'n spel is de vertraging 0 en verandert er
+  // niets: `toonGate` is dan meteen waar, zonder tussenliggend beeld.
+  const wacht = mod?.drinkVertragingMs ?? 0
+  const gateId = kamer.drinkgate?.id ?? null
+  const [gateKlaar, zetGateKlaar] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!gateId || wacht <= 0) return
+    const id = setTimeout(() => zetGateKlaar(gateId), wacht)
+    return () => clearTimeout(id)
+  }, [gateId, wacht])
+
+  const toonGate = gateId !== null && (wacht <= 0 || gateKlaar === gateId)
+
   const skipStemmen = Object.keys(kamer.skip).filter((u) => kamer.spelers[u]).length
   const ikGeskipt = !!kamer.skip[uid]
   const nodig = Math.floor(spelers.length / 2) + 1
@@ -70,7 +85,7 @@ export function Spelen({
 
   // Er wordt gedronken: het spel ligt stil. Bewust vóór het spelscherm, zodat
   // aftelklokken in het spel niet doorlopen terwijl iedereen zit te drinken.
-  if (kamer.drinkgate) {
+  if (kamer.drinkgate && toonGate) {
     return (
       <DrinkPauze
         gate={kamer.drinkgate}

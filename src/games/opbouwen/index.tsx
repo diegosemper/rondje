@@ -18,9 +18,7 @@ const OGEN = ['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅']
 const BEURTEN_PER_SPELER = 2
 /** Een pot van vijftig zou de avond beëindigen. */
 const MAX_STRAF = 10
-/** Hier houdt het op: je moet stoppen en cashen. Anders loopt het door tot
- *  iemand met honderd slokken op tafel staat, en dan is het geen keuze meer. */
-const MAX_POT = 30
+/* Er is met opzet geen plafond op de pot: doorgaan mag zolang je durft. */
 
 interface OpbouwState {
   beurt: string
@@ -103,11 +101,6 @@ export const opbouwen: GameModule<OpbouwState> = {
         s.besteRun = { uid: actie.uid, pot: s.pot }
       }
 
-      // Plafond bereikt: doorgaan mag niet meer, cashen is het enige dat rest.
-      if (s.pot >= MAX_POT) {
-        s.fase = 'uitdelen'
-        ctx.log(`${ctx.naam(actie.uid)} zit op het maximum van ${s.pot}`)
-      }
       return
     }
 
@@ -228,7 +221,7 @@ export const opbouwen: GameModule<OpbouwState> = {
               <div className="klein zacht" style={{ textAlign: 'center' }}>
                 Een 1 kost je de hele pot. Kans: 1 op 6, elke worp opnieuw.
                 <br />
-                Bij {MAX_POT} moet je stoppen.
+                Doorgaan mag zolang je durft.
               </div>
             </>
           ) : (

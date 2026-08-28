@@ -1215,3 +1215,100 @@ input.code-invoer {
     margin-left: 62%;
   }
 }
+
+/* ── De bus: een kaart die op tafel valt ─────────────────────
+   Hoort bij games/bussen. De kaart komt van boven aangevlogen, landt op de
+   kaart die er lag en stuitert er kort op na. Groen of rood eromheen vertelt
+   meteen of het goed was, zodat je het al weet voordat het slokkenscherm
+   komt.                                                                     */
+
+.bus-tafel {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.bus-leg {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  animation: bus-leggen 620ms cubic-bezier(0.2, 0.75, 0.3, 1) both;
+}
+
+.bus-leg > * {
+  border-radius: 10px;
+  box-shadow:
+    0 0 0 3px var(--rand),
+    0 14px 28px rgba(0, 0, 0, 0.55);
+}
+
+.bus-leg.goed > * {
+  box-shadow:
+    0 0 0 3px var(--groen),
+    0 0 22px rgba(53, 196, 107, 0.5),
+    0 14px 28px rgba(0, 0, 0, 0.55);
+}
+
+.bus-leg.mis > * {
+  box-shadow:
+    0 0 0 3px var(--rood),
+    0 0 22px rgba(232, 69, 60, 0.5),
+    0 14px 28px rgba(0, 0, 0, 0.55);
+}
+
+@keyframes bus-leggen {
+  0% {
+    transform: translateY(-110px) rotate(-9deg) scale(1.08);
+    opacity: 0;
+  }
+  45% {
+    opacity: 1;
+  }
+  62% {
+    transform: translateY(0) rotate(1.5deg) scale(1);
+  }
+  78% {
+    transform: translateY(-9px) rotate(-0.5deg) scale(1.01);
+  }
+  100% {
+    transform: translateY(0) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+}
+
+/* Wie liever geen beweging ziet, krijgt hem gewoon meteen. */
+@media (prefers-reduced-motion: reduce) {
+  .bus-leg {
+    animation-duration: 1ms;
+  }
+}
+
+/* ── Aftellen: 3 … 2 … 1 ─────────────────────────────────────
+   Elk cijfer komt groot binnen en krimpt weg. De React-key is het cijfer
+   zelf, dus de animatie begint bij elke tel opnieuw.                        */
+
+.aftellen {
+  animation: aftel-tik 900ms ease-out both;
+}
+
+@keyframes aftel-tik {
+  0% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+  20% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.9);
+    opacity: 0.75;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aftellen {
+    animation: none;
+  }
+}

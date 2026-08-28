@@ -245,4 +245,12 @@ export interface GameModule<S = any> {
 
   /** optioneel: extra check of het spel klaar is */
   isKlaar?(state: S): boolean
+
+  /**
+   * Optioneel: wacht zoveel milliseconden voordat het slokkenscherm eroverheen
+   * komt. Voor spellen die eerst nog iets willen laten zien — Bussen laat de
+   * kaart vallen, en het is flauw als je al staat te drinken voordat je gezien
+   * hebt wát je omdraaide. Laat je hem weg, dan komt het scherm meteen.
+   */
+  drinkVertragingMs?: number
 }

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import {
   isRood,
   kaartKort,
@@ -56,6 +57,8 @@ const BUS_MIN = 6
 const BUS_MAX = 12
 /** Vanaf deze lengte krijgt de bus een checkpoint. */
 const BUS_CHECKPOINT_VANAF = 9
+/** Hoe lang een kaart erover doet om op tafel te vallen. */
+const BUS_LEG_MS = 620
 
 type Keuze =
   | 'rood'
@@ -135,6 +138,12 @@ interface BussenState {
   checkpointGehaald: boolean
   busPoging: number
   busFoutKaart: Kaart | null
+  /**
+   * De kaart die er als laatste bij gelegd is, met de kaart waar hij bovenop
+   * ging. Staat in de spelstand en niet in het scherm, zodat iedereen aan
+   * tafel dezelfde kaart ziet vallen en niet alleen de chauffeur.
+   */
+  busLaatste: { kaart: Kaart; vorige: Kaart; goed: boolean; nr: number } | null
 }
 
 /* ── Hulpjes ────────────────────────────────────────────────── */
@@ -463,6 +472,7 @@ function startBus(s: BussenState, ctx: SpelContext) {
   s.busPositie = 0
   s.busPoging = 1
   s.busFoutKaart = null
+  s.busLaatste = null
   s.busStart = trek(s.stapel, ctx.rng)
 
   // Handen zijn nu betekenisloos, dus weg ermee. Per speler wissen en niet met
@@ -547,6 +557,7 @@ export const bussen: GameModule<BussenState> = {
       checkpointGehaald: false,
       busPoging: 1,
       busFoutKaart: null,
+      busLaatste: null,
     }
   },
 
@@ -694,6 +705,9 @@ export const bussen: GameModule<BussenState> = {
       const nieuw = trekUniek(s.stapel, ctx.rng, gezienInBus(s))
       const goed = (actie.type === 'hoger') === (nieuw.waarde > vorige.waarde)
 
+      // Zodat elk scherm de kaart ziet vallen voordat er gedronken wordt.
+      s.busLaatste = { kaart: nieuw, vorige, goed, nr: (s.busLaatste?.nr ?? 0) + 1 }
+
       if (goed) {
         s.busRij[s.busPositie] = nieuw
         s.busPositie++
@@ -717,8 +731,27 @@ export const bussen: GameModule<BussenState> = {
       ctx.drink(s.chauffeur, straf, `strandde op kaart ${s.busPositie + 1}`)
 
       s.busFoutKaart = nieuw
-      leggAf(s.stapel, nieuw)
-      for (let i = herstart; i < s.busLengte; i++) s.busRij[i] = null
+
+      // De kaart die je omdraaide blijft liggen en is voortaan de kaart waar
+      // je vanaf gaat. Je begint dus wel opnieuw, maar niet met dezelfde
+      // startkaart als daarnet — anders zag je bij elke poging weer dezelfde
+      // twee. De kaart die hij vervangt gaat op de aflegstapel, net als de
+      // kaarten die je kwijtraakt.
+      for (let i = herstart; i < s.busLengte; i++) {
+        const weg = s.busRij[i]
+        if (weg) leggAf(s.stapel, weg)
+        s.busRij[i] = null
+      }
+
+      if (herstart === 0) {
+        if (s.busStart) leggAf(s.stapel, s.busStart)
+        s.busStart = nieuw
+      } else {
+        const oud = s.busRij[herstart - 1]
+        if (oud) leggAf(s.stapel, oud)
+        s.busRij[herstart - 1] = nieuw
+      }
+
       s.busPositie = herstart
       s.busPoging++
       return
@@ -726,6 +759,9 @@ export const bussen: GameModule<BussenState> = {
   },
 
   isKlaar: (s) => s.fase === 'klaar',
+
+  // Eerst de kaart zien vallen, dan pas drinken.
+  drinkVertragingMs: BUS_LEG_MS + 420,
 
   View({ state: s, ctx }) {
     if (s.fase === 'vragen') return <Vragen s={s} ctx={ctx} />
@@ -1186,13 +1222,8 @@ function Bus({ s, ctx }: { s: BussenState; ctx: KijkContext }) {
       <BusRij s={s} />
 
       <div className="midden" style={{ gap: 10 }}>
-        {s.busFoutKaart && (
-          <div className="klein" style={{ color: 'var(--rood)' }}>
-            {kaartKort(s.busFoutKaart)} — mis
-          </div>
-        )}
         <div className="kop-klein">Hoger of lager dan</div>
-        <Speelkaart kaart={vorige} maat="groot" />
+        <BusLeg s={s} vorige={vorige} />
       </div>
 
       {ikRij ? (
@@ -1223,6 +1254,41 @@ function Bus({ s, ctx }: { s: BussenState; ctx: KijkContext }) {
         </Kaartje>
       )}
     </>
+  )
+}
+
+/**
+ * De kaart valt van de stapel op tafel, en blijft daar liggen.
+ *
+ * Hiervoor sprong het scherm in één klap naar de nieuwe kaart en stond je al
+ * te drinken voordat je gezien had wát je had omgedraaid. Nu zie je eerst de
+ * kaart vallen; het slokkenscherm wacht daarop (zie BUS_LEG_MS).
+ *
+ * Zolang hij valt tonen we eronder de kaart waar hij overheen gaat, want de
+ * spelstand wijst dan al naar de nieuwe.
+ */
+function BusLeg({ s, vorige }: { s: BussenState; vorige: Kaart | null }) {
+  const laatste = s.busLaatste
+  const [klaarNr, zetKlaarNr] = useState(() => laatste?.nr ?? 0)
+
+  useEffect(() => {
+    if (!laatste || laatste.nr <= klaarNr) return
+    const id = setTimeout(() => zetKlaarNr(laatste.nr), BUS_LEG_MS)
+    return () => clearTimeout(id)
+  }, [laatste?.nr, klaarNr])
+
+  const valt = !!laatste && laatste.nr > klaarNr
+  const onder = valt ? laatste!.vorige : vorige
+
+  return (
+    <div className="bus-tafel">
+      <Speelkaart kaart={onder} maat="groot" />
+      {valt && (
+        <div key={laatste!.nr} className={`bus-leg ${laatste!.goed ? 'goed' : 'mis'}`}>
+          <Speelkaart kaart={laatste!.kaart} maat="groot" />
+        </div>
+      )}
+    </div>
   )
 }
 
