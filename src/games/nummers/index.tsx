@@ -8,17 +8,17 @@ import { NUMMERS, type Nummer } from './lijst'
 /* ─────────────────────────────────────────────────────────────
    RAAD HET NUMMER
 
-   Iedereen luistert op zijn eigen telefoon en bepaalt zelf hoe lang. Je hoort
-   eerst één seconde; weet je het niet, dan rek je op naar twee, vier, zeven,
-   twaalf, twintig.
+   Iedereen hoort even veel. Je begint met één seconde, en er komt pas meer bij
+   als íedereen die nog aan het raden is daarmee instemt. Wie hem al heeft stemt
+   niet mee -- die heeft er baat bij dat het kort blijft, en mag dus ook niet
+   tegenhouden.
 
-   Iedereen kan het dus raden — het verschil zit in wat je ermee verdient. Na
-   één seconde mag je zeven slokken uitdelen, na twintig nog maar twee. Wie het
-   helemaal niet krijgt, drinkt.
+   Het verschil zit in de volgorde. Wie hem als eerste heeft mag zeven slokken
+   uitdelen, de tweede vijf, daarna minder -- ook als jullie precies evenveel
+   gehoord hebben. Wie hem helemaal niet krijgt, drinkt.
 
-   Dat werkt alleen omdat iedereen een eigen telefoon heeft: zes mensen die
-   tegelijk hun eigen fragment op hun eigen tempo afspelen, zonder dat het
-   elkaar in de weg zit.
+   Afspelen doet iedereen op zijn eigen telefoon, wanneer hij wil. Alleen hoe
+   lang je mag horen is gedeeld.
 
    De fragmenten komen van Apple's openbare voorluister-dienst: dertig seconden
    per nummer, gratis en zonder inloggen. Zo'n fragment begint meestal bij het
@@ -26,10 +26,20 @@ import { NUMMERS, type Nummer } from './lijst'
    herkenbaarder maakt.
    ───────────────────────────────────────────────────────────── */
 
-/** Hoeveel seconden je per stap te horen krijgt. */
+/** Hoeveel seconden er per stap te horen is. Geldt voor iedereen tegelijk. */
 const STAPPEN = [1, 2, 4, 7, 12, 20]
-/** Wat je bij die stap mag uitdelen als je het raadt. */
-const BELONING = [7, 6, 5, 4, 3, 2]
+/**
+ * Wat je mag uitdelen, op volgorde van raden.
+ *
+ * Niet op hoe lang je geluisterd hebt: iedereen hoort even veel, dus dat zou
+ * niets onderscheiden. Wie hem als eerste heeft is de snelste van de tafel, en
+ * daar hoort de grootste beloning bij.
+ */
+const BELONING_PLEK = [7, 5, 4, 3, 2, 2, 1, 1]
+
+function beloningVoor(plek: number): number {
+  return BELONING_PLEK[Math.min(plek, BELONING_PLEK.length - 1)]
+}
 /** Wat je drinkt als je het helemaal niet krijgt. */
 const STRAF_MISLUKT = 5
 const RONDES = 5
@@ -61,9 +71,11 @@ interface NummerState {
   /** alleen de link is publiek; de titel blijft geheim tot het eind */
   url: string
 
-  /** hoe ver iedereen zelf is opgerekt */
-  stap: Record<string, number>
-  /** wie het geraden heeft, op volgorde, met de stap waarop het lukte */
+  /** hoeveel er nu te horen is — voor iedereen hetzelfde */
+  stap: number
+  /** wie er gestemd heeft om langer te luisteren */
+  stemmen: string[]
+  /** wie het geraden heeft, op volgorde; de plek in deze rij bepaalt de beloning */
   goed: { uid: string; stap: number }[]
   /** wie het opgegeven heeft of afgekapt is */
   op: string[]
@@ -80,15 +92,28 @@ function huidigNummer(s: NummerState): Nummer {
 function nieuweRonde(s: NummerState, ctx: SpelContext) {
   s.url = huidigNummer(s).url
   s.fase = 'spelen'
-  s.stap = {}
+  s.stap = 0
+  s.stemmen = []
   s.goed = []
   s.op = []
   s.uitdeelIndex = 0
   s.onthuld = null
-  for (const p of ctx.spelers) {
-    s.stap[p.uid] = 0
-    ctx.zetPrive(p.uid, null)
-  }
+  for (const p of ctx.spelers) ctx.zetPrive(p.uid, null)
+}
+
+/**
+ * Zijn ze het eens over langer luisteren? Dan gaat de stap omhoog.
+ *
+ * Wordt ook aangeroepen als er iemand afvalt: wie hem net geraden heeft telt
+ * niet meer mee, en dan kan de stemming ineens rond zijn zonder dat er nog
+ * iemand op de knop hoefde te drukken.
+ */
+function controleerStemmen(s: NummerState, bezig: string[]) {
+  if (s.stap >= STAPPEN.length - 1) return
+  if (bezig.length === 0) return
+  if (!bezig.every((u) => s.stemmen.includes(u))) return
+  s.stap++
+  s.stemmen = []
 }
 
 function rondAf(s: NummerState, ctx: SpelContext) {
@@ -109,11 +134,11 @@ function rondAf(s: NummerState, ctx: SpelContext) {
 export const nummers: GameModule<NummerState> = {
   id: 'nummers',
   naam: 'Raad het Nummer',
-  uitleg: 'Eén seconde muziek op je eigen telefoon. Sneller raden levert meer op.',
+  uitleg: 'Eén seconde muziek. Wie hem als eerste heeft, deelt het meest uit.',
   regels: [
-    'Iedereen luistert op zijn eigen telefoon.',
-    'Eerst één seconde. Nodig? Rek zelf op naar meer.',
-    'Meteen goed = 7 uitdelen, na 20 seconden nog 2.',
+    'Iedereen hoort even veel — te beginnen met één seconde.',
+    'Meer horen mag pas als iedereen die nog zoekt dat wil.',
+    'Eerste die hem heeft deelt 7 uit, de tweede 5, daarna minder.',
     'Krijg je het niet? Dan drink je 5.',
   ],
   minSpelers: 2,
@@ -128,7 +153,8 @@ export const nummers: GameModule<NummerState> = {
       fase: 'spelen',
       _geheim: { lijst: husselen(ctx.rng, NUMMERS).slice(0, RONDES + 3) },
       url: '',
-      stap: {},
+      stap: 0,
+      stemmen: [],
       goed: [],
       op: [],
       uitdeelIndex: 0,
@@ -145,11 +171,13 @@ export const nummers: GameModule<NummerState> = {
       s.goed.some((g) => g.uid === uid) || s.op.includes(uid)
 
     if (s.fase === 'spelen') {
-      /* Zelf oprekken naar een langer fragment */
+      /* Stemmen om er meer van te horen. Pas als iedereen die nog zoekt het
+         eens is, komt er een stuk bij. */
       if (actie.type === 'langer') {
         if (isKlaarMetRonde(actie.uid)) return
-        const nu = s.stap[actie.uid] ?? 0
-        if (nu < STAPPEN.length - 1) s.stap[actie.uid] = nu + 1
+        if (s.stap >= STAPPEN.length - 1) return
+        if (!s.stemmen.includes(actie.uid)) s.stemmen.push(actie.uid)
+        controleerStemmen(s, iedereen.filter((u) => !isKlaarMetRonde(u)))
         return
       }
 
@@ -160,11 +188,16 @@ export const nummers: GameModule<NummerState> = {
         const nummer = huidigNummer(s)
 
         if (klopt(gok, nummer.titel)) {
-          const stap = s.stap[actie.uid] ?? 0
-          s.goed.push({ uid: actie.uid, stap })
+          const plek = s.goed.length
+          s.goed.push({ uid: actie.uid, stap: s.stap })
+          // Zijn stem telt niet meer mee: hij is klaar, en zou anders de rest
+          // kunnen ophouden.
+          s.stemmen = s.stemmen.filter((u) => u !== actie.uid)
           // Alleen deze speler krijgt te horen dat het goed was.
-          ctx.zetPrive(actie.uid, { goed: true, beloning: BELONING[stap] })
-          ctx.log(`${ctx.naam(actie.uid)} had hem na ${STAPPEN[stap]} sec`)
+          ctx.zetPrive(actie.uid, { goed: true, beloning: beloningVoor(plek) })
+          ctx.log(
+            `${ctx.naam(actie.uid)} had hem als ${plek + 1}e, na ${STAPPEN[s.stap]} sec`,
+          )
         } else {
           // Een foute gok blijft tussen jou en je telefoon, anders geef je
           // de rest gratis hints.
@@ -172,14 +205,17 @@ export const nummers: GameModule<NummerState> = {
         }
 
         if (iedereen.every(isKlaarMetRonde)) rondAf(s, ctx)
+        else controleerStemmen(s, iedereen.filter((u) => !isKlaarMetRonde(u)))
         return
       }
 
       if (actie.type === 'geef-op') {
         if (isKlaarMetRonde(actie.uid)) return
         s.op.push(actie.uid)
+        s.stemmen = s.stemmen.filter((u) => u !== actie.uid)
         ctx.zetPrive(actie.uid, { opgegeven: true })
         if (iedereen.every(isKlaarMetRonde)) rondAf(s, ctx)
+        else controleerStemmen(s, iedereen.filter((u) => !isKlaarMetRonde(u)))
         return
       }
 
@@ -202,7 +238,7 @@ export const nummers: GameModule<NummerState> = {
 
       for (const [uid, aantal] of Object.entries(verdeling)) {
         if (!iedereen.includes(uid) || uid === aanZet.uid) continue
-        ctx.deelUitPrecies(aanZet.uid, uid, aantal, `raadde na ${STAPPEN[aanZet.stap]} sec`)
+        ctx.deelUitPrecies(aanZet.uid, uid, aantal, `had hem als ${s.uitdeelIndex + 1}e`)
       }
       s.uitdeelIndex++
       if (s.uitdeelIndex >= s.goed.length) s.fase = 'uitslag'
@@ -244,10 +280,18 @@ function Scherm({ s, ctx }: { s: NummerState; ctx: KijkContext }) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const stopRef = useRef<number | null>(null)
 
-  const mijnStap = s.stap[ctx.ik] ?? 0
-  const ikGoed = s.goed.some((g) => g.uid === ctx.ik)
+  const stap = s.stap ?? 0
+  const mijnPlek = s.goed.findIndex((g) => g.uid === ctx.ik)
+  const ikGoed = mijnPlek >= 0
   const ikOp = s.op.includes(ctx.ik)
   const ikKlaar = ikGoed || ikOp
+
+  // Wie er nog zoekt, en dus mag meestemmen over langer luisteren.
+  const bezig = ctx.spelers.filter(
+    (p) => !s.goed.some((g) => g.uid === p.uid) && !s.op.includes(p.uid),
+  )
+  const stemmen = s.stemmen ?? []
+  const ikGestemd = stemmen.includes(ctx.ik)
 
   /* Elke telefoon speelt zijn eigen fragment af. */
   useEffect(() => {
@@ -307,16 +351,16 @@ function Scherm({ s, ctx }: { s: NummerState; ctx: KijkContext }) {
           {ikAanZet ? (
             <Verdeler
               key={s.uitdeelIndex}
-              totaal={ctx.slokAantal(BELONING[aanZet.stap])}
+              totaal={ctx.slokAantal(beloningVoor(s.uitdeelIndex))}
               ctx={ctx}
-              titel={`Geraden na ${STAPPEN[aanZet.stap]} sec — deel uit`}
+              titel={`${s.uitdeelIndex + 1}e die hem had — deel uit`}
               bijKlaar={(verdeling) => ctx.stuur('geef', { verdeling })}
             />
           ) : (
             <>
               <Kaartje style={{ textAlign: 'center' }}>
                 <span className="zacht">
-                  {ctx.naam(aanZet.uid)} deelt {ctx.slok(BELONING[aanZet.stap])} uit…
+                  {ctx.naam(aanZet.uid)} deelt {ctx.slok(beloningVoor(s.uitdeelIndex))} uit…
                 </span>
               </Kaartje>
               {ctx.benIkHost && (
@@ -343,7 +387,8 @@ function Scherm({ s, ctx }: { s: NummerState; ctx: KijkContext }) {
           </div>
 
           {ctx.spelers.map((p) => {
-            const g = s.goed.find((x) => x.uid === p.uid)
+            const plek = s.goed.findIndex((x) => x.uid === p.uid)
+            const g = plek >= 0 ? s.goed[plek] : undefined
             return (
               <div
                 key={p.uid}
@@ -358,7 +403,9 @@ function Scherm({ s, ctx }: { s: NummerState; ctx: KijkContext }) {
                   {p.emoji} <strong>{p.naam}</strong>
                 </span>
                 <span className="klein">
-                  {g ? `na ${STAPPEN[g.stap]}s · deelde ${BELONING[g.stap]} uit` : `🍺 ${STRAF_MISLUKT}`}
+                  {g
+                    ? `${plek + 1}e · na ${STAPPEN[g.stap]}s · deelde ${beloningVoor(plek)} uit`
+                    : `🍺 ${STRAF_MISLUKT}`}
                 </span>
               </div>
             )
@@ -381,7 +428,7 @@ function Scherm({ s, ctx }: { s: NummerState; ctx: KijkContext }) {
   }
 
   /* ── Spelen ── */
-  const laatsteStap = mijnStap >= STAPPEN.length - 1
+  const laatsteStap = stap >= STAPPEN.length - 1
   const fout: string | undefined = ctx.prive?.fout
 
   return (
@@ -402,12 +449,17 @@ function Scherm({ s, ctx }: { s: NummerState; ctx: KijkContext }) {
           {ikGoed && (
             <Kaartje style={{ textAlign: 'center', borderColor: 'var(--groen)' }}>
               <div className="kop-klein">Straks uit te delen</div>
-              <h2 style={{ color: 'var(--groen)' }}>
-                {ctx.slok(BELONING[s.goed.find((g) => g.uid === ctx.ik)!.stap])}
-              </h2>
+              <div className="klein zacht">
+                Je had hem als {mijnPlek + 1}e van {ctx.spelers.length}
+              </div>
+              <h2 style={{ color: 'var(--groen)' }}>{ctx.slok(beloningVoor(mijnPlek))}</h2>
             </Kaartje>
           )}
           <div className="klein zacht">Niets zeggen — laat de rest zwoegen.</div>
+          <div className="klein zacht">
+            Er is nu {STAPPEN[stap]} seconde{STAPPEN[stap] === 1 ? '' : 'n'} te horen. Jij stemt
+            niet meer mee over langer luisteren.
+          </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, justifyContent: 'center' }}>
             {ctx.spelers.map((p) => {
               const klaar = s.goed.some((g) => g.uid === p.uid) || s.op.includes(p.uid)
@@ -430,7 +482,7 @@ function Scherm({ s, ctx }: { s: NummerState; ctx: KijkContext }) {
               {speelt ? '🔊' : '🎵'}
             </div>
             <div className="reusachtig" style={{ fontSize: 'clamp(40px,15vw,80px)' }}>
-              {STAPPEN[mijnStap]}s
+              {STAPPEN[stap]}s
             </div>
             <div style={{ display: 'flex', gap: 5 }}>
               {STAPPEN.map((sec, i) => (
@@ -441,16 +493,24 @@ function Scherm({ s, ctx }: { s: NummerState; ctx: KijkContext }) {
                     height: 8,
                     borderRadius: 99,
                     background:
-                      i < mijnStap ? 'var(--rand)' : i === mijnStap ? 'var(--goud)' : 'var(--vlak-hoog)',
+                      i < stap ? 'var(--rand)' : i === stap ? 'var(--goud)' : 'var(--vlak-hoog)',
                   }}
                 />
               ))}
             </div>
             <Kaartje style={{ textAlign: 'center' }}>
-              <div className="kop-klein">Nu waard</div>
+              <div className="kop-klein">
+                {s.goed.length === 0 ? 'Als eerste goed' : `Als ${s.goed.length + 1}e goed`}
+              </div>
               <strong style={{ fontSize: 20, color: 'var(--goud)' }}>
-                {ctx.slok(BELONING[mijnStap])} uitdelen
+                {ctx.slok(beloningVoor(s.goed.length))} uitdelen
               </strong>
+              {s.goed.length > 0 && (
+                <div className="klein zacht" style={{ marginTop: 4 }}>
+                  {s.goed.length === 1 ? 'Er is er al één' : `Er zijn er al ${s.goed.length}`} —
+                  hoe later, hoe minder.
+                </div>
+              )}
             </Kaartje>
             {fout && (
               <div className="klein" style={{ color: 'var(--rood)' }}>
@@ -460,8 +520,10 @@ function Scherm({ s, ctx }: { s: NummerState; ctx: KijkContext }) {
           </div>
 
           <div className="onderaan">
-            <GroteKnop kleur="goud" enorm uit={speelt} bijTik={() => speel(STAPPEN[mijnStap])}>
-              {speelt ? '🔊 Speelt…' : `▶ Speel ${STAPPEN[mijnStap]} ${STAPPEN[mijnStap] === 1 ? 'seconde' : 'seconden'}`}
+            <GroteKnop kleur="goud" enorm uit={speelt} bijTik={() => speel(STAPPEN[stap])}>
+              {speelt
+                ? '🔊 Speelt…'
+                : `▶ Speel ${STAPPEN[stap]} ${STAPPEN[stap] === 1 ? 'seconde' : 'seconden'}`}
             </GroteKnop>
 
             {laadfout && (
@@ -497,19 +559,29 @@ function Scherm({ s, ctx }: { s: NummerState; ctx: KijkContext }) {
 
             <div className="rij">
               <GroteKnop
-                kleur="leeg"
+                kleur={ikGestemd ? 'goud' : 'leeg'}
                 klein
-                uit={laatsteStap}
+                uit={laatsteStap || ikGestemd}
                 bijTik={() => ctx.stuur('langer')}
               >
                 {laatsteStap
                   ? 'Langer kan niet meer'
-                  : `Langer ▶ ${STAPPEN[mijnStap + 1]}s · nog ${BELONING[mijnStap + 1]}`}
+                  : ikGestemd
+                    ? `Gestemd · ${stemmen.length}/${bezig.length}`
+                    : `Langer ▶ ${STAPPEN[stap + 1]}s`}
               </GroteKnop>
               <GroteKnop kleur="leeg" klein bijTik={() => ctx.stuur('geef-op')}>
                 Opgeven — {ctx.slokKort(STRAF_MISLUKT)}
               </GroteKnop>
             </div>
+
+            {!laatsteStap && (
+              <div className="klein zacht" style={{ textAlign: 'center' }}>
+                {stemmen.length === 0
+                  ? `Er komt pas meer bij als alle ${bezig.length} die nog zoeken dat willen.`
+                  : `${stemmen.length} van de ${bezig.length} willen langer luisteren.`}
+              </div>
+            )}
 
             {ctx.benIkHost && (
               <GroteKnop kleur="leeg" klein bijTik={() => ctx.stuur('kap-af')}>
