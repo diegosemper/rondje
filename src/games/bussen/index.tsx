@@ -33,11 +33,15 @@ import { Verdeler } from '../../ui/Verdeler'
       de goede plek, want dan weet je al wat de rest gedaan heeft. Te laat is
       pech: je houdt de kaart, en met de meeste kaarten over moet jij de bus in.
 
-   3. DE BUS. Een willekeurige kaart bepaalt de lengte, minimaal 6. Die hele
-      rij komt meteen op tafel te liggen — dus bij 12 liggen er ook echt 12
-      kaarten naast elkaar.
+   3. DE BUS. Eerst pak je blind een van vijf dichte kaarten en draai je hem
+      om. De waarde eronder is de lengte: pak je een 10, dan wordt het een bus
+      van tien kaarten. Ze liggen allemaal tussen de 6 en de aas, dus korter
+      dan zes wordt het nooit en langer dan veertien ook niet.
 
-      Eerst gooi je een kaart de lucht in. Landt hij op zijn voorkant, dan ligt
+      Die hele rij komt meteen op tafel te liggen — bij 10 liggen er ook echt
+      10 kaarten naast elkaar.
+
+      Dan gooi je een kaart de lucht in. Landt hij op zijn voorkant, dan ligt
       de hele rij open en zie je precies wat je te wachten staat. Landt hij op
       zijn rug, dan ligt alles dicht en ken je alleen de kaart waar je op dat
       moment voor staat.
@@ -64,9 +68,11 @@ const SPS_TOON_SEC = 3.5
 
 const VRAAG_INZET = [1, 2, 3, 4]
 
+/** De lengtekaart ligt altijd tussen deze twee: een 6 tot en met een aas. */
 const BUS_MIN = 6
-/** Langer dan dit past niet meer leesbaar op een telefoon. */
-const BUS_MAX = 12
+const BUS_MAX = 14
+/** Hoeveel dichte kaarten je te kiezen krijgt voor die lengte. */
+const BUS_KEUZES = 5
 /** Vanaf deze lengte krijgt de bus een checkpoint. */
 const BUS_CHECKPOINT_VANAF = 9
 /** Hoe lang een kaart erover doet om op tafel te vallen. */
@@ -75,6 +81,10 @@ const BUS_LEG_MS = 620
 const WORP_MS = 1500
 /** En hoe lang de uitslag daarna blijft staan voordat de rij verschijnt. */
 const WORP_TOON_MS = 2400
+/** Hoe lang de gepakte lengtekaart erover doet om om te draaien. */
+const TREK_MS = 700
+/** En hoe lang hij daarna in beeld blijft. */
+const TREK_TOON_MS = 2300
 
 type Keuze =
   | 'rood'
@@ -147,8 +157,14 @@ interface BussenState {
   chauffeur: string | null
   busLengteKaart: Kaart | null
   busLengte: number
-  /** eerst de kaart in de lucht gooien, dan pas rijden */
-  busSubfase: 'gooien' | 'rijden'
+  /** eerst een lengtekaart pakken, dan gooien, dan pas rijden */
+  busSubfase: 'trekken' | 'gooien' | 'rijden'
+  /** de dichte kaarten waar je er blind een uit pakt */
+  busKeuzes: Kaart[]
+  /** welke daarvan je pakte, of null zolang je nog moet kiezen */
+  busGekozen: number | null
+  /** wanneer je hem pakte, in servertijd — omdraaien duurt even */
+  busTrekOp: number
   /** de kaart die je opgooide; kop of munt bepaalt open of dicht */
   busWorp: Kaart | null
   /** wanneer hij de lucht in ging, in servertijd — de worp duurt even */
@@ -360,6 +376,27 @@ function bovenop(s: BussenState, plek: number): Kaart | null {
 }
 
 /**
+ * Trekt een kaart waarvan de waarde binnen een bereik valt.
+ *
+ * Voor de lengte van de bus: die moet tussen de 6 en de aas liggen. Vroeger
+ * werd er gewoon een kaart getrokken en het getal daarna platgeslagen tussen
+ * 6 en 12, maar dan is een 2 net zo goed een 6 en klopt "de kaart die je pakt
+ * is de lengte" niet meer.
+ */
+function trekTussen(stapel: Stapel, rng: () => number, min: number, max: number): Kaart {
+  const opzij: Kaart[] = []
+  let kaart = trek(stapel, rng)
+  let pogingen = 0
+  while ((kaart.waarde < min || kaart.waarde > max) && pogingen < 80) {
+    opzij.push(kaart)
+    kaart = trek(stapel, rng)
+    pogingen++
+  }
+  if (opzij.length) leggAf(stapel, ...opzij)
+  return kaart
+}
+
+/**
  * Trekt een kaart met een andere waarde dan die ene.
  *
  * Zo kan het nooit gelijk uitkomen, en hoeft er geen regel te bestaan voor
@@ -502,19 +539,22 @@ function naSps(s: BussenState, ctx: SpelContext) {
 function startBus(s: BussenState, ctx: SpelContext) {
   s.fase = 'bus'
 
-  // Een willekeurige kaart bepaalt de lengte van de bus.
-  const lengteKaart = trek(s.stapel, ctx.rng)
-  s.busLengteKaart = lengteKaart
-  s.busLengte = Math.min(BUS_MAX, Math.max(BUS_MIN, lengteKaart.waarde))
-  s.checkpointIndex = s.busLengte >= BUS_CHECKPOINT_VANAF ? Math.floor(s.busLengte / 2) : 0
+  // Een paar dichte kaarten om uit te kiezen. Ze liggen allemaal tussen de 6
+  // en de aas, dus welke je ook pakt, het wordt een bus van 6 tot 14 kaarten.
+  // Je ziet ze niet: je pakt er blind een en draait hem daarna om.
+  s.busKeuzes = []
+  for (let i = 0; i < BUS_KEUZES; i++) {
+    s.busKeuzes.push(trekTussen(s.stapel, ctx.rng, BUS_MIN, BUS_MAX))
+  }
+
+  s.busSubfase = 'trekken'
+  s.busGekozen = null
+  s.busTrekOp = 0
+  s.busLengteKaart = null
+  s.busLengte = BUS_MIN
+  s.checkpointIndex = 0
   s.checkpointGehaald = false
-
-  // De hele rij ligt er meteen: één kaart per plek. Daar ga je straks
-  // overheen stapelen, en het is dus niet één kaart die steeds opschuift.
   s.busStapels = []
-  for (let i = 0; i < s.busLengte; i++) s.busStapels.push([trek(s.stapel, ctx.rng)])
-
-  s.busSubfase = 'gooien'
   s.busWorp = null
   s.busWorpOp = 0
   s.busOpen = false
@@ -527,8 +567,23 @@ function startBus(s: BussenState, ctx: SpelContext) {
   // zouden een algehele wis overleven.
   for (const p of ctx.spelers) ctx.zetPrive(p.uid, null)
 
+  ctx.log(`${ctx.naam(s.chauffeur!)} moet de bus in en pakt een kaart voor de lengte`)
+}
+
+/** Legt de rij neer zodra de lengte bekend is. */
+function bouwBusRij(s: BussenState, ctx: SpelContext, lengteKaart: Kaart) {
+  s.busLengteKaart = lengteKaart
+  s.busLengte = lengteKaart.waarde
+  s.checkpointIndex = s.busLengte >= BUS_CHECKPOINT_VANAF ? Math.floor(s.busLengte / 2) : 0
+  s.checkpointGehaald = false
+
+  // De hele rij ligt er meteen: één kaart per plek. Daar ga je straks
+  // overheen stapelen, en het is dus niet één kaart die steeds opschuift.
+  s.busStapels = []
+  for (let i = 0; i < s.busLengte; i++) s.busStapels.push([trek(s.stapel, ctx.rng)])
+
   ctx.log(
-    `${ctx.naam(s.chauffeur!)} rijdt de bus — ${kaartKort(lengteKaart)} geeft ${s.busLengte} kaarten` +
+    `${kaartKort(lengteKaart)} — een bus van ${s.busLengte} kaarten` +
       (s.checkpointIndex > 0 ? `, checkpoint op ${s.checkpointIndex + 1}` : ''),
   )
 }
@@ -597,7 +652,10 @@ export const bussen: GameModule<BussenState> = {
       chauffeur: null,
       busLengteKaart: null,
       busLengte: BUS_MIN,
-      busSubfase: 'gooien',
+      busSubfase: 'trekken',
+      busKeuzes: [],
+      busGekozen: null,
+      busTrekOp: 0,
       busWorp: null,
       busWorpOp: 0,
       busOpen: false,
@@ -750,9 +808,40 @@ export const bussen: GameModule<BussenState> = {
     if (s.fase === 'bus') {
       if (actie.uid !== s.chauffeur) return
 
-      // Een potje dat begon vóór de nieuwe bus heeft nog geen stapeltjes.
-      // Zonder dit zou zo'n potje op een leeg scherm blijven staan.
-      if (!s.busStapels || s.busStapels.length !== s.busLengte) startBus(s, ctx)
+      // Een potje dat begon vóór de nieuwe bus mist velden. Zonder dit zou zo'n
+      // potje op een leeg scherm blijven staan.
+      if (
+        !s.busSubfase ||
+        !s.busKeuzes?.length ||
+        (s.busSubfase === 'rijden' && (!s.busStapels || s.busStapels.length !== s.busLengte))
+      ) {
+        startBus(s, ctx)
+      }
+
+      // Blind een kaart pakken; die bepaalt hoe lang de bus wordt.
+      if (s.busSubfase === 'trekken') {
+        if (actie.type !== 'trek') return
+        // Eerst op type controleren en dan pas op waarde: Number(null) is 0,
+        // dus zonder die eerste stap zou een lege keuze stilletjes de eerste
+        // kaart pakken.
+        const i = actie.payload?.index
+        if (typeof i !== 'number' || !Number.isInteger(i) || i < 0 || i >= s.busKeuzes.length) {
+          return
+        }
+
+        const gepakt = s.busKeuzes[i]
+        s.busGekozen = i
+        s.busTrekOp = ctx.nu
+        bouwBusRij(s, ctx, gepakt)
+
+        // De kaarten die je liet liggen gaan terug, zodat het deck klopt.
+        s.busKeuzes.forEach((k, j) => {
+          if (j !== i) leggAf(s.stapel, k)
+        })
+
+        s.busSubfase = 'gooien'
+        return
+      }
 
       // De kaart de lucht in: landt hij open, dan zie je de hele rij liggen.
       if (s.busSubfase === 'gooien') {
@@ -1266,6 +1355,12 @@ function Bus({ s, ctx }: { s: BussenState; ctx: KijkContext }) {
   const ikRij = ctx.ik === s.chauffeur
   const chauffeur = ctx.speler(s.chauffeur ?? '')
 
+  // Eerst de lengtekaart pakken en omdraaien.
+  const sindsTrek = s.busTrekOp > 0 ? ctx.nu - s.busTrekOp : Infinity
+  if (s.busSubfase === 'trekken' || sindsTrek < TREK_TOON_MS) {
+    return <BusTrek s={s} ctx={ctx} sindsTrek={sindsTrek} />
+  }
+
   // De worp duurt even, en zolang hij duurt is er niets anders te zien. Dat
   // moment is de helft van de lol: je weet nog niet of je rij open of dicht
   // komt te liggen.
@@ -1324,6 +1419,96 @@ function Bus({ s, ctx }: { s: BussenState; ctx: KijkContext }) {
           <span className="zacht">Kijken en genieten.</span>
         </Kaartje>
       )}
+    </>
+  )
+}
+
+/**
+ * Blind een kaart pakken; die bepaalt hoe lang de bus wordt.
+ *
+ * Ze liggen allemaal dicht, dus je kiest écht blind. De waarde die eronder
+ * zit is meteen het aantal kaarten: pak je een 10, dan wordt het een bus van
+ * tien. Alle vijf liggen ze tussen de 6 en de aas, dus hoe je ook kiest, het
+ * wordt nooit korter dan zes.
+ */
+function BusTrek({
+  s,
+  ctx,
+  sindsTrek,
+}: {
+  s: BussenState
+  ctx: KijkContext
+  sindsTrek: number
+}) {
+  const ikRij = ctx.ik === s.chauffeur
+  const chauffeur = ctx.speler(s.chauffeur ?? '')
+  const gepakt = s.busGekozen !== null
+  const om = gepakt && sindsTrek >= TREK_MS
+
+  return (
+    <>
+      <div style={{ textAlign: 'center' }}>
+        <div className="kop-klein">De bus</div>
+        <h2>
+          🚌 {chauffeur?.emoji} {chauffeur?.naam}
+        </h2>
+      </div>
+
+      <div className="midden" style={{ gap: 14 }}>
+        <div className="kop-klein">
+          {gepakt ? 'Zoveel kaarten wordt het' : 'Pak een kaart — die bepaalt de lengte'}
+        </div>
+
+        <div className="trek-rij">
+          {(s.busKeuzes ?? []).map((kaart, i) => {
+            const dezeGepakt = s.busGekozen === i
+            const weg = gepakt && !dezeGepakt
+            return (
+              <button
+                key={i}
+                className={`trek-kaart${dezeGepakt ? ' gepakt' : ''}${weg ? ' weg' : ''}${
+                  dezeGepakt && om ? ' om' : ''
+                }`}
+                disabled={!ikRij || gepakt}
+                onClick={() => ctx.stuur('trek', { index: i })}
+                aria-label={`Kaart ${i + 1}`}
+              >
+                <span className="trek-kant trek-voor">
+                  <Speelkaart maat="klein" dicht />
+                </span>
+                <span className="trek-kant trek-achter">
+                  <Speelkaart kaart={kaart} maat="klein" />
+                </span>
+              </button>
+            )
+          })}
+        </div>
+
+        {om && s.busLengteKaart && (
+          <div style={{ textAlign: 'center' }}>
+            <div className="lint">{s.busLengte} KAARTEN</div>
+            {s.checkpointIndex > 0 && (
+              <div className="klein zacht" style={{ marginTop: 6 }}>
+                Lang genoeg voor een checkpoint op kaart {s.checkpointIndex + 1}.
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="onderaan">
+        <Kaartje style={{ textAlign: 'center' }}>
+          <span className="zacht">
+            {gepakt
+              ? om
+                ? 'Zo lang wordt de rit…'
+                : 'Omdraaien…'
+              : ikRij
+                ? 'Kies er een. Je ziet ze niet.'
+                : `${chauffeur?.naam} pakt een kaart…`}
+          </span>
+        </Kaartje>
+      </div>
     </>
   )
 }
