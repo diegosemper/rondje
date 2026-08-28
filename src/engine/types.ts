@@ -247,10 +247,17 @@ export interface GameModule<S = any> {
   isKlaar?(state: S): boolean
 
   /**
-   * Optioneel: wacht zoveel milliseconden voordat het slokkenscherm eroverheen
-   * komt. Voor spellen die eerst nog iets willen laten zien — Bussen laat de
-   * kaart vallen, en het is flauw als je al staat te drinken voordat je gezien
-   * hebt wát je omdraaide. Laat je hem weg, dan komt het scherm meteen.
+   * Optioneel: hoeveel milliseconden het slokkenscherm wacht voordat het
+   * eroverheen komt. Voor spellen die eerst nog iets willen laten zien —
+   * Bussen laat de kaart vallen, en het is flauw als je al staat te drinken
+   * voordat je gezien hebt wát je omdraaide.
+   *
+   * Het is met opzet een functie van de stand en geen vast getal: binnen één
+   * spel kan het per fase verschillen. In de boom van Bussen moet de melding
+   * juist meteen komen, want anders ligt de volgende kaart er al voordat je
+   * weet dat je moet drinken.
+   *
+   * Geef je niets terug, of laat je hem weg, dan komt het scherm meteen.
    */
-  drinkVertragingMs?: number
+  drinkVertraging?(state: S): number
 }

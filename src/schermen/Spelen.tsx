@@ -52,9 +52,13 @@ export function Spelen({
   )
 
   // Sommige spellen willen eerst iets laten zien voordat het slokkenscherm
-  // eroverheen valt. Zonder zo'n spel is de vertraging 0 en verandert er
-  // niets: `toonGate` is dan meteen waar, zonder tussenliggend beeld.
-  const wacht = mod?.drinkVertragingMs ?? 0
+  // eroverheen valt, en dat kan per fase verschillen. Zonder zo'n spel is de
+  // vertraging 0 en verandert er niets: `toonGate` is dan meteen waar, zonder
+  // tussenliggend beeld.
+  //
+  // De stand verandert niet zolang het slokkenscherm openstaat — het spel ligt
+  // dan stil — dus dit getal blijft staan zodra de pauze eenmaal begonnen is.
+  const wacht = mod?.drinkVertraging?.(kamer.spel?.state) ?? 0
   const gateId = kamer.drinkgate?.id ?? null
   const [gateKlaar, zetGateKlaar] = useState<string | null>(null)
 

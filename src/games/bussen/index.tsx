@@ -71,6 +71,10 @@ const BUS_MAX = 12
 const BUS_CHECKPOINT_VANAF = 9
 /** Hoe lang een kaart erover doet om op tafel te vallen. */
 const BUS_LEG_MS = 620
+/** Hoe lang de opgegooide kaart door de lucht tolt. */
+const WORP_MS = 1500
+/** En hoe lang de uitslag daarna blijft staan voordat de rij verschijnt. */
+const WORP_TOON_MS = 2400
 
 type Keuze =
   | 'rood'
@@ -147,6 +151,8 @@ interface BussenState {
   busSubfase: 'gooien' | 'rijden'
   /** de kaart die je opgooide; kop of munt bepaalt open of dicht */
   busWorp: Kaart | null
+  /** wanneer hij de lucht in ging, in servertijd — de worp duurt even */
+  busWorpOp: number
   /** ligt de rij open (je ziet alles) of dicht (alleen tot waar je bent)? */
   busOpen: boolean
   /**
@@ -510,6 +516,7 @@ function startBus(s: BussenState, ctx: SpelContext) {
 
   s.busSubfase = 'gooien'
   s.busWorp = null
+  s.busWorpOp = 0
   s.busOpen = false
   s.busPositie = 0
   s.busPoging = 1
@@ -592,6 +599,7 @@ export const bussen: GameModule<BussenState> = {
       busLengte: BUS_MIN,
       busSubfase: 'gooien',
       busWorp: null,
+      busWorpOp: 0,
       busOpen: false,
       busStapels: [],
       busPositie: 0,
@@ -751,6 +759,7 @@ export const bussen: GameModule<BussenState> = {
         if (actie.type !== 'gooi') return
         const worp = trek(s.stapel, ctx.rng)
         s.busWorp = worp
+        s.busWorpOp = ctx.nu
         s.busOpen = ctx.rng() < 0.5
         s.busSubfase = 'rijden'
         leggAf(s.stapel, worp)
@@ -808,8 +817,12 @@ export const bussen: GameModule<BussenState> = {
 
   isKlaar: (s) => s.fase === 'klaar',
 
-  // Eerst de kaart zien vallen, dan pas drinken.
-  drinkVertragingMs: BUS_LEG_MS + 420,
+  /**
+   * Alleen in de bus wachten: daar moet je de kaart zien vallen voordat je
+   * gaat drinken. In de boom moet de melding juist meteen komen, anders ligt
+   * de volgende kaart er al voordat je weet dat je aan de beurt bent.
+   */
+  drinkVertraging: (s) => (s.fase === 'bus' ? BUS_LEG_MS + 420 : 0),
 
   View({ state: s, ctx }) {
     if (s.fase === 'vragen') return <Vragen s={s} ctx={ctx} />
@@ -1253,7 +1266,13 @@ function Bus({ s, ctx }: { s: BussenState; ctx: KijkContext }) {
   const ikRij = ctx.ik === s.chauffeur
   const chauffeur = ctx.speler(s.chauffeur ?? '')
 
-  if (s.busSubfase === 'gooien') return <BusWorp s={s} ctx={ctx} />
+  // De worp duurt even, en zolang hij duurt is er niets anders te zien. Dat
+  // moment is de helft van de lol: je weet nog niet of je rij open of dicht
+  // komt te liggen.
+  const sindsWorp = s.busWorpOp > 0 ? ctx.nu - s.busWorpOp : Infinity
+  if (s.busSubfase === 'gooien' || sindsWorp < WORP_TOON_MS) {
+    return <BusWorp s={s} ctx={ctx} sindsWorp={sindsWorp} />
+  }
 
   const herstart = s.checkpointGehaald ? s.checkpointIndex : 0
   const straf = s.busPositie - herstart + 1
@@ -1317,9 +1336,19 @@ function Bus({ s, ctx }: { s: BussenState; ctx: KijkContext }) {
  * kaart waar je op dat moment voor staat. Dat is het verschil tussen een rit
  * die je kunt uitrekenen en een die je maar moet ondergaan.
  */
-function BusWorp({ s, ctx }: { s: BussenState; ctx: KijkContext }) {
+function BusWorp({
+  s,
+  ctx,
+  sindsWorp,
+}: {
+  s: BussenState
+  ctx: KijkContext
+  sindsWorp: number
+}) {
   const ikRij = ctx.ik === s.chauffeur
   const chauffeur = ctx.speler(s.chauffeur ?? '')
+  const vliegt = s.busSubfase === 'rijden'
+  const geland = vliegt && sindsWorp >= WORP_MS
 
   return (
     <>
@@ -1331,18 +1360,52 @@ function BusWorp({ s, ctx }: { s: BussenState; ctx: KijkContext }) {
       </div>
 
       <div className="midden" style={{ gap: 14 }}>
-        <div style={{ fontSize: 56 }}>🃏</div>
-        <Kaartje style={{ textAlign: 'center', maxWidth: 320 }}>
-          Gooi een kaart de lucht in.
-          <br />
-          <strong>Voorkant boven</strong> — de hele rij ligt open en je ziet alles.
-          <br />
-          <strong>Op zijn rug</strong> — alles dicht, je ziet alleen waar je staat.
-        </Kaartje>
+        {vliegt ? (
+          <>
+            {/* De kaart tolt door de lucht en landt op zijn voorkant of op
+                zijn rug. Welke van de twee het wordt staat allang vast; de
+                animatie draait alleen zoveel halve slagen dat hij op de
+                goede kant uitkomt. */}
+            <div className={`worp ${s.busOpen ? 'open' : 'dicht'}`}>
+              <div className="worp-kaart">
+                <div className="worp-kant worp-voor">
+                  <Speelkaart kaart={s.busWorp} maat="groot" />
+                </div>
+                <div className="worp-kant worp-achter">
+                  <Speelkaart maat="groot" dicht />
+                </div>
+              </div>
+            </div>
+
+            <div className={`worp-uitslag${geland ? ' er' : ''}`}>
+              <div className="lint">{s.busOpen ? 'OPEN' : 'DICHT'}</div>
+              <div className="klein zacht" style={{ marginTop: 6, textAlign: 'center' }}>
+                {s.busOpen
+                  ? 'De hele rij ligt open — je ziet wat je te wachten staat.'
+                  : 'Alles dicht — je ziet alleen de kaart waar je voor staat.'}
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{ fontSize: 56 }}>🃏</div>
+            <Kaartje style={{ textAlign: 'center', maxWidth: 320 }}>
+              Gooi een kaart de lucht in.
+              <br />
+              <strong>Voorkant boven</strong> — de hele rij ligt open en je ziet alles.
+              <br />
+              <strong>Op zijn rug</strong> — alles dicht, je ziet alleen waar je staat.
+            </Kaartje>
+          </>
+        )}
       </div>
 
       <div className="onderaan">
-        {ikRij ? (
+        {vliegt ? (
+          <Kaartje style={{ textAlign: 'center' }}>
+            <span className="zacht">{geland ? 'Daar gaan we…' : 'Hij tolt…'}</span>
+          </Kaartje>
+        ) : ikRij ? (
           <GroteKnop kleur="goud" enorm bijTik={() => ctx.stuur('gooi')}>
             GOOI DE KAART
           </GroteKnop>

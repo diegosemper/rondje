@@ -1378,3 +1378,104 @@ input.code-invoer {
   font-size: 11px;
   color: var(--goud);
 }
+
+/* ── De bus: de kaart de lucht in ────────────────────────────
+   Hij tolt omhoog, komt terug en landt op zijn voorkant of op zijn rug. Welke
+   van de twee het wordt is al beslist; de animatie draait alleen zoveel halve
+   slagen dat hij op de goede kant uitkomt. Een heel getal slagen laat de
+   voorkant zien, een halve slag extra de achterkant.                        */
+
+.worp {
+  perspective: 900px;
+  min-height: 190px;
+  display: grid;
+  place-items: center;
+}
+
+.worp-kaart {
+  position: relative;
+  transform-style: preserve-3d;
+  animation-duration: 1500ms;
+  animation-timing-function: cubic-bezier(0.3, 0, 0.35, 1);
+  animation-fill-mode: forwards;
+}
+
+.worp.open .worp-kaart {
+  animation-name: worp-open;
+}
+
+.worp.dicht .worp-kaart {
+  animation-name: worp-dicht;
+}
+
+.worp-kant {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.worp-achter {
+  position: absolute;
+  inset: 0;
+  transform: rotateY(180deg);
+}
+
+@keyframes worp-open {
+  0% {
+    transform: translateY(0) rotateY(0deg) rotateZ(0deg) scale(1);
+  }
+  38% {
+    transform: translateY(-210px) rotateY(1080deg) rotateZ(14deg) scale(0.7);
+  }
+  76% {
+    transform: translateY(0) rotateY(2160deg) rotateZ(0deg) scale(1);
+  }
+  86% {
+    transform: translateY(-14px) rotateY(2160deg) rotateZ(0deg) scale(1.03);
+  }
+  100% {
+    transform: translateY(0) rotateY(2160deg) rotateZ(0deg) scale(1);
+  }
+}
+
+@keyframes worp-dicht {
+  0% {
+    transform: translateY(0) rotateY(0deg) rotateZ(0deg) scale(1);
+  }
+  38% {
+    transform: translateY(-210px) rotateY(1080deg) rotateZ(-14deg) scale(0.7);
+  }
+  76% {
+    transform: translateY(0) rotateY(1980deg) rotateZ(0deg) scale(1);
+  }
+  86% {
+    transform: translateY(-14px) rotateY(1980deg) rotateZ(0deg) scale(1.03);
+  }
+  100% {
+    transform: translateY(0) rotateY(1980deg) rotateZ(0deg) scale(1);
+  }
+}
+
+/* De uitslag komt pas als hij ligt. */
+.worp-uitslag {
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 260ms ease,
+    transform 260ms ease;
+  display: grid;
+  place-items: center;
+}
+
+.worp-uitslag.er {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .worp-kaart {
+    animation-duration: 1ms;
+  }
+  .worp-uitslag {
+    transition: none;
+  }
+}
