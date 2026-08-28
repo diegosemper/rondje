@@ -33,10 +33,23 @@ import { Verdeler } from '../../ui/Verdeler'
       de goede plek, want dan weet je al wat de rest gedaan heeft. Te laat is
       pech: je houdt de kaart, en met de meeste kaarten over moet jij de bus in.
 
-   3. DE BUS. Een willekeurige kaart bepaalt de lengte, minimaal 6. Hoger of
-      lager tot je hem helemaal uit hebt. Een waarde die al in de bus ligt komt
-      niet nog eens — dan wordt er een nieuwe kaart getrokken. Vanaf 9 kaarten
-      ligt er een checkpoint één over de helft, en daar herstart je voortaan.
+   3. DE BUS. Een willekeurige kaart bepaalt de lengte, minimaal 6. Die hele
+      rij komt meteen op tafel te liggen — dus bij 12 liggen er ook echt 12
+      kaarten naast elkaar.
+
+      Eerst gooi je een kaart de lucht in. Landt hij op zijn voorkant, dan ligt
+      de hele rij open en zie je precies wat je te wachten staat. Landt hij op
+      zijn rug, dan ligt alles dicht en ken je alleen de kaart waar je op dat
+      moment voor staat.
+
+      Dan ga je kaart voor kaart: hoger of lager dan de kaart die op díé plek
+      ligt. Elke getrokken kaart komt bovenop dat stapeltje. Zit je ernaast,
+      dan blijft die kaart daar liggen en begin je opnieuw — met die kaart als
+      de nieuwe kaart waar je vanaf gaat. Zo stapelt het op en zie je nooit
+      twee keer hetzelfde.
+
+      Vanaf 9 kaarten ligt er een checkpoint één over de helft, en daar
+      herstart je voortaan.
    ───────────────────────────────────────────────────────────── */
 
 /** Aantal kaarten per rij van de boom, van onder naar boven. */
@@ -52,8 +65,7 @@ const SPS_TOON_SEC = 3.5
 const VRAAG_INZET = [1, 2, 3, 4]
 
 const BUS_MIN = 6
-/** Er zijn maar 13 verschillende waarden, en de startkaart pakt er één.
- *  Langer dan 12 kan dus niet zonder herhaling. */
+/** Langer dan dit past niet meer leesbaar op een telefoon. */
 const BUS_MAX = 12
 /** Vanaf deze lengte krijgt de bus een checkpoint. */
 const BUS_CHECKPOINT_VANAF = 9
@@ -131,19 +143,27 @@ interface BussenState {
   chauffeur: string | null
   busLengteKaart: Kaart | null
   busLengte: number
-  busStart: Kaart | null
-  busRij: (Kaart | null)[]
+  /** eerst de kaart in de lucht gooien, dan pas rijden */
+  busSubfase: 'gooien' | 'rijden'
+  /** de kaart die je opgooide; kop of munt bepaalt open of dicht */
+  busWorp: Kaart | null
+  /** ligt de rij open (je ziet alles) of dicht (alleen tot waar je bent)? */
+  busOpen: boolean
+  /**
+   * De stapeltjes op tafel, één per plek in de rij. De laatste kaart van een
+   * stapeltje ligt bovenop, en dát is de kaart waar je vanaf gaat.
+   */
+  busStapels: Kaart[][]
   busPositie: number
   checkpointIndex: number
   checkpointGehaald: boolean
   busPoging: number
-  busFoutKaart: Kaart | null
   /**
    * De kaart die er als laatste bij gelegd is, met de kaart waar hij bovenop
    * ging. Staat in de spelstand en niet in het scherm, zodat iedereen aan
    * tafel dezelfde kaart ziet vallen en niet alleen de chauffeur.
    */
-  busLaatste: { kaart: Kaart; vorige: Kaart; goed: boolean; nr: number } | null
+  busLaatste: { kaart: Kaart; vorige: Kaart; goed: boolean; plek: number; nr: number } | null
 }
 
 /* ── Hulpjes ────────────────────────────────────────────────── */
@@ -327,22 +347,37 @@ function volgendePlek(s: BussenState, ctx: SpelContext) {
 
 /* ── De bus ─────────────────────────────────────────────────── */
 
-/** Welke waarden liggen er al in de bus? Die komen niet nog een keer. */
-function gezienInBus(s: BussenState): number[] {
-  const uit: number[] = []
-  if (s.busStart) uit.push(s.busStart.waarde)
-  for (let i = 0; i < s.busPositie; i++) {
-    const k = s.busRij[i]
-    if (k) uit.push(k.waarde)
+/** De kaart die bovenop een stapeltje ligt — daar gaat je gok vanaf. */
+function bovenop(s: BussenState, plek: number): Kaart | null {
+  const stapel = s.busStapels?.[plek]
+  return stapel && stapel.length ? stapel[stapel.length - 1] : null
+}
+
+/**
+ * Trekt een kaart met een andere waarde dan die ene.
+ *
+ * Zo kan het nooit gelijk uitkomen, en hoeft er geen regel te bestaan voor
+ * "even hoog" midden in de bus. Je weet dus dat het altijd een echte hoger of
+ * lager wordt.
+ */
+function trekAnders(stapel: Stapel, rng: () => number, nietDeze: number): Kaart {
+  const opzij: Kaart[] = []
+  let kaart = trek(stapel, rng)
+  let pogingen = 0
+  while (kaart.waarde === nietDeze && pogingen < 80) {
+    opzij.push(kaart)
+    kaart = trek(stapel, rng)
+    pogingen++
   }
-  return uit
+  if (opzij.length) leggAf(stapel, ...opzij)
+  return kaart
 }
 
 /**
  * Trekt een kaart met een waarde die er nog niet ligt.
  *
- * Gebruikt op twee plekken: bij het opbouwen van de boom (elf verschillende
- * waarden, zodat er bijna altijd wel iemand kan opleggen) en in de bus.
+ * Gebruikt bij het opbouwen van de boom: elf verschillende waarden, zodat er
+ * bijna altijd wel iemand kan opleggen.
  */
 function trekUniek(stapel: Stapel, rng: () => number, gezien: number[]): Kaart {
   const opzij: Kaart[] = []
@@ -468,12 +503,17 @@ function startBus(s: BussenState, ctx: SpelContext) {
   s.checkpointIndex = s.busLengte >= BUS_CHECKPOINT_VANAF ? Math.floor(s.busLengte / 2) : 0
   s.checkpointGehaald = false
 
-  s.busRij = new Array(s.busLengte).fill(null)
+  // De hele rij ligt er meteen: één kaart per plek. Daar ga je straks
+  // overheen stapelen, en het is dus niet één kaart die steeds opschuift.
+  s.busStapels = []
+  for (let i = 0; i < s.busLengte; i++) s.busStapels.push([trek(s.stapel, ctx.rng)])
+
+  s.busSubfase = 'gooien'
+  s.busWorp = null
+  s.busOpen = false
   s.busPositie = 0
   s.busPoging = 1
-  s.busFoutKaart = null
   s.busLaatste = null
-  s.busStart = trek(s.stapel, ctx.rng)
 
   // Handen zijn nu betekenisloos, dus weg ermee. Per speler wissen en niet met
   // wisPrive(): in dezelfde zet kunnen er net handen bijgewerkt zijn, en die
@@ -550,13 +590,14 @@ export const bussen: GameModule<BussenState> = {
       chauffeur: null,
       busLengteKaart: null,
       busLengte: BUS_MIN,
-      busStart: null,
-      busRij: [],
+      busSubfase: 'gooien',
+      busWorp: null,
+      busOpen: false,
+      busStapels: [],
       busPositie: 0,
       checkpointIndex: 0,
       checkpointGehaald: false,
       busPoging: 1,
-      busFoutKaart: null,
       busLaatste: null,
     }
   },
@@ -698,20 +739,50 @@ export const bussen: GameModule<BussenState> = {
 
     /* ── Fase 3: de bus ─────────────────────────────────────── */
 
-    if (s.fase === 'bus' && (actie.type === 'hoger' || actie.type === 'lager')) {
+    if (s.fase === 'bus') {
       if (actie.uid !== s.chauffeur) return
 
-      const vorige = s.busPositie === 0 ? s.busStart! : s.busRij[s.busPositie - 1]!
-      const nieuw = trekUniek(s.stapel, ctx.rng, gezienInBus(s))
-      const goed = (actie.type === 'hoger') === (nieuw.waarde > vorige.waarde)
+      // Een potje dat begon vóór de nieuwe bus heeft nog geen stapeltjes.
+      // Zonder dit zou zo'n potje op een leeg scherm blijven staan.
+      if (!s.busStapels || s.busStapels.length !== s.busLengte) startBus(s, ctx)
 
-      // Zodat elk scherm de kaart ziet vallen voordat er gedronken wordt.
-      s.busLaatste = { kaart: nieuw, vorige, goed, nr: (s.busLaatste?.nr ?? 0) + 1 }
+      // De kaart de lucht in: landt hij open, dan zie je de hele rij liggen.
+      if (s.busSubfase === 'gooien') {
+        if (actie.type !== 'gooi') return
+        const worp = trek(s.stapel, ctx.rng)
+        s.busWorp = worp
+        s.busOpen = ctx.rng() < 0.5
+        s.busSubfase = 'rijden'
+        leggAf(s.stapel, worp)
+        ctx.log(
+          `${ctx.naam(s.chauffeur)} gooit ${kaartKort(worp)} — de rij ligt ${s.busOpen ? 'open' : 'dicht'}`,
+        )
+        return
+      }
+
+      if (actie.type !== 'hoger' && actie.type !== 'lager') return
+
+      const plek = s.busPositie
+      const onder = bovenop(s, plek)
+      if (!onder) return
+
+      const nieuwe = trekAnders(s.stapel, ctx.rng, onder.waarde)
+      const goed = (actie.type === 'hoger') === (nieuwe.waarde > onder.waarde)
+
+      // De kaart gaat op het stapeltje waar je nu staat, goed of fout. Zit je
+      // ernaast, dan ligt hij daar dus bovenop en is hij bij je volgende
+      // poging de kaart waar je vanaf gaat.
+      s.busStapels[plek].push(nieuwe)
+      s.busLaatste = {
+        kaart: nieuwe,
+        vorige: onder,
+        goed,
+        plek,
+        nr: (s.busLaatste?.nr ?? 0) + 1,
+      }
 
       if (goed) {
-        s.busRij[s.busPositie] = nieuw
         s.busPositie++
-        s.busFoutKaart = null
 
         if (s.checkpointIndex > 0 && s.busPositie > s.checkpointIndex) {
           s.checkpointGehaald = true
@@ -727,30 +798,7 @@ export const bussen: GameModule<BussenState> = {
 
       // Fout. Je drinkt zoveel kaarten als je in déze poging deed.
       const herstart = s.checkpointGehaald ? s.checkpointIndex : 0
-      const straf = s.busPositie - herstart + 1
-      ctx.drink(s.chauffeur, straf, `strandde op kaart ${s.busPositie + 1}`)
-
-      s.busFoutKaart = nieuw
-
-      // De kaart die je omdraaide blijft liggen en is voortaan de kaart waar
-      // je vanaf gaat. Je begint dus wel opnieuw, maar niet met dezelfde
-      // startkaart als daarnet — anders zag je bij elke poging weer dezelfde
-      // twee. De kaart die hij vervangt gaat op de aflegstapel, net als de
-      // kaarten die je kwijtraakt.
-      for (let i = herstart; i < s.busLengte; i++) {
-        const weg = s.busRij[i]
-        if (weg) leggAf(s.stapel, weg)
-        s.busRij[i] = null
-      }
-
-      if (herstart === 0) {
-        if (s.busStart) leggAf(s.stapel, s.busStart)
-        s.busStart = nieuw
-      } else {
-        const oud = s.busRij[herstart - 1]
-        if (oud) leggAf(s.stapel, oud)
-        s.busRij[herstart - 1] = nieuw
-      }
+      ctx.drink(s.chauffeur, plek - herstart + 1, `strandde op kaart ${plek + 1}`)
 
       s.busPositie = herstart
       s.busPoging++
@@ -1204,7 +1252,9 @@ function Sps({ s, ctx }: { s: BussenState; ctx: KijkContext }) {
 function Bus({ s, ctx }: { s: BussenState; ctx: KijkContext }) {
   const ikRij = ctx.ik === s.chauffeur
   const chauffeur = ctx.speler(s.chauffeur ?? '')
-  const vorige = s.busPositie === 0 ? s.busStart : s.busRij[s.busPositie - 1]
+
+  if (s.busSubfase === 'gooien') return <BusWorp s={s} ctx={ctx} />
+
   const herstart = s.checkpointGehaald ? s.checkpointIndex : 0
   const straf = s.busPositie - herstart + 1
 
@@ -1212,7 +1262,7 @@ function Bus({ s, ctx }: { s: BussenState; ctx: KijkContext }) {
     <>
       <div style={{ textAlign: 'center' }}>
         <div className="kop-klein">
-          De bus · {s.busLengte} kaarten · poging {s.busPoging}
+          De bus · {s.busLengte} kaarten · {s.busOpen ? 'open' : 'dicht'} · poging {s.busPoging}
         </div>
         <h2>
           🚌 {chauffeur?.emoji} {chauffeur?.naam}
@@ -1222,8 +1272,10 @@ function Bus({ s, ctx }: { s: BussenState; ctx: KijkContext }) {
       <BusRij s={s} />
 
       <div className="midden" style={{ gap: 10 }}>
-        <div className="kop-klein">Hoger of lager dan</div>
-        <BusLeg s={s} vorige={vorige} />
+        <div className="kop-klein">
+          Kaart {s.busPositie + 1} van {s.busLengte} — hoger of lager dan
+        </div>
+        <BusLeg s={s} />
       </div>
 
       {ikRij ? (
@@ -1245,7 +1297,7 @@ function Bus({ s, ctx }: { s: BussenState; ctx: KijkContext }) {
                 : ''}
             .
             <br />
-            Waarden die al liggen komen niet nog eens.
+            Zit je ernaast, dan blijft die kaart hier bovenop liggen.
           </div>
         </div>
       ) : (
@@ -1258,16 +1310,63 @@ function Bus({ s, ctx }: { s: BussenState; ctx: KijkContext }) {
 }
 
 /**
- * De kaart valt van de stapel op tafel, en blijft daar liggen.
+ * De kaart de lucht in.
+ *
+ * Landt hij op zijn voorkant, dan ligt de hele rij open en zie je waar je aan
+ * begint. Landt hij op zijn rug, dan ligt alles dicht en ken je alleen de
+ * kaart waar je op dat moment voor staat. Dat is het verschil tussen een rit
+ * die je kunt uitrekenen en een die je maar moet ondergaan.
+ */
+function BusWorp({ s, ctx }: { s: BussenState; ctx: KijkContext }) {
+  const ikRij = ctx.ik === s.chauffeur
+  const chauffeur = ctx.speler(s.chauffeur ?? '')
+
+  return (
+    <>
+      <div style={{ textAlign: 'center' }}>
+        <div className="kop-klein">De bus · {s.busLengte} kaarten</div>
+        <h2>
+          🚌 {chauffeur?.emoji} {chauffeur?.naam}
+        </h2>
+      </div>
+
+      <div className="midden" style={{ gap: 14 }}>
+        <div style={{ fontSize: 56 }}>🃏</div>
+        <Kaartje style={{ textAlign: 'center', maxWidth: 320 }}>
+          Gooi een kaart de lucht in.
+          <br />
+          <strong>Voorkant boven</strong> — de hele rij ligt open en je ziet alles.
+          <br />
+          <strong>Op zijn rug</strong> — alles dicht, je ziet alleen waar je staat.
+        </Kaartje>
+      </div>
+
+      <div className="onderaan">
+        {ikRij ? (
+          <GroteKnop kleur="goud" enorm bijTik={() => ctx.stuur('gooi')}>
+            GOOI DE KAART
+          </GroteKnop>
+        ) : (
+          <Kaartje style={{ textAlign: 'center' }}>
+            <span className="zacht">{chauffeur?.naam} gooit…</span>
+          </Kaartje>
+        )}
+      </div>
+    </>
+  )
+}
+
+/**
+ * De kaart valt van de stapel op het stapeltje waar je staat.
  *
  * Hiervoor sprong het scherm in één klap naar de nieuwe kaart en stond je al
  * te drinken voordat je gezien had wát je had omgedraaid. Nu zie je eerst de
  * kaart vallen; het slokkenscherm wacht daarop (zie BUS_LEG_MS).
  *
- * Zolang hij valt tonen we eronder de kaart waar hij overheen gaat, want de
- * spelstand wijst dan al naar de nieuwe.
+ * Zolang hij valt tonen we eronder de kaart waar hij overheen gaat, want het
+ * stapeltje wijst dan al naar de nieuwe.
  */
-function BusLeg({ s, vorige }: { s: BussenState; vorige: Kaart | null }) {
+function BusLeg({ s }: { s: BussenState }) {
   const laatste = s.busLaatste
   const [klaarNr, zetKlaarNr] = useState(() => laatste?.nr ?? 0)
 
@@ -1277,8 +1376,10 @@ function BusLeg({ s, vorige }: { s: BussenState; vorige: Kaart | null }) {
     return () => clearTimeout(id)
   }, [laatste?.nr, klaarNr])
 
-  const valt = !!laatste && laatste.nr > klaarNr
-  const onder = valt ? laatste!.vorige : vorige
+  // De kaart valt alleen op de plek waar hij hoort; sta je alweer een
+  // stapeltje verder, dan zie je hier gewoon de nieuwe kaart.
+  const valt = !!laatste && laatste.nr > klaarNr && laatste.plek === s.busPositie
+  const onder = valt ? laatste!.vorige : bovenop(s, s.busPositie)
 
   return (
     <div className="bus-tafel">
@@ -1292,36 +1393,34 @@ function BusLeg({ s, vorige }: { s: BussenState; vorige: Kaart | null }) {
   )
 }
 
+/**
+ * De hele rij op tafel, met per plek het bovenste kaartje.
+ *
+ * Ligt de rij dicht, dan zie je alleen tot waar je gekomen bent — de rest
+ * blijft op zijn rug liggen.
+ */
 function BusRij({ s }: { s: BussenState }) {
+  const lengte = s.busLengte
+
   return (
-    <div style={{ display: 'flex', gap: 3, justifyContent: 'center', flexWrap: 'wrap' }}>
-      {Array.from({ length: s.busLengte }).map((_, i) => {
-        const gehaald = !!s.busRij[i]
+    <div className="bus-rij">
+      {Array.from({ length: lengte }).map((_, i) => {
+        const stapel = s.busStapels?.[i] ?? []
+        const kaart = stapel.length ? stapel[stapel.length - 1] : null
+        const gehaald = i < s.busPositie
         const nu = i === s.busPositie
+        const zichtbaar = s.busOpen || i <= s.busPositie
         const isCheckpoint = s.checkpointIndex > 0 && i === s.checkpointIndex
+
         return (
           <div
             key={i}
+            className={`bus-plek${nu ? ' nu' : ''}${gehaald ? ' gehaald' : ''}`}
             title={isCheckpoint ? 'checkpoint' : undefined}
-            style={{
-              position: 'relative',
-              width: 22,
-              height: 32,
-              borderRadius: 5,
-              background: gehaald ? 'var(--groen)' : 'var(--vlak-hoog)',
-              border: nu
-                ? '2px solid var(--goud)'
-                : isCheckpoint
-                  ? '2px dashed var(--goud)'
-                  : '1px solid var(--rand)',
-              display: 'grid',
-              placeItems: 'center',
-              fontSize: 10,
-              fontWeight: 700,
-              color: gehaald ? '#05230f' : 'var(--tekst-zacht)',
-            }}
           >
-            {isCheckpoint && !gehaald ? '⚑' : i + 1}
+            <Speelkaart kaart={kaart} maat="klein" dicht={!zichtbaar} />
+            {stapel.length > 1 && <span className="bus-hoogte">{stapel.length}</span>}
+            {isCheckpoint && <span className="bus-vlag">⚑</span>}
           </div>
         )
       })}

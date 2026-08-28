@@ -1312,3 +1312,69 @@ input.code-invoer {
     animation: none;
   }
 }
+
+/* ── De bus: de rij stapeltjes op tafel ──────────────────────
+   Twaalf kaartjes naast elkaar op een telefoon wordt krap, dus de rij mag
+   zijwaarts schuiven. De plek waar je staat springt eruit met een gouden
+   rand; wat je gehad hebt zakt weg.                                        */
+
+.bus-rij {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-start;
+  overflow-x: auto;
+  padding: 6px 10px 10px;
+  scrollbar-width: none;
+}
+
+.bus-rij::-webkit-scrollbar {
+  display: none;
+}
+
+.bus-plek {
+  position: relative;
+  flex: 0 0 auto;
+  transition:
+    transform 180ms ease,
+    opacity 180ms ease;
+}
+
+.bus-plek.gehaald {
+  opacity: 0.45;
+}
+
+.bus-plek.nu {
+  transform: translateY(-4px) scale(1.14);
+}
+
+.bus-plek.nu .speelkaart {
+  box-shadow:
+    0 0 0 2px var(--goud),
+    0 6px 14px rgba(0, 0, 0, 0.5);
+}
+
+/* Hoe hoog het stapeltje inmiddels is — verschijnt pas vanaf twee kaarten. */
+.bus-hoogte {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 7px;
+  background: var(--goud);
+  color: var(--goud-donker);
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 14px;
+  text-align: center;
+}
+
+.bus-vlag {
+  position: absolute;
+  top: -7px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  color: var(--goud);
+}
