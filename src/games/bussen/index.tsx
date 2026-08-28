@@ -73,6 +73,8 @@ const VRAAG_INZET = [1, 2, 3, 4]
 /** De lengtekaart ligt altijd tussen deze twee: een 6 tot en met een aas. */
 const BUS_MIN = 6
 const BUS_MAX = 14
+/** Alle kaarten van 6 t/m aas, in vier kleuren. */
+const LENGTE_DEK = (BUS_MAX - BUS_MIN + 1) * 4
 /** Vanaf deze lengte krijgt de bus een checkpoint. */
 const BUS_CHECKPOINT_VANAF = 9
 /** Hoe lang een kaart erover doet om op tafel te vallen. */
@@ -169,8 +171,14 @@ interface BussenState {
   busWorp: Kaart | null
   /** wanneer hij de lucht in ging, in servertijd — de worp duurt even */
   busWorpOp: number
-  /** ligt de rij open (je ziet alles) of dicht (alleen tot waar je bent)? */
+  /** ligt de rij open (je ziet alles) of dicht (alleen wat je gehad hebt)? */
   busOpen: boolean
+  /**
+   * Per plek: heb je daar al eens gegokt? Bij een dichte rij is dat precies
+   * wat je mag zien. Een plek waar je nog niet geweest bent blijft op zijn rug
+   * liggen, dus daar gok je écht blind.
+   */
+  busGezien: boolean[]
   /**
    * De stapeltjes op tafel, één per plek in de rij. De laatste kaart van een
    * stapeltje ligt bovenop, en dát is de kaart waar je vanaf gaat.
@@ -554,6 +562,7 @@ function startBus(s: BussenState, ctx: SpelContext) {
   s.busWorp = null
   s.busWorpOp = 0
   s.busOpen = false
+  s.busGezien = []
   s.busPositie = 0
   s.busPoging = 1
   s.busLaatste = null
@@ -576,7 +585,11 @@ function bouwBusRij(s: BussenState, ctx: SpelContext, lengteKaart: Kaart) {
   // De hele rij ligt er meteen: één kaart per plek. Daar ga je straks
   // overheen stapelen, en het is dus niet één kaart die steeds opschuift.
   s.busStapels = []
-  for (let i = 0; i < s.busLengte; i++) s.busStapels.push([trek(s.stapel, ctx.rng)])
+  s.busGezien = []
+  for (let i = 0; i < s.busLengte; i++) {
+    s.busStapels.push([trek(s.stapel, ctx.rng)])
+    s.busGezien.push(false)
+  }
 
   ctx.log(
     `${kaartKort(lengteKaart)} — een bus van ${s.busLengte} kaarten` +
@@ -655,6 +668,7 @@ export const bussen: GameModule<BussenState> = {
       busWorp: null,
       busWorpOp: 0,
       busOpen: false,
+      busGezien: [],
       busStapels: [],
       busPositie: 0,
       checkpointIndex: 0,
@@ -809,7 +823,11 @@ export const bussen: GameModule<BussenState> = {
       if (
         !s.busSubfase ||
         !s.busKeuzes?.length ||
-        (s.busSubfase === 'rijden' && (!s.busStapels || s.busStapels.length !== s.busLengte))
+        (s.busSubfase === 'trekken' && s.busKeuzes.length !== LENGTE_DEK) ||
+        (s.busSubfase === 'rijden' &&
+          (!s.busStapels ||
+            s.busStapels.length !== s.busLengte ||
+            s.busGezien?.length !== s.busLengte))
       ) {
         startBus(s, ctx)
       }
@@ -860,7 +878,10 @@ export const bussen: GameModule<BussenState> = {
       // De kaart gaat op het stapeltje waar je nu staat, goed of fout. Zit je
       // ernaast, dan ligt hij daar dus bovenop en is hij bij je volgende
       // poging de kaart waar je vanaf gaat.
+      // Je hebt hem zien vallen, dus vanaf nu ken je deze plek. Bij een dichte
+      // rij is dat het enige wat hem opendoet.
       s.busStapels[plek].push(nieuwe)
+      s.busGezien[plek] = true
       s.busLaatste = {
         kaart: nieuwe,
         vorige: onder,
@@ -1361,6 +1382,9 @@ function Bus({ s, ctx }: { s: BussenState; ctx: KijkContext }) {
 
   const herstart = s.checkpointGehaald ? s.checkpointIndex : 0
   const straf = s.busPositie - herstart + 1
+  // Ligt de rij dicht en ben je hier nog niet geweest, dan zie je de kaart
+  // waar je vanaf gaat niet eens. Dan is het echt gokken.
+  const blind = !s.busOpen && !s.busGezien?.[s.busPositie]
 
   return (
     <>
@@ -1377,9 +1401,10 @@ function Bus({ s, ctx }: { s: BussenState; ctx: KijkContext }) {
 
       <div className="midden" style={{ gap: 10 }}>
         <div className="kop-klein">
-          Kaart {s.busPositie + 1} van {s.busLengte} — hoger of lager dan
+          Kaart {s.busPositie + 1} van {s.busLengte} —{' '}
+          {blind ? 'hoger of lager? Je ziet hem niet' : 'hoger of lager dan'}
         </div>
-        <BusLeg s={s} />
+        <BusLeg s={s} blind={blind} />
       </div>
 
       {ikRij ? (
@@ -1401,7 +1426,9 @@ function Bus({ s, ctx }: { s: BussenState; ctx: KijkContext }) {
                 : ''}
             .
             <br />
-            Zit je ernaast, dan blijft die kaart hier bovenop liggen.
+            {blind
+              ? 'Deze kaart ligt nog dicht — je ziet hem pas als je hem gehad hebt.'
+              : 'Zit je ernaast, dan blijft die kaart hier bovenop liggen.'}
           </div>
         </div>
       ) : (
@@ -1498,7 +1525,7 @@ function BusTrek({
                 ? 'Zo lang wordt de rit…'
                 : 'Omdraaien…'
               : ikRij
-                ? 'Schuif erlangs en tik er een aan. Je ziet ze niet.'
+                ? `Schuif langs de ${s.busKeuzes?.length ?? 0} kaarten en tik er een aan.`
                 : `${chauffeur?.naam} pakt een kaart…`}
           </span>
         </Kaartje>
@@ -1608,7 +1635,7 @@ function BusWorp({
  * Zolang hij valt tonen we eronder de kaart waar hij overheen gaat, want het
  * stapeltje wijst dan al naar de nieuwe.
  */
-function BusLeg({ s }: { s: BussenState }) {
+function BusLeg({ s, blind }: { s: BussenState; blind: boolean }) {
   const laatste = s.busLaatste
   const [klaarNr, zetKlaarNr] = useState(() => laatste?.nr ?? 0)
 
@@ -1625,7 +1652,10 @@ function BusLeg({ s }: { s: BussenState }) {
 
   return (
     <div className="bus-tafel">
-      <Speelkaart kaart={onder} maat="groot" />
+      {/* Zolang je er nog niet geweest bent blijft hij op zijn rug liggen.
+          Tijdens het vallen mag hij wél gezien worden: dat is het moment
+          waarop je te horen krijgt of je het goed had. */}
+      <Speelkaart kaart={onder} maat="groot" dicht={blind && !valt} />
       {valt && (
         <div key={laatste!.nr} className={`bus-leg ${laatste!.goed ? 'goed' : 'mis'}`}>
           <Speelkaart kaart={laatste!.kaart} maat="groot" />
@@ -1651,7 +1681,9 @@ function BusRij({ s }: { s: BussenState }) {
         const kaart = stapel.length ? stapel[stapel.length - 1] : null
         const gehaald = i < s.busPositie
         const nu = i === s.busPositie
-        const zichtbaar = s.busOpen || i <= s.busPositie
+        // Bij een dichte rij zie je alleen de plekken waar je geweest bent.
+        // Die waar je nu voor staat hoort daar niet bij: dáár gok je blind.
+        const zichtbaar = s.busOpen || !!s.busGezien?.[i]
         const isCheckpoint = s.checkpointIndex > 0 && i === s.checkpointIndex
 
         return (

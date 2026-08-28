@@ -1494,10 +1494,29 @@ input.code-invoer {
   overflow-x: auto;
   overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
   scrollbar-width: none;
-  width: 100%;
+  /* Buiten de marge van het scherm treden, zodat het dek van rand tot rand
+     loopt en het meteen duidelijk is dat er meer is dan wat je ziet. */
+  width: calc(100% + 32px);
+  margin: 0 -16px;
   padding: 14px 16px 18px;
   gap: 0;
+  /* De uiteinden vervagen: dat leest als "hier gaat het verder". */
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 18px,
+    #000 calc(100% - 18px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 18px,
+    #000 calc(100% - 18px),
+    transparent 100%
+  );
 }
 
 .trek-dek::-webkit-scrollbar {
@@ -1511,8 +1530,9 @@ input.code-invoer {
   border: 0;
   background: none;
   cursor: pointer;
-  /* De overlap. De eerste mag niet onder de rand vallen, dus die schuift niet. */
-  margin-left: -22px;
+  /* Flink over elkaar heen, zoals een dek dat over tafel is uitgestreken.
+     De eerste mag niet onder de rand vallen, dus die schuift niet. */
+  margin-left: -36px;
   transition: transform 140ms ease;
 }
 
