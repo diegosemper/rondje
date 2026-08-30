@@ -154,8 +154,8 @@ gedronken heeft), de verdeler (slokken spreiden over meerdere mensen),
 **Kaarten** — Bussen · Kingsen · Pyramide · Blinde Kaart · Ezelen ·
 Kaartroulette · Fuck the Dealer · HiLo · 21 Overboord
 
-**Geheim & bluf** — De Imposter · Spiegelspelers · Sabotage · Verboden Woord ·
-Golflengte · Twee Waarheden één Leugen · De Ketting
+**Geheim & bluf** — Perudo · De Imposter · Spiegelspelers · Sabotage ·
+Verboden Woord · Golflengte · Twee Waarheden één Leugen · De Ketting
 
 **Reflex & arcade** — Flappy · Jetpack · Snelweg · Stapeltoren · Bierpong ·
 Snelste Vinger · Zwaartekracht · Snelle Wiskunde

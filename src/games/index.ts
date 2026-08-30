@@ -31,6 +31,7 @@ import { bierpong } from './bierpong'
 import { opbouwen } from './opbouwen'
 import { waterval } from './waterval'
 import { mexicanen } from './mexicanen'
+import { perudo } from './perudo'
 import { kleurenklap } from './kleurenklap'
 import { duel } from './duel'
 import { schudden } from './schudden'
@@ -65,6 +66,7 @@ export const ALLE_SPELLEN: GameModule[] = [
   roulette,
   waterval,
   mexicanen,
+  perudo,
   tekenen,
   nummers,
   hitster,

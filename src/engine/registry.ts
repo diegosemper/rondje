@@ -100,6 +100,7 @@ export const SPEL_EMOJI: Record<string, string> = {
   nognooit: '🙊',
   nummers: '🎵',
   opbouwen: '🎰',
+  perudo: '🏺',
   pijlen: '➡️',
   pyramide: '🔺',
   roodzwart: '♦️',
