@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { volgendeActieve } from '../../engine/beurten'
 import { tussen } from '../../engine/random'
 import type { Actie, GameModule, KijkContext, SpelContext } from '../../engine/types'
@@ -54,7 +54,15 @@ interface Onthulling {
 
 interface PerudoState {
   ronde: number
-  fase: 'bieden' | 'onthuld' | 'einde'
+  /**
+   * gooien → iedereen keert zijn eigen beker om
+   * bieden → rondgaan tot iemand het niet gelooft
+   * onthuld → alle bekers omhoog
+   * einde   → er is er nog één met stenen
+   */
+  fase: 'gooien' | 'bieden' | 'onthuld' | 'einde'
+  /** wie zijn stenen deze ronde al gegooid heeft */
+  gegooid: Record<string, boolean>
   /** wie er aan zet is: bieden, dudo of calza */
   beurt: string
   /** stenen per speler; 0 = af */
@@ -90,37 +98,36 @@ function stenenAanTafel(s: PerudoState): number {
 }
 
 /**
- * Iedereen die nog meedoet gooit opnieuw.
+ * Eén speler keert zijn beker om.
  *
- * De host gooit voor iedereen tegelijk — één plek waar het toeval vandaan
- * komt, en met dezelfde seed is een potje daarna exact na te spelen.
+ * Het rekenwerk gebeurt nog steeds op de host — daar zit de enige
+ * toevalsgenerator, en met dezelfde seed is een potje exact na te spelen.
+ * Maar wánneer er gegooid wordt bepaalt de speler zelf, en de uitkomst gaat
+ * alleen naar zijn eigen scherm.
  */
-function gooiAlles(s: PerudoState, ctx: SpelContext) {
-  ctx.wisPrive()
-  s._geheim.worpen = {}
+function gooiVoor(s: PerudoState, ctx: SpelContext, uid: string) {
+  const worp: number[] = []
+  for (let i = 0; i < s.stenen[uid]; i++) worp.push(tussen(ctx.rng, 1, 6))
+  // Gesorteerd, want een handje dat elke ronde in een andere volgorde staat
+  // leest slecht: je wilt in één oogopslag zien wat je hebt.
+  worp.sort((a, b) => a - b)
 
-  for (const speler of ctx.spelers) {
-    if (!leeft(s, speler.uid)) continue
-
-    const worp: number[] = []
-    for (let i = 0; i < s.stenen[speler.uid]; i++) worp.push(tussen(ctx.rng, 1, 6))
-    // Gesorteerd, want een handje dat elke ronde in een andere volgorde staat
-    // leest slecht: je wilt in één oogopslag zien wat je hebt.
-    worp.sort((a, b) => a - b)
-
-    s._geheim.worpen[speler.uid] = worp
-    ctx.zetPrive(speler.uid, { worp })
-  }
+  s._geheim.worpen[uid] = worp
+  s.gegooid[uid] = true
+  ctx.zetPrive(uid, { worp })
 }
 
-/** Alles op scherp voor een nieuwe ronde. */
+/** Alles op scherp voor een nieuwe ronde: lege bekers, niemand heeft gegooid. */
 function nieuweRonde(s: PerudoState, ctx: SpelContext, beginner: string) {
   s.ronde++
-  s.fase = 'bieden'
+  s.fase = 'gooien'
   s.beurt = beginner
   s.bod = null
   s.bieder = null
   s.onthuld = null
+  s.gegooid = {}
+  s._geheim.worpen = {}
+  ctx.wisPrive()
 
   /*
    * Palifico: wie voor het eerst op zijn laatste steen zit, opent een ronde
@@ -129,8 +136,6 @@ function nieuweRonde(s: PerudoState, ctx: SpelContext, beginner: string) {
    */
   s.palifico = s.stenen[beginner] === 1 && !s.palificoGehad[beginner]
   if (s.palifico) s.palificoGehad[beginner] = true
-
-  gooiAlles(s, ctx)
 
   ctx.log(
     s.palifico
@@ -216,9 +221,9 @@ export const perudo: GameModule<PerudoState> = {
   naam: 'Perudo',
   uitleg: 'Vijf stenen onder je beker. Bied hoog, of roep dudo.',
   regels: [
-    'Iedereen gooit vijf stenen; alleen jij ziet die van jou.',
-    'Zeg hoe vaak een oog aan tafel ligt — bij iedereen samen. Enen zijn joker.',
-    'Elk bod moet hoger dan het vorige.',
+    'Gooi je eigen vijf stenen; alleen jij ziet ze. Enen zijn joker.',
+    'Zeg hoe vaak een oog aan tafel ligt — bij iedereen samen.',
+    'Verhogen: meer stenen, of hetzelfde aantal van een hóger oog. Omlaag nooit.',
     'Dudo = ik geloof je niet. Wie ernaast zit raakt een steen kwijt.',
   ],
   minSpelers: 2,
@@ -233,7 +238,8 @@ export const perudo: GameModule<PerudoState> = {
 
     const s: PerudoState = {
       ronde: 0,
-      fase: 'bieden',
+      fase: 'gooien',
+      gegooid: {},
       beurt: ctx.spelers[0].uid,
       stenen,
       bod: null,
@@ -252,6 +258,22 @@ export const perudo: GameModule<PerudoState> = {
 
   reduce(s, actie: Actie, ctx) {
     const volgorde = ctx.spelers.map((p) => p.uid)
+
+    /*
+     * Iedereen keert zijn eigen beker om. Pas als de laatste beker om is
+     * begint het bieden — anders zit je te bieden op stenen die er nog niet
+     * liggen, en dan is de eerste bieder in het nadeel.
+     */
+    if (s.fase === 'gooien' && actie.type === 'gooi') {
+      if (!leeft(s, actie.uid)) return
+      if (s.gegooid[actie.uid]) return
+
+      gooiVoor(s, ctx, actie.uid)
+
+      const levend = volgorde.filter((u) => leeft(s, u))
+      if (levend.every((u) => s.gegooid[u])) s.fase = 'bieden'
+      return
+    }
 
     if (s.fase === 'bieden') {
       // Bieden, dudo én calza zijn alleen voor wie aan de beurt is. Aan een
@@ -342,6 +364,15 @@ export const perudo: GameModule<PerudoState> = {
     const mijnWorp: number[] = ctx.prive?.worp ?? []
     const mijnBeurt = ctx.ik === s.beurt && s.fase === 'bieden'
     const ikLeef = leeft(s, ctx.ik)
+    const wachtOp = volgorde.filter((uid) => leeft(s, uid) && !s.gegooid[uid])
+
+    /*
+     * In welke ronde ik op "gooi" getikt heb. Puur voor het gevoel: de beker
+     * kiept meteen om, ook al is de worp zelf nog onderweg van de host. Als
+     * getal en niet als ja/nee, dan hoeft hij niet per ronde teruggezet te
+     * worden — een oude ronde is vanzelf niet de huidige meer.
+     */
+    const [getiktRonde, zetGetiktRonde] = useState(-1)
 
     /*
      * Hoeveel stenen iedereen nog heeft, onder zijn naam in de spelersbalk.
@@ -382,36 +413,34 @@ export const perudo: GameModule<PerudoState> = {
             <OnthuldScherm o={s.onthuld} ctx={ctx} volgorde={volgorde} />
           ) : (
             <>
-              {s.bod ? (
-                <div style={{ textAlign: 'center' }}>
-                  <div className="kop-klein">{ctx.naam(s.bieder!)} zegt</div>
-                  <h1 style={{ margin: '2px 0' }}>
-                    {s.bod.aantal} × {OGEN[s.bod.ogen]}
-                  </h1>
-                </div>
-              ) : (
-                <div style={{ textAlign: 'center' }}>
-                  <div className="kop-klein">Nog geen bod</div>
-                  <h2 className="zacht">{ctx.naam(s.beurt)} opent</h2>
-                </div>
-              )}
+              {s.fase === 'bieden' &&
+                (s.bod ? (
+                  <div style={{ textAlign: 'center' }}>
+                    <div className="kop-klein">{ctx.naam(s.bieder!)} zegt</div>
+                    <h1 style={{ margin: '2px 0' }}>
+                      {s.bod.aantal} × {OGEN[s.bod.ogen]}
+                    </h1>
+                  </div>
+                ) : (
+                  <div style={{ textAlign: 'center' }}>
+                    <div className="kop-klein">Nog geen bod</div>
+                    <h2 className="zacht">{ctx.naam(s.beurt)} opent</h2>
+                  </div>
+                ))}
 
               {ikLeef ? (
                 <Kaartje style={{ textAlign: 'center', borderColor: 'var(--goud)' }}>
                   <div className="kop-klein">🤫 Alleen jij ziet dit</div>
-                  <div style={{ fontSize: 44, letterSpacing: 2 }}>
-                    {mijnWorp.map((oog, i) => (
-                      <span
-                        key={i}
-                        style={{
-                          color: oog === 1 && !s.palifico ? 'var(--goud)' : 'var(--tekst)',
-                        }}
-                      >
-                        {OGEN[oog]}
-                      </span>
-                    ))}
-                  </div>
-                  {!s.palifico && (
+                  <Beker
+                    // Nieuwe sleutel per ronde, zodat de beker weer dicht gaat
+                    // en de worp opnieuw mag tuimelen.
+                    key={s.ronde}
+                    aantal={s.stenen[ctx.ik]}
+                    worp={mijnWorp.length > 0 ? mijnWorp : null}
+                    jokerAan={!s.palifico}
+                    kiepend={getiktRonde === s.ronde && mijnWorp.length === 0}
+                  />
+                  {mijnWorp.length > 0 && !s.palifico && (
                     <div className="klein zacht">Enen tellen bij elk oog mee.</div>
                   )}
                 </Kaartje>
@@ -420,11 +449,47 @@ export const perudo: GameModule<PerudoState> = {
                   <span className="zacht">Je bent af — je kijkt mee.</span>
                 </Kaartje>
               )}
+
+              {s.fase === 'gooien' && (
+                <div className="gooistand">
+                  {volgorde
+                    .filter((uid) => leeft(s, uid))
+                    .map((uid) => (
+                      <span key={uid} className={s.gegooid[uid] ? 'klaar' : ''}>
+                        {ctx.speler(uid)?.emoji} {ctx.naam(uid)} {s.gegooid[uid] ? '✓' : '🥤'}
+                      </span>
+                    ))}
+                </div>
+              )}
             </>
           )}
         </div>
 
         <div className="onderaan">
+          {s.fase === 'gooien' &&
+            (!ikLeef ? (
+              <Kaartje style={{ textAlign: 'center' }}>
+                <span className="zacht">De rest gooit…</span>
+              </Kaartje>
+            ) : !s.gegooid[ctx.ik] ? (
+              <GroteKnop
+                kleur="goud"
+                enorm
+                bijTik={() => {
+                  zetGetiktRonde(s.ronde)
+                  ctx.stuur('gooi')
+                }}
+              >
+                🎲 Gooi je stenen
+              </GroteKnop>
+            ) : (
+              <Kaartje style={{ textAlign: 'center' }}>
+                <span className="zacht">
+                  Wachten op {wachtOp.map((uid) => ctx.naam(uid)).join(', ')}…
+                </span>
+              </Kaartje>
+            ))}
+
           {s.fase === 'einde' && (
             <GroteKnop kleur="goud" enorm bijTik={() => ctx.stuur('afsluiten')}>
               Klaar
@@ -478,6 +543,98 @@ export const perudo: GameModule<PerudoState> = {
       </>
     )
   },
+}
+
+/* ── de beker ─────────────────────────────────────────────── */
+
+/** Hoe lang de stenen tuimelen voordat ze blijven liggen. */
+const ROL_MS = 850
+
+/**
+ * Losse ogen om mee te tuimelen.
+ *
+ * Hier mag Math.random() wél: dit zijn de stenen die je ziet rollen, niet de
+ * stenen die je krijgt. Die laatste komen van de host, uit ctx.rng.
+ */
+function losseOgen(n: number): number[] {
+  return Array.from({ length: n }, () => 1 + Math.floor(Math.random() * 6))
+}
+
+/**
+ * Je eigen beker: dicht, tuimelend, of stilliggend.
+ *
+ * De worp komt van de host en is er dus pas na een tikje netwerk. Dat gat
+ * wordt niet weggepoetst maar gebruikt: de beker kiept om zodra je tikt, de
+ * stenen rollen zodra ze binnen zijn, en ze blijven pas liggen als ze echt
+ * uitgerold zijn. Zo zie je een worp gebeuren in plaats van een getal dat er
+ * ineens staat.
+ */
+function Beker({
+  aantal,
+  worp,
+  jokerAan,
+  kiepend,
+}: {
+  aantal: number
+  worp: number[] | null
+  jokerAan: boolean
+  kiepend: boolean
+}) {
+  const [rollend, zetRollend] = useState(false)
+  const [nep, zetNep] = useState<number[]>([])
+  const alGerold = useRef(false)
+
+  /* De worp is binnen: eerst laten tuimelen, dan pas laten liggen. */
+  useEffect(() => {
+    if (!worp || alGerold.current) return
+    alGerold.current = true
+    zetRollend(true)
+    const klok = setTimeout(() => {
+      zetRollend(false)
+      // Een tikje als ze liggen, zodat je het ook voelt als je net wegkijkt.
+      tril([16, 40, 16])
+    }, ROL_MS)
+    return () => clearTimeout(klok)
+  }, [worp])
+
+  /* Tijdens het tuimelen wisselen de ogen door. */
+  useEffect(() => {
+    if (!rollend) return
+    const tik = setInterval(() => zetNep(losseOgen(aantal)), 70)
+    return () => clearInterval(tik)
+  }, [rollend, aantal])
+
+  if (!worp) {
+    return (
+      <div>
+        <div className={`beker${kiepend ? ' kiept' : ''}`}>🥤</div>
+        <div className="klein zacht">
+          {aantal} {aantal === 1 ? 'steen' : 'stenen'} onder je beker
+        </div>
+      </div>
+    )
+  }
+
+  const tonen = rollend ? nep : worp
+
+  return (
+    <div className="dobbel">
+      {tonen.map((oog, i) => (
+        <span
+          key={i}
+          className={[
+            'steen',
+            rollend ? 'rolt' : 'ligt',
+            !rollend && jokerAan && oog === 1 ? 'joker' : '',
+          ].join(' ')}
+          // Elke steen een eigen vertraging: anders tuimelen ze als één blok.
+          style={{ animationDelay: `${i * 0.07}s` }}
+        >
+          {OGEN[oog]}
+        </span>
+      ))}
+    </div>
+  )
 }
 
 /* ── de bod-kiezer ────────────────────────────────────────── */

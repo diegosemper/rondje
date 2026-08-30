@@ -59,14 +59,21 @@ export function telOgen(
  * alleen in een palifico-ronde, waar het oog van het eerste bod de hele
  * ronde vaststaat.
  *
- * De vier gevallen:
+ * De gevallen:
  *
  * - zelfde oog        → één meer
  * - hoger oog         → hetzelfde aantal mag blijven staan
- * - lager oog         → dan moet het aantal wél omhoog
+ * - lager oog         → mag niet, hoeveel je er ook bij doet
  * - naar enen         → de helft, naar boven afgerond (jokers zijn dubbel
  *                       zo veel waard, dus tellen ze dubbel zo zwaar)
- * - van enen af       → het dubbele, plus één
+ * - van enen af       → het dubbele, plus één, op elk oog
+ *
+ * Dat lagere ogen helemaal niet mogen is het punt waarop dit spel afwijkt van
+ * wat er in sommige regelboekjes staat. Daar mag je met een hoger aantal elk
+ * oog noemen, en is "5 drieën" na "4 vieren" een geldige verhoging. Hier niet:
+ * het oog gaat nooit omlaag. Anders kun je de hele tijd terug naar het oog
+ * waar jij toevallig veel van hebt, en dan loopt een ronde nergens meer
+ * naartoe.
  */
 export function minimumAantal(
   oud: Bod | null,
@@ -85,7 +92,8 @@ export function minimumAantal(
   if (ogen === oud.ogen) return oud.aantal + 1
   if (ogen === JOKER) return Math.max(1, Math.ceil(oud.aantal / 2))
   if (oud.ogen === JOKER) return oud.aantal * 2 + 1
-  return ogen > oud.ogen ? oud.aantal : oud.aantal + 1
+  if (ogen < oud.ogen) return null
+  return oud.aantal
 }
 
 /**

@@ -1669,3 +1669,137 @@ input.code-invoer {
 .spelrij .uit .spel-teken {
   opacity: 0.5;
 }
+
+/* ─────────────────────────────────────────────────────────────
+   PERUDO — de beker en de stenen
+
+   Je gooit je eigen stenen, en dat moet ook zo voelen. Een getal dat er
+   ineens staat is geen worp; je wilt ze zien stuiteren en tot rust komen
+   voordat je weet wat je hebt.
+
+   De stenen tuimelen niet allemaal tegelijk: elke steen krijgt een eigen
+   vertraging mee, anders bewegen ze als één blok en ziet het er meteen uit
+   als een plaatje dat heen en weer schuift.
+   ───────────────────────────────────────────────────────────── */
+
+.dobbel {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 4px;
+  min-height: 58px;
+  font-size: 46px;
+  line-height: 1;
+}
+
+.steen {
+  display: inline-block;
+  transform-origin: 50% 70%;
+  will-change: transform;
+}
+
+.steen.rolt {
+  animation: steen-rol 0.62s linear infinite;
+}
+
+.steen.ligt {
+  animation: steen-land 0.36s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+/* De joker springt eruit: die telt bij elk oog mee en dat wil je meteen zien. */
+.steen.joker {
+  color: var(--goud);
+  text-shadow: 0 0 14px rgba(255, 209, 102, 0.5);
+}
+
+/* Wat er niet meetelt bij het natellen zakt naar de achtergrond weg. */
+.steen.dof {
+  opacity: 0.28;
+}
+
+@keyframes steen-rol {
+  0% {
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+  25% {
+    transform: translateY(-30px) rotate(210deg) scale(1.12);
+  }
+  50% {
+    transform: translateY(0) rotate(400deg) scale(0.92);
+  }
+  75% {
+    transform: translateY(-16px) rotate(575deg) scale(1.06);
+  }
+  100% {
+    transform: translateY(0) rotate(720deg) scale(1);
+  }
+}
+
+@keyframes steen-land {
+  0% {
+    transform: translateY(-16px) scale(1.2);
+  }
+  55% {
+    transform: translateY(0) scale(0.9);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* De dichte beker: hij staat te wachten tot je hem omkeert. */
+.beker {
+  font-size: 62px;
+  line-height: 1;
+  animation: wiebel 2.6s ease-in-out infinite;
+}
+
+.beker.kiept {
+  animation: beker-kiep 0.62s ease-in-out;
+}
+
+@keyframes beker-kiep {
+  0% {
+    transform: rotate(0deg) translateY(0);
+  }
+  35% {
+    transform: rotate(-42deg) translateY(-10px);
+  }
+  70% {
+    transform: rotate(18deg) translateY(0);
+  }
+  100% {
+    transform: rotate(0deg) translateY(0);
+  }
+}
+
+/* Wie nog moet gooien staat er als dichte beker bij, wie klaar is met een vink. */
+.gooistand {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--tekst-zacht);
+}
+
+.gooistand span {
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--rand);
+  background: var(--vlak);
+}
+
+.gooistand span.klaar {
+  border-color: var(--groen);
+  color: var(--groen);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .steen.rolt,
+  .steen.ligt,
+  .beker,
+  .beker.kiept {
+    animation: none;
+  }
+}
