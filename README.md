@@ -151,8 +151,8 @@ gedronken heeft), de verdeler (slokken spreiden over meerdere mensen),
 
 ## De spellen
 
-**Kaarten** — Bussen · Kingsen · Pyramide · Blinde Kaart · Ezelen ·
-Kaartroulette · Fuck the Dealer · HiLo · 21 Overboord
+**Kaarten** — Bussen · Kingsen · Blinde Kaart · Ezelen · Fuck the Dealer ·
+HiLo · 21 Overboord
 
 **Geheim & bluf** — Perudo · De Imposter · Spiegelspelers · Sabotage ·
 Verboden Woord · Golflengte · Twee Waarheden één Leugen · De Ketting
@@ -162,6 +162,9 @@ Snelste Vinger · Zwaartekracht · Snelle Wiskunde
 
 **Praten & raden** — Tekenen · Raad het Nummer · Wie van Ons · Gelijk Denken ·
 Het Alfabet · Bom Doorgeven · Opbouwen of Stoppen
+
+**Op één telefoon** — Vingers: iedereen een vinger op het scherm van de host,
+en er licht er één op.
 
 Plus een Testspel dat elke bouwsteen los aanroept; dat staat standaard uit en
 kun je in de lobby aanzetten.

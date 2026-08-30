@@ -1803,3 +1803,102 @@ input.code-invoer {
     animation: none;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────
+   VINGERS — één telefoon, allemaal een vinger erop
+
+   Dit scherm is het enige in de app dat meerdere aanrakingen tegelijk moet
+   volgen. touch-action: none is daarbij geen detail maar de kern: zonder dat
+   ziet de browser vijf vingers als een scroll- of zoomgebaar en krijg je de
+   helft van de aanrakingen nooit te zien.
+   ───────────────────────────────────────────────────────────── */
+
+.vingerpad {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  min-height: 260px;
+  border-radius: var(--straal);
+  border: 2px dashed var(--rand);
+  background: rgba(0, 0, 0, 0.16);
+  overflow: hidden;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.vinger {
+  position: absolute;
+  width: 92px;
+  height: 92px;
+  margin: -46px 0 0 -46px;
+  border-radius: 50%;
+  border: 5px solid currentColor;
+  box-shadow:
+    0 0 22px currentColor,
+    inset 0 0 22px rgba(255, 255, 255, 0.12);
+  animation: vinger-klop 1.15s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* De gekozene blijft staan en zwelt op; de rest zakt weg. */
+.vinger.gekozen {
+  animation: vinger-gekozen 0.5s cubic-bezier(0.2, 1.5, 0.4, 1) forwards;
+  z-index: 2;
+}
+
+.vinger.verloren {
+  animation: vinger-weg 0.4s ease-out forwards;
+}
+
+@keyframes vinger-klop {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.92;
+  }
+  50% {
+    transform: scale(1.09);
+    opacity: 1;
+  }
+}
+
+@keyframes vinger-gekozen {
+  0% {
+    transform: scale(1);
+  }
+  60% {
+    transform: scale(1.55);
+  }
+  100% {
+    transform: scale(1.35);
+  }
+}
+
+@keyframes vinger-weg {
+  to {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+}
+
+.vingerpad-hint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 20px;
+  color: var(--tekst-zacht);
+  font-size: 15px;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vinger,
+  .vinger.gekozen {
+    animation: none;
+  }
+}

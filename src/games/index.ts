@@ -12,10 +12,8 @@ import { ketting } from './ketting'
 import { eenentwintig } from './eenentwintig'
 import { bom } from './bom'
 import { gelijkdenken } from './gelijkdenken'
-import { pyramide } from './pyramide'
 import { blindekaart } from './blindekaart'
 import { ezelen } from './ezelen'
-import { roulette } from './roulette'
 import { tekenen } from './tekenen'
 import { nummers } from './nummers'
 import { sabotage } from './sabotage'
@@ -30,11 +28,10 @@ import { wiskunde } from './wiskunde'
 import { bierpong } from './bierpong'
 import { opbouwen } from './opbouwen'
 import { waterval } from './waterval'
-import { mexicanen } from './mexicanen'
 import { perudo } from './perudo'
+import { vingers } from './vingers'
 import { kleurenklap } from './kleurenklap'
 import { duel } from './duel'
-import { schudden } from './schudden'
 import { tienseconden } from './tienseconden'
 import { nognooit } from './nognooit'
 import { stellingen } from './stellingen'
@@ -47,6 +44,9 @@ import { spiegel } from './spiegel'
 // Zwaartekracht en Rood of Zwart staan bewust niet in de lijst: eruit gehaald
 // op verzoek, te saai bevonden. De code staat er nog, dus terugzetten is de
 // import weer aanzetten en de naam in de lijst hieronder terugzetten.
+//
+// Schudden, Kaartroulette, Pyramide en Mexicanen zijn er later om dezelfde
+// reden uit gegaan: niet leuk genoeg bevonden. Ook die code staat er nog.
 import { tweewaarheden } from './tweewaarheden'
 
 /**
@@ -60,13 +60,11 @@ export const ALLE_SPELLEN: GameModule[] = [
   kingsen,
   imposter,
   dealer,
-  pyramide,
   blindekaart,
   ezelen,
-  roulette,
   waterval,
-  mexicanen,
   perudo,
+  vingers,
   tekenen,
   nummers,
   hitster,
@@ -81,7 +79,6 @@ export const ALLE_SPELLEN: GameModule[] = [
   kleurenklap,
   tienseconden,
   duel,
-  schudden,
   opbouwen,
   golflengte,
   sabotage,

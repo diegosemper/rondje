@@ -118,6 +118,7 @@ export const SPEL_EMOJI: Record<string, string> = {
   tienseconden: '⏱️',
   tweewaarheden: '🤥',
   verbodenwoord: '🚫',
+  vingers: '👆',
   waterval: '🌊',
   wiebenik: '🎭',
   wievanons: '🗳️',
