@@ -1,21 +1,32 @@
 /**
  * De raadsels voor Black Stories.
  *
- * Allemaal zelf geschreven. De kaartjes van het echte spel zijn beschermd, dus
- * die kunnen hier niet in — en de bekende klassiekers (de parachute, de lift,
- * de blokhut) kent je groep waarschijnlijk al, en dan is het spel in tien
- * seconden voorbij.
+ * Allemaal zelf geschreven. De kaartjes van het echte spel zijn beschermd, en
+ * de bekende klassiekers (de parachute, de lift) kent je groep waarschijnlijk
+ * al — en dan is het spel in tien seconden voorbij.
+ *
+ * DE TOON IS GÊNANT EN NIET TRAGISCH. De eerste versie van deze lijst zat vol
+ * met keurige misdaadverhaaltjes: een rechercheur die een detail opmerkt, een
+ * erfenis die niet klopt. Dat zijn prima puzzels en een dooie tafel. Wat wél
+ * werkt is een oplossing waar iedereen om moet lachen of ineenkrimpt — iemand
+ * die betrapt wordt, iets wat in het ziekenhuis eindigt, een avond die volledig
+ * ontspoort.
  *
  * Waar ze aan moeten voldoen, als je er zelf bij schrijft:
  *
  * · Het raadsel klopt letterlijk. Er staat niets in wat niet waar is; het is
  *   alleen zo verteld dat je de verkeerde kant op denkt.
- * · De oplossing is af te leiden. Er zit geen verzonnen detail in dat je
- *   nooit had kunnen bevragen — anders zit de tafel te raden in plaats van
+ * · De oplossing is af te leiden met ja/nee-vragen. Geen verzonnen detail dat
+ *   je nooit had kunnen bevragen, anders zit de tafel te raden in plaats van
  *   te redeneren.
- * · Eén kernvondst per raadsel. Twee omkeringen in één verhaal maakt het niet
- *   moeilijker, alleen vager.
- * · Duister mag, smerig niet. Er gaan mensen dood; dat hoeft niet in detail.
+ * · Eén kernvondst per raadsel. Twee omkeringen maakt het niet moeilijker,
+ *   alleen vager.
+ * · De klap zit in de oplossing, niet in het raadsel. Het raadsel moet saai
+ *   en onschuldig klinken; dat maakt de onthulling pas leuk.
+ *
+ * Waar het niet over gaat: iets met kinderen, of iets waar iemand niet mee
+ * ingestemd zou hebben. Daar valt een tafel stil van in plaats van dat hij
+ * lacht.
  */
 
 export interface Zwart {
@@ -28,189 +39,195 @@ export interface Zwart {
 
 export const VERHALEN: Zwart[] = [
   {
+    titel: 'De brandweer',
+    raadsel: 'Hij belde zelf de brandweer. Toen ze binnenkwamen wilde hij dood neervallen van schaamte.',
+    oplossing:
+      'Hij had zichzelf met handboeien aan het bed vastgemaakt als verrassing voor zijn vriendin, en het sleuteltje van het bed af laten vallen. Zij stond twee uur vast in de file. Na drie uur wachten heeft hij met zijn neus de telefoon bediend. De brandweer heeft het slot doorgeknipt en niets gezegd, maar ze keken wel.',
+  },
+  {
+    titel: 'De bezorger',
+    raadsel: 'Ze deed de deur open voor de bezorger. Een week later was ze single.',
+    oplossing:
+      'Ze had een hoodie aan die niet van haar vriend was. De bezorger was de broer van haar vriend, en hij herkende zijn eigen trui — die hij een maand eerder aan een huisgenoot had uitgeleend.',
+  },
+  {
+    titel: 'Het spraakbericht',
+    raadsel: 'Hij heeft haar die avond geen enkel bericht gestuurd. Toch heeft ze het uitgemaakt.',
+    oplossing:
+      'Zijn telefoon zat in zijn broekzak en nam elf minuten op terwijl hij in de kroeg tegen zijn vrienden vertelde wat hij écht van haar vond. Het bericht ging vanzelf naar de laatste chat die openstond. Die van haar.',
+  },
+  {
+    titel: 'De weddenschap',
+    raadsel: 'Hij won de weddenschap en was de volgende dag zijn baan kwijt.',
+    oplossing:
+      'De weddenschap was dat hij een hele werkdag zonder onderbroek zou werken. Hij won, maar had het aangekondigd in de groepsapp van kantoor — en zijn leidinggevende zat daar ook in.',
+  },
+  {
+    titel: 'De nacht buiten',
+    raadsel: 'De hele straat weet nu precies hoe hij eruitziet. Hij heeft niets fout gedaan.',
+    oplossing:
+      'Hij slaapt bloot. Om vier uur \'s nachts ging het brandalarm van het complex af en rende hij de gang op. De deur viel achter hem in het slot. Het bleek loos alarm, en hij stond vijftig minuten op straat met een deurmat.',
+  },
+  {
+    titel: 'De pizza',
+    raadsel: 'Ze bestelde één pizza, en precies daardoor werd ze betrapt.',
+    oplossing:
+      'Ze bestelde via een app die adressen onthoudt. Toen haar vriend dezelfde avond iets bestelde, stond er een adres in de lijst waar zij had gezworen nooit geweest te zijn.',
+  },
+  {
+    titel: 'De douche',
+    raadsel: 'Hij zat in de wachtkamer met een verhaal over een uitgegleden been in de douche. Niemand geloofde hem.',
+    oplossing:
+      'De foto liet zien dat het voorwerp er niet in gekomen kan zijn door te vallen. De verpleegkundige zei dat ze het elke week zien en dat hij gewoon de waarheid mocht vertellen. Dat heeft hij niet gedaan.',
+  },
+  {
+    titel: 'De buren',
+    raadsel: 'De buren klaagden over geluidsoverlast terwijl er niemand thuis was.',
+    oplossing:
+      'Er lag iets op het nachtkastje dat per ongeluk aanging toen ze de deur dichtsloeg. Het trilde eraf, viel op de houten vloer en heeft daar zes uur liggen rammelen tot de batterij leeg was.',
+  },
+  {
+    titel: 'De ziekmelding',
+    raadsel: 'Hij belde zich ziek en stond de volgende ochtend in de krant.',
+    oplossing:
+      'De fotograaf maakte een sfeerfoto van het uitvak. Hij staat vooraan, met zijn shirt uit en zijn gezicht beschilderd, bovenop een hek. De foto haalde de voorpagina van de sportbijlage.',
+  },
+  {
+    titel: 'De tattoo',
+    raadsel: 'Ze is de enige die haar eigen tattoo nooit gezien heeft, en dat is maar beter ook.',
+    oplossing:
+      'Ze heeft hem dronken laten zetten op vakantie, op haar onderrug, in een taal die ze niet spreekt. Ze denkt dat er "vrijheid" staat. Iedereen die het wél kan lezen begint te grinniken en zegt niets.',
+  },
+  {
+    titel: 'De groepsfoto',
+    raadsel: 'Hij staat niet op de foto, en hij was de enige die niet lachte.',
+    oplossing:
+      'Hij nam de foto. Op de achtergrond, half buiten beeld, staat zijn vriendin met zijn beste vriend op een manier die geen enkele uitleg meer nodig had.',
+  },
+  {
+    titel: 'Twee cadeaus',
+    raadsel: 'Ze kreeg op haar verjaardag twee keer precies hetzelfde cadeau. Daar eindigde een vriendschap.',
+    oplossing:
+      'Twee mensen gaven haar dezelfde set lingerie, in exact de goede maat. Maar één van de twee had die maat kunnen weten.',
+  },
+  {
+    titel: 'De spiegelochtend',
+    raadsel: 'Ze werd wakker in haar eigen bed en wist binnen drie seconden dat er iets goed mis was.',
+    oplossing:
+      'Alles in de kamer stond gespiegeld. Ze lag in het identieke appartement één verdieping hoger, waar de plattegrond omgekeerd is. De deur stond open en de bewoner was op vakantie.',
+  },
+  {
+    titel: 'De tandarts',
+    raadsel: 'De tandarts wist meteen dat hij loog over dat weekend.',
+    oplossing:
+      'Hij had gezegd dat hij het hele weekend ziek in bed lag. Zijn tong en tanden waren nog blauw van een drankje dat maar op één plek in het land wordt geschonken, en de tandarts was daar zelf ook geweest.',
+  },
+  {
+    titel: 'Eén emoji',
+    raadsel: 'Eén emoji kostte hem zijn relatie. Hij heeft nooit iets getypt.',
+    oplossing:
+      'Hij reageerde met een hartje op een foto van zijn ex, om drie uur \'s nachts. Dacht dat niemand dat zag. De app laat precies zien wie er gereageerd heeft, en zijn vriendin volgde datzelfde account.',
+  },
+  {
+    titel: 'De kat',
+    raadsel: 'De kat heeft het verklapt.',
+    oplossing:
+      'De kat sleepte een onderbroek de woonkamer in en legde hem voor de bank. Er woonde niemand in huis die die maat draagt.',
+  },
+  {
+    titel: 'De was',
+    raadsel: 'Ze deed gewoon de was en wist daarna precies waar hij geweest was.',
+    oplossing:
+      'In zijn broekzak zat een polsbandje van een festival dat dat weekend was. Hij had gezegd dat hij bij zijn moeder was om de schutting te verven.',
+  },
+  {
+    titel: 'De rekening',
+    raadsel: 'Hij betaalde de rekening, en precies daardoor werd hij betrapt.',
+    oplossing:
+      'Het restaurant stuurt na afloop automatisch een mailtje: "Bedankt dat u en uw gast bij ons waren." Hij had verteld dat hij alleen was gaan eten omdat hij even tot rust wilde komen. De mail kwam binnen op de gedeelde tablet in de keuken.',
+  },
+  {
+    titel: 'Het zwembad',
+    raadsel: 'Ze sprongen met z\'n allen het zwembad in. Hij kwam er als enige anders uit dan hij erin ging.',
+    oplossing:
+      'Hij had zich de dag ervoor laten spuiten voor de bruiloft van zijn zus. Het water werd oranje en hij kwam er vlekkerig uit, met strepen in zijn nek waar het eraf gelopen was.',
+  },
+  {
+    titel: 'De sauna',
+    raadsel: 'Ze gingen samen naar de sauna en spraken daarna bijna een jaar niet meer.',
+    oplossing:
+      'Ze liepen daar de ouders van haar vriend tegen het lijf. Niemand had kleren aan en niemand wist waar hij moest kijken. Het was ook nog eens de eerste keer dat ze elkaar ontmoetten.',
+  },
+  {
+    titel: 'De opname',
+    raadsel: 'Hij zette de camera aan om te bewijzen dat hij gelijk had, en verloor daarmee alles.',
+    oplossing:
+      'Hij filmde zijn woonkamer om te bewijzen dat de buren te veel herrie maakten. De opname ving vooral zijn eigen telefoongesprek op, waarin hij tegen iemand anders precies vertelde wat hij van zijn vriendin af wilde. Zij vond het bestand.',
+  },
+  {
+    titel: 'De sleutelbos',
+    raadsel: 'Er hing één sleutel te veel aan zijn bos.',
+    oplossing:
+      'Ze telde ze een keer uit verveling: voordeur, achterdeur, fiets, schuur, werk. En één die nergens bij hoorde. Hij zei dat het een oude was. Hij paste op een deur drie straten verderop.',
+  },
+  {
+    titel: 'De speech',
+    raadsel: 'Halverwege zijn speech stond de halve zaal op en liep weg.',
+    oplossing:
+      'Hij had de speech laten schrijven door een computer en hem niet nagelezen. Op de helft stond de naam van de vorige verloofde van de bruidegom erin, compleet met een anekdote die nooit had mogen rondgaan.',
+  },
+  {
+    titel: 'Het wachtwoord',
+    raadsel: 'Hij veranderde zijn wachtwoord om veilig te zitten. Juist daardoor kwam alles uit.',
+    oplossing:
+      'Het nieuwe wachtwoord was een naam. De gedeelde tablet in de keuken sloeg hem op en stelde hem de volgende ochtend voor aan zijn vriendin toen zij inlogde op een heel andere site.',
+  },
+  {
+    titel: 'Twee bordjes',
+    raadsel: 'De ober bracht twee bordjes en verpestte daarmee de hele avond.',
+    oplossing:
+      'Op de bordjes stond in chocoladeletters "Gefeliciteerd met jullie verloving". Het was de verkeerde tafel. Zij begon te huilen, hij dacht van blijdschap, en toen begreep hij het.',
+  },
+  {
+    titel: 'De taxi',
+    raadsel: 'Hij stapte in de taxi en werd zonder iets te zeggen naar huis gereden.',
+    oplossing:
+      'Hij was te dronken om een adres uit te brengen, maar de chauffeur wist het toch. Het was zijn vader, die er sinds zijn ontslag \'s nachts bij rijdt en dat aan niemand verteld had.',
+  },
+  {
+    titel: 'De verhuisdoos',
+    raadsel: 'In de doos zat iets waardoor hij niet meer met haar mee verhuisde.',
+    oplossing:
+      'Op de doos stond "winterkleding". Er zat geen kleding in maar een stapel brieven en kaartjes van iemand anders, met data van de afgelopen twee jaar.',
+  },
+  {
+    titel: 'De sportschool',
+    raadsel: 'Hij ging voor het eerst in maanden naar de sportschool en is er nooit meer geweest.',
+    oplossing:
+      'Zijn broek scheurde bij de eerste squat, over de volle lengte. Hij had niets eronder, stond voor de spiegelwand, en de groepsles achter hem had vrij zicht.',
+  },
+  {
     titel: 'De wekker',
     raadsel: 'Ze zet haar wekker elke nacht een uur vroeger dan nodig. Daardoor leeft ze nog.',
     oplossing:
-      'Ze woont boven een oude bakkerij met een kapotte gasleiding. Het gas hoopt zich \'s nachts op en wordt pas afgevoerd als de afzuiging van de bakkerij om vijf uur aanslaat. Door een uur eerder op te staan en het raam open te zetten heeft ze zonder het te weten elke nacht haar eigen leven gered. De nacht dat ze zich verslaapt, wordt ze door de buurman naar buiten gedragen.',
-  },
-  {
-    titel: 'Het laatste rondje',
-    raadsel: 'De barman schenkt haar een glas water. Zij bedankt hem en vertrekt. De man aan de bar is dood.',
-    oplossing:
-      'De vrouw had de hik. De barman herkende het en joeg haar de stuipen op het lijf door plotseling te schreeuwen — een oude truc. De man naast haar aan de bar had een zwak hart en schrok zo hevig dat hij het niet overleefde. Het glas water dat hij haar daarna gaf was al te laat.',
-  },
-  {
-    titel: 'De verjaardagsfoto',
-    raadsel: 'Hij kijkt naar de foto van zijn eigen verjaardag en belt meteen de politie.',
-    oplossing:
-      'Op de foto staat zijn broer met een gebruinde arm en een witte pols waar zijn horloge zat. Zijn broer had gezegd dat hij die zomer thuis bleef om voor hun zieke moeder te zorgen. De moeder is inmiddels overleden en de broer heeft de erfenis geïnd.',
-  },
-  {
-    titel: 'Zeven verdiepingen',
-    raadsel: 'Ze springt van zeven hoog en loopt weg zonder een schrammetje. Er is niets zachts onder haar.',
-    oplossing:
-      'Het gebouw staat al jaren leeg en wordt gesloopt. Ze sprong van de zevende verdieping naar de zesde: die laag was al weggehaald, dus de vloer lag anderhalve meter lager dan waar ze stond. Het gat leek van bovenaf veel dieper dan het was.',
-  },
-  {
-    titel: 'De brief',
-    raadsel: 'Hij leest de brief, verbrandt hem, en meldt zich de volgende ochtend bij de politie.',
-    oplossing:
-      'De brief is van zijn dochter, die schrijft dat ze weet wat hij dertig jaar geleden gedaan heeft en dat ze ermee naar buiten gaat. Door de brief te verbranden beschermt hij haar tegen wat er met een getuige zou kunnen gebeuren, en door zichzelf aan te geven haalt hij haar uit de positie dat ze het moet bewijzen.',
-  },
-  {
-    titel: 'De hond van de buren',
-    raadsel: 'De hond blafte de hele nacht. Toen hij eindelijk stopte, wist de vrouw dat ze moest vluchten.',
-    oplossing:
-      'De hond blafte al weken elke nacht naar de man die haar stalkte en buiten in zijn auto zat. Zolang de hond blafte, stond de man op straat. Toen het stil werd, was hij niet weg — hij was binnen.',
-  },
-  {
-    titel: 'Twee koffiekopjes',
-    raadsel: 'De rechercheur telt twee kopjes op tafel en weet dat de weduwe liegt.',
-    oplossing:
-      'De weduwe zei dat ze de hele avond alleen was geweest en haar man dood aantrof toen ze thuiskwam. Beide kopjes zijn nog warm en in beide zit suiker — haar man dronk zijn koffie al dertig jaar zwart. Er was dus een derde persoon, die zij kent.',
-  },
-  {
-    titel: 'De marathon',
-    raadsel: 'Hij wint de marathon met een straatlengte voorsprong. Een week later zit hij vast.',
-    oplossing:
-      'Hij liep alleen het eerste en het laatste stuk; daartussen zat hij in een bestelbus. Wat hem verraadde was zijn hartslagmeter, die hij droeg voor zijn sponsor: veertig minuten lang een rusthartslag van 58, midden in een marathon. De data stonden automatisch online.',
+      'Ze woont boven een oude bakkerij met een lekkende gasleiding. Het gas hoopt zich \'s nachts op en wordt pas afgevoerd als de afzuiging beneden om vijf uur aanslaat. Door een uur eerder op te staan en het raam open te zetten heeft ze zonder het te weten elke nacht haar eigen leven gered.',
   },
   {
     titel: 'De laatste bus',
-    raadsel: 'Ze stapt uit bij de verkeerde halte en dat redt haar leven.',
+    raadsel: 'Ze stapte uit bij de verkeerde halte en dat redde haar leven.',
     oplossing:
-      'Ze viel in slaap in de bus en werd een halte te laat wakker. Terwijl ze terugliep, reed diezelfde bus door een rood licht bij de spoorwegovergang. Bij haar eigen halte zou ze nooit zijn uitgestapt voor die overgang.',
-  },
-  {
-    titel: 'Het vakantiekiekje',
-    raadsel: 'Hij post één foto van zijn vakantie. Als hij thuiskomt is zijn huis leeggehaald.',
-    oplossing:
-      'Op de foto staat hij met zijn sleutelbos in beeld, scherp genoeg om de sleutel na te maken. Zijn adres stond onder een eerdere post met een foto van zijn voordeur. De inbrekers hoefden niets te forceren, waardoor de verzekering niets uitkeert.',
+      'Ze viel in slaap en werd een halte te laat wakker. Terwijl ze terugliep reed diezelfde bus door rood bij de spoorwegovergang. Bij haar eigen halte zou ze nooit voor die overgang zijn uitgestapt.',
   },
   {
     titel: 'De duiker',
-    raadsel: 'Ze vinden hem in duikpak, midden in een verbrand bos, kilometers van de zee.',
+    raadsel: 'Ze vinden hem in duikpak, midden in een uitgebrand bos, kilometers van zee.',
     oplossing:
-      'Hij dook voor de kust toen een blusvliegtuig water opschepte om een bosbrand te bestrijden. Hij werd meegezogen in de tank en boven het brandende bos samen met het water losgelaten.',
+      'Hij dook voor de kust op het moment dat een blusvliegtuig water opschepte voor een bosbrand. Hij werd de tank in gezogen en samen met het water boven het brandende bos losgelaten.',
   },
   {
-    titel: 'De pianostemmer',
-    raadsel: 'De pianostemmer komt binnen, speelt drie noten en belt de politie.',
+    titel: 'Het vakantiekiekje',
+    raadsel: 'Hij postte één foto van zijn vakantie. Toen hij thuiskwam was zijn huis leeg.',
     oplossing:
-      'De piano staat vals op een manier die alleen ontstaat als hij verplaatst is — en hij is zwaar. De bewoonster zei dat ze al weken niemand binnen had gehad. Onder de piano zit een verse kras in de vloer richting de kelderdeur.',
-  },
-  {
-    titel: 'Het examen',
-    raadsel: 'Hij haalt als enige een tien. Daarom wordt hij van school gestuurd.',
-    oplossing:
-      'De leraar had per ongeluk een antwoordblad van een eerder jaar meegekopieerd, met daarin twee fouten. Hij had exact diezelfde twee fouten — inclusief een rekenfout die niemand zelf zou maken. Dat bewees dat hij het antwoordblad had gezien.',
-  },
-  {
-    titel: 'De verhuizing',
-    raadsel: 'Ze verhuizen op een zondag en niemand in de straat vindt dat vreemd. Toch klopt er niets van.',
-    oplossing:
-      'Ze dragen wel dozen naar buiten maar niets naar binnen, en het huis waar ze uit komen staat al maanden te koop met een sleutelkluisje. Het zijn geen verhuizers maar dieven, en de hele straat heeft staan kijken.',
-  },
-  {
-    titel: 'De tweeling',
-    raadsel: 'Hij herkent zijn eigen tweelingbroer niet. Dat is precies de bedoeling.',
-    oplossing:
-      'Zijn broer heeft jaren geleden zijn identiteit overgenomen na een ongeluk waarbij iedereen aannam dat één van de twee was omgekomen. De man die nu leeft onder de naam van zijn broer doet alsof hij hem niet herkent, want herkenning zou de hele constructie laten instorten.',
-  },
-  {
-    titel: 'De koude soep',
-    raadsel: 'Hij neemt één lepel soep, rent naar buiten en springt voor een trein.',
-    oplossing:
-      'Hij overleefde jaren geleden een schipbreuk en kreeg toen vlees te eten waarvan hem verteld was dat het van een albatros kwam. De soep smaakt naar wat hij toen at. Hij begrijpt op dat moment wat hij werkelijk gegeten heeft, en wie.',
-  },
-  {
-    titel: 'De rookmelder',
-    raadsel: 'De rookmelder piepte al dagen. Het is die piep die het gezin gedood heeft.',
-    oplossing:
-      'De piep was een lege batterij. Om ervan af te zijn heeft de vader het apparaat van het plafond gehaald en in een la gelegd. Toen er twee nachten later werkelijk brand uitbrak, ging er niets af.',
-  },
-  {
-    titel: 'De sollicitatie',
-    raadsel: 'Ze krijgt de baan niet, en dat is het beste wat haar dit jaar overkomt.',
-    oplossing:
-      'Het bedrijf blijkt een dekmantel; iedereen die er die maand is aangenomen is opgepakt bij de inval. Zij viel af omdat ze weigerde haar bankrekening op te geven voor "de administratie", en precies die rekeningen zijn gebruikt om geld door te sluizen.',
-  },
-  {
-    titel: 'Het scherm',
-    raadsel: 'Ze kijkt naar een zwart scherm en weet precies wie er achter haar staat.',
-    oplossing:
-      'Het beeldscherm staat uit en werkt als spiegel. Ze doet alsof ze werkt, zodat de man achter haar niet doorheeft dat ze hem al drie minuten in de weerspiegeling bekijkt.',
-  },
-  {
-    titel: 'De kermis',
-    raadsel: 'Hij wint de grote knuffel voor haar. Diezelfde avond doet ze aangifte tegen hem.',
-    oplossing:
-      'Hij gooide bij het kraam met zijn linkerhand, hard en zuiver. Hij heeft haar altijd verteld dat hij links niets kan — en de klappen die zij maanden geleden kreeg van een "onbekende" kwamen van links. Op de kermis herkent ze de beweging.',
-  },
-  {
-    titel: 'Vier flessen',
-    raadsel: 'Er stonden vier flessen in de kelder. Er is er één op, en daarom is er iemand dood.',
-    oplossing:
-      'De vier flessen zagen er identiek uit: drie wijn, één schoonmaakmiddel dat de vorige bewoner had overgegoten om het kindveilig weg te zetten. Er zat geen etiket meer op. De gast schonk zichzelf in de kelder in, in het donker.',
-  },
-  {
-    titel: 'De fotograaf',
-    raadsel: 'Hij maakt de foto van zijn leven en vernietigt hem meteen.',
-    oplossing:
-      'Op de foto staat het moment waarop hij had kunnen ingrijpen maar bleef fotograferen. Zolang de foto bestaat, bestaat het bewijs dat hij daar stond en niets deed. De prijs die hij ervoor zou krijgen weegt daar niet tegenop.',
-  },
-  {
-    titel: 'Het alibi',
-    raadsel: 'Zijn alibi is waterdicht: hij zat op dat moment in de gevangenis. Toch heeft hij het gedaan.',
-    oplossing:
-      'Hij zat vast voor iets kleins en heeft dat met opzet laten gebeuren, precies in de week dat het zou plaatsvinden. De uitvoering liet hij aan iemand anders over; de gevangenis was geen obstakel maar het hele plan.',
-  },
-  {
-    titel: 'De zwemles',
-    raadsel: 'Ze kan uitstekend zwemmen. Toch verdrinkt ze in een zwembad van één meter twintig.',
-    oplossing:
-      'Ze kreeg een epileptische aanval in het water. Bij dat soort aanvallen maakt de diepte niets uit; je kunt in een paar centimeter verdrinken. Het bad was leeg omdat het al gesloten was en zij nog even doorzwom.',
-  },
-  {
-    titel: 'De erfenis',
-    raadsel: 'De notaris leest de naam voor en de hele familie begint te lachen. Een week later lacht niemand meer.',
-    oplossing:
-      'Alles gaat naar de kat. De familie lacht om de grap van de overledene, tot blijkt dat het bedrag beheerd wordt door degene die voor de kat zorgt — en dat is de thuiszorgmedewerkster die er de laatste twee jaar elke dag was.',
-  },
-  {
-    titel: 'Het parkeerticket',
-    raadsel: 'Het parkeerkaartje bewijst zijn onschuld en veroordeelt zijn vrouw.',
-    oplossing:
-      'Het kaartje is om 21:14 getrokken in een garage veertig kilometer verderop, dus hij kan er niet geweest zijn. Alleen: hij was die avond ziek thuis en zijn auto stond op de oprit. Zijn vrouw had de auto, en zij zei dat ze bij haar zus was.',
-  },
-  {
-    titel: 'De stroomstoring',
-    raadsel: 'Tijdens de stroomstoring is er niets gestolen. Toch is dat het moment waarop het gebeurde.',
-    oplossing:
-      'De inbreker heeft niets meegenomen maar juist iets neergelegd: een kopie van de sleutel, in de meterkast. Alle camera\'s stonden uit, dus er is geen beeld van het enige moment dat ertoe deed.',
-  },
-  {
-    titel: 'De bruiloft',
-    raadsel: 'Hij houdt de mooiste speech van de avond. Daarna spreekt niemand hem ooit nog aan.',
-    oplossing:
-      'De speech was woord voor woord dezelfde die hij twee jaar eerder op de bruiloft van zijn andere vriend hield. Iemand had die opgenomen, en de video stond voor het dessert al rond aan tafel.',
-  },
-  {
-    titel: 'De nachtdienst',
-    raadsel: 'De bewaker doet zijn ronde precies zoals het hoort. Daarom wordt hij ontslagen.',
-    oplossing:
-      'Hij doet zijn ronde elke nacht op exact dezelfde tijden, tot op de minuut. Wie dat een week lang bijhoudt weet precies welke elf minuten de achteringang onbewaakt is. Iemand heeft dat bijgehouden.',
-  },
-  {
-    titel: 'Het cadeau',
-    raadsel: 'Ze pakt het cadeau uit, bedankt hem hartelijk, en verlaat hem nog diezelfde week.',
-    oplossing:
-      'Het is een horloge met een inscriptie. De naam klopt en de datum klopt — alleen is het niet háár verjaardag maar die van de vrouw voor wie het oorspronkelijk bedoeld was. Hij heeft het verkeerde cadeau meegenomen.',
-  },
-  {
-    titel: 'De laatste trein',
-    raadsel: 'Hij mist de laatste trein en is daar zijn hele leven dankbaar voor.',
-    oplossing:
-      'Op het lege perron raakt hij aan de praat met de enige andere achterblijver. Ze zijn inmiddels dertig jaar samen. De trein die hij miste kwam gewoon aan.',
+      'Op de foto hield hij zijn sleutelbos vast, scherp genoeg om na te maken. Zijn adres stond onder een eerdere post met een foto van zijn voordeur. Er was niets geforceerd, en dus keerde de verzekering niets uit.',
   },
 ]

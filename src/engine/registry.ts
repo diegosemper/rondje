@@ -83,6 +83,7 @@ export const SPEL_EMOJI: Record<string, string> = {
   bom: '💣',
   bussen: '🚌',
   dealer: '🃏',
+  decode: '🔐',
   dertig: '⏳',
   duel: '⚔️',
   eenentwintig: '🛟',
