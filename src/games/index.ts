@@ -18,7 +18,6 @@ import { sabotage } from './sabotage'
 import { golflengte } from './golflengte'
 import { verbodenwoord } from './verbodenwoord'
 import { flappy } from './flappy'
-import { jetpack } from './jetpack'
 import { snelweg } from './snelweg'
 import { stapeltoren } from './stapeltoren'
 import { wiskunde } from './wiskunde'
@@ -31,7 +30,6 @@ import { tienseconden } from './tienseconden'
 import { stellingen } from './stellingen'
 import { dertig } from './dertig'
 import { hitster } from './hitster'
-import { springen } from './springen'
 import { pijlen } from './pijlen'
 import { spiegel } from './spiegel'
 
@@ -46,6 +44,8 @@ import { spiegel } from './spiegel'
    · Schudden, Kaartroulette, Pyramide en Mexicanen — idem.
    · Het Alfabet, Twee Waarheden één Leugen, Bierpong, Ik Heb Nog Nooit,
      Kingsen, Wie Ben Ik, Blinde Kaart en Waterval — idem.
+   · Jetpack en Springen — idem. Flappy en Snelweg blijven over als de twee
+     behendigheidsspellen.
    ───────────────────────────────────────────────────────────── */
 
 /**
@@ -65,10 +65,8 @@ export const ALLE_SPELLEN: GameModule[] = [
   nummers,
   hitster,
   flappy,
-  jetpack,
   snelweg,
   stapeltoren,
-  springen,
   pijlen,
   wiskunde,
   kleurenklap,
