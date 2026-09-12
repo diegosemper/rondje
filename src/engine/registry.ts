@@ -108,6 +108,7 @@ export const SPEL_EMOJI: Record<string, string> = {
   roulette: '💥',
   sabotage: '🤐',
   schudden: '📳',
+  slechtantwoord: '😈',
   snelstevinger: '🟢',
   snelweg: '🚗',
   spiegel: '🪞',

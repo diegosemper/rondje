@@ -34,6 +34,7 @@ import { pijlen } from './pijlen'
 import { spiegel } from './spiegel'
 import { verhaal } from './verhaal'
 import { blackstories } from './blackstories'
+import { slechtantwoord } from './slechtantwoord'
 
 /* ─────────────────────────────────────────────────────────────
    Wat er niet (meer) in de lijst staat
@@ -66,6 +67,7 @@ export const ALLE_SPELLEN: GameModule[] = [
   tekenen,
   verhaal,
   blackstories,
+  slechtantwoord,
   nummers,
   hitster,
   flappy,
