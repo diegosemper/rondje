@@ -8,10 +8,15 @@ import { NUMMERS, type Nummer } from './lijst'
 /* ─────────────────────────────────────────────────────────────
    RAAD HET NUMMER
 
-   Iedereen hoort even veel. Je begint met één seconde, en er komt pas meer bij
-   als íedereen die nog aan het raden is daarmee instemt. Wie hem al heeft stemt
-   niet mee -- die heeft er baat bij dat het kort blijft, en mag dus ook niet
-   tegenhouden.
+   Iedereen hoort even veel. Je begint met een tiende seconde, en er komt pas
+   meer bij als íedereen die nog aan het raden is daarmee instemt. Wie hem al
+   heeft stemt niet mee -- die heeft er baat bij dat het kort blijft, en mag dus
+   ook niet tegenhouden.
+
+   Die eerste stappen zijn met opzet piepklein. Een hele seconde is voor een
+   nummer dat je kent al ruim genoeg, en dan valt er niets meer te rekken. Bij
+   een tiende hoor je een aanslag, een stem, een drumfill -- genoeg voor wie het
+   nummer echt kent en niets voor de rest.
 
    Het verschil zit in de volgorde. Wie hem als eerste heeft mag zeven slokken
    uitdelen, de tweede vijf, daarna minder -- ook als jullie precies evenveel
@@ -26,8 +31,23 @@ import { NUMMERS, type Nummer } from './lijst'
    herkenbaarder maakt.
    ───────────────────────────────────────────────────────────── */
 
-/** Hoeveel seconden er per stap te horen is. Geldt voor iedereen tegelijk. */
-const STAPPEN = [1, 2, 4, 7, 12, 20]
+/**
+ * Hoeveel seconden er per stap te horen is. Geldt voor iedereen tegelijk.
+ *
+ * Voorin met tienden, want daar zit het spel. Achterin met flinke sprongen,
+ * want wie het na acht seconden nog niet heeft, heeft het niet.
+ */
+const STAPPEN = [0.1, 0.5, 1, 2, 3, 5, 8, 15]
+
+/** "0,1" of "15" — met een komma, want we tellen in het Nederlands. */
+function toonSec(n: number): string {
+  return (Number.isInteger(n) ? String(n) : n.toFixed(1)).replace('.', ',')
+}
+
+/** "seconde" of "seconden" — alles onder de twee blijft enkelvoud. */
+function secWoord(n: number): string {
+  return n < 2 ? 'seconde' : 'seconden'
+}
 /**
  * Wat je mag uitdelen, op volgorde van raden.
  *
@@ -134,9 +154,9 @@ function rondAf(s: NummerState, ctx: SpelContext) {
 export const nummers: GameModule<NummerState> = {
   id: 'nummers',
   naam: 'Raad het Nummer',
-  uitleg: 'Eén seconde muziek. Wie hem als eerste heeft, deelt het meest uit.',
+  uitleg: 'Een tiende seconde muziek. Wie hem als eerste heeft, deelt het meest uit.',
   regels: [
-    'Iedereen hoort even veel — te beginnen met één seconde.',
+    'Iedereen hoort even veel — te beginnen met een tiende seconde.',
     'Meer horen mag pas als iedereen die nog zoekt dat wil.',
     'Eerste die hem heeft deelt 7 uit, de tweede 5, daarna minder.',
     'Krijg je het niet? Dan drink je 5.',
@@ -196,7 +216,7 @@ export const nummers: GameModule<NummerState> = {
           // Alleen deze speler krijgt te horen dat het goed was.
           ctx.zetPrive(actie.uid, { goed: true, beloning: beloningVoor(plek) })
           ctx.log(
-            `${ctx.naam(actie.uid)} had hem als ${plek + 1}e, na ${STAPPEN[s.stap]} sec`,
+            `${ctx.naam(actie.uid)} had hem als ${plek + 1}e, na ${toonSec(STAPPEN[s.stap])} sec`,
           )
         } else {
           // Een foute gok blijft tussen jou en je telefoon, anders geef je
@@ -279,6 +299,18 @@ function Scherm({ s, ctx }: { s: NummerState; ctx: KijkContext }) {
   const [laadfout, zetLaadfout] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const stopRef = useRef<number | null>(null)
+  const beeldRef = useRef<number | null>(null)
+
+  function stopAlles() {
+    if (stopRef.current !== null) {
+      window.clearTimeout(stopRef.current)
+      stopRef.current = null
+    }
+    if (beeldRef.current !== null) {
+      cancelAnimationFrame(beeldRef.current)
+      beeldRef.current = null
+    }
+  }
 
   const stap = s.stap ?? 0
   const mijnPlek = s.goed.findIndex((g) => g.uid === ctx.ik)
@@ -299,6 +331,7 @@ function Scherm({ s, ctx }: { s: NummerState; ctx: KijkContext }) {
     el.preload = 'auto'
     audioRef.current = el
     return () => {
+      stopAlles()
       el.pause()
       audioRef.current = null
     }
@@ -307,6 +340,7 @@ function Scherm({ s, ctx }: { s: NummerState; ctx: KijkContext }) {
   useEffect(() => {
     const el = audioRef.current
     if (!el || !s.url) return
+    stopAlles()
     el.pause()
     el.src = s.url
     el.load()
@@ -315,18 +349,44 @@ function Scherm({ s, ctx }: { s: NummerState; ctx: KijkContext }) {
     zetGok('')
   }, [s.url])
 
+  /**
+   * Speelt een stukje af en stopt op de plek in het nummer, niet op de klok.
+   *
+   * Dat verschil telt hier echt. Het aanzwengelen van de speler kost op een
+   * telefoon zomaar enkele tientallen milliseconden, en bij een fragment van
+   * een tiende seconde is dat de helft van wat je wilde horen. Door naar
+   * currentTime te kijken hoort iedereen even veel, hoe traag zijn telefoon
+   * ook opstart.
+   *
+   * De klok blijft er als vangnet onder: doet de speler niet wat we vragen,
+   * dan kappen we alsnog af.
+   */
   function speel(secondes: number) {
     const el = audioRef.current
     if (!el) return
-    if (stopRef.current) window.clearTimeout(stopRef.current)
+    stopAlles()
     el.currentTime = 0
     zetSpeelt(true)
     el.play()
       .then(() => {
-        stopRef.current = window.setTimeout(() => {
-          el.pause()
-          zetSpeelt(false)
-        }, secondes * 1000)
+        const kijk = () => {
+          if (!audioRef.current || el.paused) return
+          if (el.currentTime >= secondes) {
+            el.pause()
+            zetSpeelt(false)
+            return
+          }
+          beeldRef.current = requestAnimationFrame(kijk)
+        }
+        beeldRef.current = requestAnimationFrame(kijk)
+
+        stopRef.current = window.setTimeout(
+          () => {
+            el.pause()
+            zetSpeelt(false)
+          },
+          secondes * 1000 + 500,
+        )
       })
       .catch(() => {
         zetLaadfout(true)
@@ -404,7 +464,7 @@ function Scherm({ s, ctx }: { s: NummerState; ctx: KijkContext }) {
                 </span>
                 <span className="klein">
                   {g
-                    ? `${plek + 1}e · na ${STAPPEN[g.stap]}s · deelde ${beloningVoor(plek)} uit`
+                    ? `${plek + 1}e · na ${toonSec(STAPPEN[g.stap])}s · deelde ${beloningVoor(plek)} uit`
                     : `🍺 ${STRAF_MISLUKT}`}
                 </span>
               </div>
@@ -457,8 +517,8 @@ function Scherm({ s, ctx }: { s: NummerState; ctx: KijkContext }) {
           )}
           <div className="klein zacht">Niets zeggen — laat de rest zwoegen.</div>
           <div className="klein zacht">
-            Er is nu {STAPPEN[stap]} seconde{STAPPEN[stap] === 1 ? '' : 'n'} te horen. Jij stemt
-            niet meer mee over langer luisteren.
+            Er is nu {toonSec(STAPPEN[stap])} {secWoord(STAPPEN[stap])} te horen. Jij stemt niet
+            meer mee over langer luisteren.
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, justifyContent: 'center' }}>
             {ctx.spelers.map((p) => {
@@ -482,7 +542,7 @@ function Scherm({ s, ctx }: { s: NummerState; ctx: KijkContext }) {
               {speelt ? '🔊' : '🎵'}
             </div>
             <div className="reusachtig" style={{ fontSize: 'clamp(40px,15vw,80px)' }}>
-              {STAPPEN[stap]}s
+              {toonSec(STAPPEN[stap])}s
             </div>
             <div style={{ display: 'flex', gap: 5 }}>
               {STAPPEN.map((sec, i) => (
@@ -523,7 +583,7 @@ function Scherm({ s, ctx }: { s: NummerState; ctx: KijkContext }) {
             <GroteKnop kleur="goud" enorm uit={speelt} bijTik={() => speel(STAPPEN[stap])}>
               {speelt
                 ? '🔊 Speelt…'
-                : `▶ Speel ${STAPPEN[stap]} ${STAPPEN[stap] === 1 ? 'seconde' : 'seconden'}`}
+                : `▶ Speel ${toonSec(STAPPEN[stap])} ${secWoord(STAPPEN[stap])}`}
             </GroteKnop>
 
             {laadfout && (
@@ -568,7 +628,7 @@ function Scherm({ s, ctx }: { s: NummerState; ctx: KijkContext }) {
                   ? 'Langer kan niet meer'
                   : ikGestemd
                     ? `Gestemd · ${stemmen.length}/${bezig.length}`
-                    : `Langer ▶ ${STAPPEN[stap + 1]}s`}
+                    : `Langer ▶ ${toonSec(STAPPEN[stap + 1])}s`}
               </GroteKnop>
               <GroteKnop kleur="leeg" klein bijTik={() => ctx.stuur('geef-op')}>
                 Opgeven — {ctx.slokKort(STRAF_MISLUKT)}
