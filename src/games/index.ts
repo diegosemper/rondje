@@ -32,6 +32,8 @@ import { dertig } from './dertig'
 import { hitster } from './hitster'
 import { pijlen } from './pijlen'
 import { spiegel } from './spiegel'
+import { verhaal } from './verhaal'
+import { blackstories } from './blackstories'
 
 /* ─────────────────────────────────────────────────────────────
    Wat er niet (meer) in de lijst staat
@@ -62,6 +64,8 @@ export const ALLE_SPELLEN: GameModule[] = [
   perudo,
   vingers,
   tekenen,
+  verhaal,
+  blackstories,
   nummers,
   hitster,
   flappy,

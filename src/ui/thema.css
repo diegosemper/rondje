@@ -2067,3 +2067,103 @@ input.code-invoer {
 .check-vak.aan .check-naam {
   color: var(--rood);
 }
+
+/* ── Het Verhaal: het verhaal tot nu toe ─────────────────────
+   Doorlopende tekst en geen lijstje regels, want het moet lezen als één
+   verhaal. De nieuwste zin springt eruit; die is net gekozen en daar gaat de
+   volgende schrijver op verder.                                             */
+
+.verhaal-blok {
+  max-height: 34vh;
+  overflow-y: auto;
+  padding: 10px 12px;
+  border-radius: var(--straal-klein);
+  border: 1px solid var(--rand);
+  background: var(--vlak);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.verhaal-blok.heel {
+  max-height: none;
+  font-size: 16px;
+}
+
+.verhaal-nieuw {
+  color: var(--goud);
+  font-weight: 600;
+}
+
+.verhaal-naam {
+  font-size: 11px;
+  color: var(--tekst-zacht);
+  white-space: nowrap;
+}
+
+/* ── Black Stories: het spoor van vragen en antwoorden ───────
+   Nieuwste bovenaan, want dat is wat je net gevraagd hebt. Ja en nee krijgen
+   kleur zodat je met één blik ziet welke kant het op gaat; niet relevant
+   blijft grijs, want dat leverde niets op.                                   */
+
+.zwart-spoor {
+  flex: 1;
+  min-height: 60px;
+  max-height: 40vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 2px;
+}
+
+.zwart-regel {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  border-left: 3px solid var(--rand);
+  background: var(--vlak);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.zwart-regel.ja {
+  border-left-color: var(--groen);
+}
+
+.zwart-regel.nee {
+  border-left-color: var(--rood);
+}
+
+.zwart-regel.nvt {
+  opacity: 0.6;
+}
+
+.zwart-vraag {
+  flex: 1;
+  min-width: 0;
+}
+
+.zwart-wie {
+  color: var(--tekst-zacht);
+  font-size: 11px;
+}
+
+.zwart-antwoord {
+  flex: 0 0 auto;
+  font-weight: 800;
+  font-size: 12px;
+}
+
+.zwart-regel.ja .zwart-antwoord {
+  color: var(--groen);
+}
+
+.zwart-regel.nee .zwart-antwoord {
+  color: var(--rood);
+}
+
+.zwart-regel.nvt .zwart-antwoord {
+  color: var(--tekst-zacht);
+}

@@ -78,6 +78,7 @@ export const DUUR_TEKST: Record<string, string> = {
 export const SPEL_EMOJI: Record<string, string> = {
   alfabet: '🔤',
   bierpong: '🥤',
+  blackstories: '🕯️',
   blindekaart: '🙈',
   bom: '💣',
   bussen: '🚌',
@@ -118,6 +119,7 @@ export const SPEL_EMOJI: Record<string, string> = {
   tienseconden: '⏱️',
   tweewaarheden: '🤥',
   verbodenwoord: '🚫',
+  verhaal: '📖',
   vingers: '👆',
   waterval: '🌊',
   wiebenik: '🎭',
