@@ -17,7 +17,14 @@ import { Arcadeveld, type ArcadeSpel } from '../../ui/Arcade'
 const RONDES = 2
 const WINST_UITDELEN = 10
 const MAX_STRAF = 5
-const MAX_SECONDEN = 90
+/**
+ * Na zoveel seconden is het klaar, hoe goed je ook bezig bent.
+ *
+ * Puur om te voorkomen dat één goede speler de hele tafel laat wachten. Het
+ * eindigt niet als een botsing maar als "tijd om", met de resterende seconden
+ * vooraf in beeld.
+ */
+const MAX_SECONDEN = 120
 /** Zoveel tijd tussen "iedereen klaar" en de start, zodat het aftellen loopt. */
 const AFTEL_MS = 4000
 

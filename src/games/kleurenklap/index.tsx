@@ -11,6 +11,12 @@ import { Verdeler } from '../../ui/Verdeler'
    Het woord ROOD staat er in het blauw. Je moet op de kleur tikken waarin het
    geschreven staat, niet op wat er staat.
 
+   De knoppen zitten in dezelfde val. Op de knop staat een kleurnaam, maar het
+   vakje eromheen heeft altijd een ándere kleur — er staat bijvoorbeeld BLAUW
+   in een rood vakje. Je moet dus ook bij het antwoorden lezen wat er staat en
+   niet afgaan op wat je ziet. Stonden de knoppen in hun eigen kleur, dan kon
+   je het hele spel op de vakjes spelen en hoefde je geen letter te lezen.
+
    Je hersenen lezen sneller dan ze kijken, en dat blijf je merken. Nuchter is
    het al lastig; na een paar biertjes wordt het slopend — en dat is precies
    waarom het als drankspel werkt.
@@ -30,6 +36,12 @@ const PUNT_GOED = 1
 const MAX_STRAF = 5
 const WINST_UITDELEN = 6
 
+/** De vakkleur van knop nummer k, met vangnet voor een oude spelstand. */
+function vakkleur(s: KlapState, k: number): number {
+  const v = s.optieVakken?.[k]
+  return typeof v === 'number' && v >= 0 && v < KLEUREN.length ? v : s.opties[k]
+}
+
 const KLEUREN = [
   { naam: 'ROOD', hex: '#e8453c' },
   { naam: 'BLAUW', hex: '#4c8dff' },
@@ -46,6 +58,8 @@ interface KlapState {
   /** de kleur waarin het geschreven staat — dát is het antwoord */
   inkt: number
   opties: number[]
+  /** per knop de kleur van het vakje — nooit die van zijn eigen woord */
+  optieVakken: number[]
   klok: Klok | null
 
   _geheim: { antwoorden: Record<string, { keuze: number; ts: number }> }
@@ -56,6 +70,23 @@ interface KlapState {
   winnaar: string | null
   magUitdelen: boolean
   klaar: boolean
+}
+
+/**
+ * Geeft elke knop een vakkleur die niet bij zijn eigen woord hoort.
+ *
+ * Husselen alleen is niet genoeg: dan komt er af en toe een knop uit die
+ * toevallig wél in zijn eigen kleur staat, en dat is precies het weggevertje
+ * dat eruit moest. Lukt het husselen niet, dan schuiven we alles één plaats
+ * op -- dat kan per definitie nooit gelijk uitkomen, want alle opties
+ * verschillen van elkaar.
+ */
+function maakVakken(rng: () => number, opties: number[]): number[] {
+  for (let poging = 0; poging < 40; poging++) {
+    const vakken = husselen(rng, opties)
+    if (vakken.every((v, i) => v !== opties[i])) return vakken
+  }
+  return opties.map((_, i) => opties[(i + 1) % opties.length])
 }
 
 function nieuweRonde(s: KlapState, ctx: SpelContext) {
@@ -78,6 +109,7 @@ function nieuweRonde(s: KlapState, ctx: SpelContext) {
   ).slice(0, 4)
   if (!s.opties.includes(inkt)) s.opties[0] = inkt
   s.opties = husselen(ctx.rng, s.opties)
+  s.optieVakken = maakVakken(ctx.rng, s.opties)
 
   s._geheim.antwoorden = {}
   s.gedaan = []
@@ -140,6 +172,7 @@ export const kleurenklap: GameModule<KlapState> = {
       woord: 0,
       inkt: 1,
       opties: [],
+      optieVakken: [],
       klok: null,
       _geheim: { antwoorden: {} },
       gedaan: [],
@@ -339,7 +372,7 @@ function Scherm({ s, ctx }: { s: KlapState; ctx: KijkContext }) {
           </Kaartje>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            {s.opties.map((i) => (
+            {s.opties.map((i, k) => (
               <button
                 key={i}
                 onClick={() => {
@@ -349,7 +382,9 @@ function Scherm({ s, ctx }: { s: KlapState; ctx: KijkContext }) {
                 style={{
                   minHeight: 76,
                   borderRadius: 'var(--straal)',
-                  background: KLEUREN[i].hex,
+                  // Het vakje heeft met opzet een andere kleur dan het woord
+                  // erop. Lees wat er staat, kijk niet naar het vakje.
+                  background: KLEUREN[vakkleur(s, k)].hex,
                   border: 'none',
                   color: '#14141c',
                   fontSize: 19,

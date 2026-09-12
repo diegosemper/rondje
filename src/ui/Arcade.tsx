@@ -16,6 +16,11 @@ import { maakRng } from '../engine/random'
    · Iedereen begint op dezelfde seconde, op server-tijd. Anders start degene
      met de traagste telefoon een halve seconde later en dat scheelt zo maar
      tien meter.
+
+   Er zit een tijdslimiet op, want anders houdt één goede speler de hele tafel
+   op. Die limiet is met opzet duidelijk zichtbaar en wordt niet als botsing
+   gebracht: je ging niet af, je tijd was op. Dat verschil stond er eerst niet
+   in, en dan lijkt het alsof het spel je zomaar doodverklaart.
    ───────────────────────────────────────────────────────────── */
 
 export type Richting = 'links' | 'rechts' | 'boven' | 'onder'
@@ -48,7 +53,18 @@ export interface ArcadeSpel<W> {
 
 /** Vaste stap van 120 keer per seconde: zelfde uitkomst op elke telefoon. */
 const STAP = 1 / 120
-const MAX_INHAAL = 0.25
+/**
+ * Hoeveel er hoogstens in één beeld ingehaald wordt.
+ *
+ * Hapert de telefoon even -- een melding, een opruimpauze, kort naar een
+ * andere app -- dan komt er daarna één enorme sprong binnen. Zonder deze grens
+ * worden er in dat ene beeld honderden stappen gezet terwijl jij nog niets
+ * hebt kunnen doen, en lig je eraf zonder dat je iets gezien hebt. Een tiende
+ * seconde is genoeg om vloeiend te blijven en te weinig om je om te brengen.
+ */
+const MAX_INHAAL = 0.1
+/** Vanaf hier komt de resterende tijd in beeld. */
+const WAARSCHUWING_SEC = 20
 
 export function Arcadeveld<W>({
   spel,
@@ -69,11 +85,12 @@ export function Arcadeveld<W>({
   const doosRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [afstand, zetAfstand] = useState(0)
-  const [dood, zetDood] = useState(false)
+  const [einde, zetEinde] = useState<'botsing' | 'tijd' | null>(null)
 
   const ingedrukt = useRef(false)
   const tikBuffer = useRef(false)
   const doodGemeld = useRef(false)
+  const resterendRef = useRef(Infinity)
   const plek = useRef({ x: 0.5, y: 0.5 })
   const veegStart = useRef<{ x: number; y: number } | null>(null)
   const veegBuffer = useRef<Richting | null>(null)
@@ -126,6 +143,7 @@ export function Arcadeveld<W>({
       } else {
         schuld += dt
         speeltijd += dt
+        resterendRef.current = Math.max(0, maxSeconden - speeltijd)
         while (schuld >= STAP) {
           const netGetikt = tikBuffer.current
           tikBuffer.current = false
@@ -139,12 +157,15 @@ export function Arcadeveld<W>({
             veeg,
           })
           schuld -= STAP
-          if (isDood || speeltijd > maxSeconden) {
+          const tijdOp = speeltijd > maxSeconden
+          if (isDood || tijdOp) {
             if (!doodGemeld.current) {
               doodGemeld.current = true
               const eind = Math.round(spel.afstand(wereld))
               zetAfstand(eind)
-              zetDood(true)
+              // Een botsing is iets anders dan een tijdslimiet, en dat hoort
+              // ook anders op het scherm te komen.
+              zetEinde(isDood ? 'botsing' : 'tijd')
               bijDood(eind)
             }
             stop = true
@@ -168,6 +189,19 @@ export function Arcadeveld<W>({
         c.fillText(tekst, 13, 11)
         c.fillStyle = '#f5b942'
         c.fillText(tekst, 12, 10)
+
+        // De laatste seconden erbij, zodat het aflopen van de tijd niemand
+        // overvalt.
+        const over = resterendRef.current
+        if (begonnen && over <= WAARSCHUWING_SEC) {
+          const klok = `⏱ ${Math.ceil(over)}s`
+          c.textAlign = 'right'
+          c.fillStyle = 'rgba(0,0,0,.45)'
+          c.fillText(klok, b - 11, 11)
+          c.fillStyle = over <= 5 ? '#e8453c' : '#f5b942'
+          c.fillText(klok, b - 12, 10)
+          c.textAlign = 'left'
+        }
       }
 
       if (!stop) requestAnimationFrame(lus)
@@ -250,22 +284,26 @@ export function Arcadeveld<W>({
           </div>
         )}
 
-        {dood && (
+        {einde && (
           <div
             style={{
               position: 'absolute',
               inset: 0,
               display: 'grid',
               placeItems: 'center',
-              background: 'rgba(109,29,25,.85)',
+              background:
+                einde === 'tijd' ? 'rgba(122,78,14,.88)' : 'rgba(109,29,25,.85)',
             }}
           >
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 44 }}>💥</div>
+              <div style={{ fontSize: 44 }}>{einde === 'tijd' ? '⏱' : '💥'}</div>
               <h2>
                 {afstand} {spel.eenheid ?? 'm'}
               </h2>
-              <div className="klein">wachten op de rest…</div>
+              <div className="klein">
+                {einde === 'tijd' ? 'Tijd om — je hebt het uitgezeten' : 'Je ging eraf'}
+              </div>
+              <div className="klein zacht">wachten op de rest…</div>
             </div>
           </div>
         )}

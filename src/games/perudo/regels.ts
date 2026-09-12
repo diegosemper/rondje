@@ -55,9 +55,10 @@ export function telOgen(
 /**
  * Het laagste aantal waarmee je op dit oog mag bieden.
  *
- * `null` betekent: op dit oog mag je nu helemaal niet bieden. Dat gebeurt
- * alleen in een palifico-ronde, waar het oog van het eerste bod de hele
- * ronde vaststaat.
+ * `null` betekent: op dit oog mag je nu helemaal niet bieden. Dat gebeurt op
+ * twee plekken: in een palifico-ronde, waar het oog van het eerste bod de hele
+ * ronde vaststaat, en bij het openingsbod, waar je niet op jokers mag
+ * beginnen.
  *
  * De gevallen:
  *
@@ -81,7 +82,18 @@ export function minimumAantal(
   palifico: boolean,
 ): number | null {
   if (ogen < 1 || ogen > 6) return null
-  if (!oud) return 1
+
+  if (!oud) {
+    // Openen op jokers mag niet. Dat staat zo in de officiële regels, en met
+    // reden: enen tellen overal voor mee, dus een openingsbod op enen is veel
+    // sterker dan hetzelfde aantal op welk ander oog ook. Wie mocht openen op
+    // enen zou dat elke ronde doen.
+    //
+    // In een palifico-ronde ligt dat anders: daar is de joker uit en is de één
+    // gewoon een oog als alle andere, dus daar mag het wél.
+    if (ogen === JOKER && !palifico) return null
+    return 1
+  }
 
   if (palifico) {
     // De joker is uit en het oog ligt vast; alleen het aantal mag omhoog.

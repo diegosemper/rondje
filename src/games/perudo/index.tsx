@@ -5,6 +5,7 @@ import type { Actie, GameModule, KijkContext, SpelContext } from '../../engine/t
 import { GroteKnop, Kaartje, SpelerBalk, tril } from '../../ui/Basis'
 import {
   START_STENEN,
+  JOKER,
   magBieden,
   minimumAantal,
   mogelijkeOgen,
@@ -30,6 +31,21 @@ import {
    ───────────────────────────────────────────────────────────── */
 
 const OGEN = ['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅']
+
+/**
+ * Het teken voor een oog.
+ *
+ * De één is de joker en krijgt een biertje. Met een gewoon steentje zie je
+ * nergens aan dat hij voor elk oog meetelt, en dat is nou juist de regel
+ * waar iedereen aan tafel over struikelt.
+ *
+ * In een palifico-ronde staat de joker uit en is de één een oog als alle
+ * andere. Daar hoort dus het gewone steentje, anders beloof je iets wat niet
+ * waar is.
+ */
+function oogTeken(ogen: number, jokerAan: boolean): string {
+  return ogen === JOKER && jokerAan ? '🍺' : (OGEN[ogen] ?? '')
+}
 
 interface Onthulling {
   soort: 'dudo' | 'calza'
@@ -210,7 +226,7 @@ function beslis(
   ctx.wisPrive()
 
   ctx.log(
-    `${ctx.naam(door)} roept ${soort} op ${bod.aantal}× ${OGEN[bod.ogen]} — er lagen er ${totaal}`,
+    `${ctx.naam(door)} roept ${soort} op ${bod.aantal}× ${oogTeken(bod.ogen, !s.palifico)} — er lagen er ${totaal}`,
   )
 }
 
@@ -221,9 +237,10 @@ export const perudo: GameModule<PerudoState> = {
   naam: 'Perudo',
   uitleg: 'Vijf stenen onder je beker. Bied hoog, of roep dudo.',
   regels: [
-    'Gooi je eigen vijf stenen; alleen jij ziet ze. Enen zijn joker.',
+    'Gooi je eigen vijf stenen; alleen jij ziet ze. 🍺 is joker.',
     'Zeg hoe vaak een oog aan tafel ligt — bij iedereen samen.',
     'Verhogen: meer stenen, of hetzelfde aantal van een hóger oog. Omlaag nooit.',
+    'Openen op 🍺 mag niet — die telt overal voor mee.',
     'Dudo = ik geloof je niet. Wie ernaast zit raakt een steen kwijt.',
   ],
   minSpelers: 2,
@@ -418,7 +435,7 @@ export const perudo: GameModule<PerudoState> = {
                   <div style={{ textAlign: 'center' }}>
                     <div className="kop-klein">{ctx.naam(s.bieder!)} zegt</div>
                     <h1 style={{ margin: '2px 0' }}>
-                      {s.bod.aantal} × {OGEN[s.bod.ogen]}
+                      {s.bod.aantal} × {oogTeken(s.bod.ogen, !s.palifico)}
                     </h1>
                   </div>
                 ) : (
@@ -630,7 +647,7 @@ function Beker({
           // Elke steen een eigen vertraging: anders tuimelen ze als één blok.
           style={{ animationDelay: `${i * 0.07}s` }}
         >
-          {OGEN[oog]}
+          {oogTeken(oog, jokerAan)}
         </span>
       ))}
     </div>
@@ -712,7 +729,7 @@ function Bieder({
               style={{ fontSize: 26, opacity: magNiet ? 0.25 : 1 }}
               onClick={() => kiesOgen(o)}
             >
-              {OGEN[o]}
+              {oogTeken(o, !palifico)}
             </button>
           )
         })}
@@ -724,7 +741,7 @@ function Bieder({
         </GroteKnop>
         <div style={{ flex: 1, textAlign: 'center' }}>
           <div style={{ fontSize: 32, fontWeight: 800, lineHeight: 1.1 }}>
-            {aantal} × {OGEN[ogen]}
+            {aantal} × {oogTeken(ogen, !palifico)}
           </div>
           <div className="klein zacht">
             minstens {min}
@@ -741,7 +758,7 @@ function Bieder({
       </div>
 
       <GroteKnop kleur="goud" enorm bijTik={() => bijBod({ aantal, ogen })}>
-        Zeg {aantal} × {OGEN[ogen]}
+        Zeg {aantal} × {oogTeken(ogen, !palifico)}
       </GroteKnop>
     </>
   )
@@ -782,7 +799,7 @@ function OnthuldScherm({
           {o.soort === 'dudo' ? 'DUDO' : 'CALZA'} van {ctx.naam(o.door)}
         </div>
         <h2 style={{ margin: '2px 0' }}>
-          {o.bod.aantal} × {OGEN[o.bod.ogen]}
+          {o.bod.aantal} × {oogTeken(o.bod.ogen, !o.palifico)}
         </h2>
         <div className="klein">
           er lagen er{' '}
@@ -815,7 +832,7 @@ function OnthuldScherm({
                         opacity: meetellend ? 1 : 0.3,
                       }}
                     >
-                      {OGEN[steen]}
+                      {oogTeken(steen, !o.palifico)}
                     </span>
                   )
                 })}
