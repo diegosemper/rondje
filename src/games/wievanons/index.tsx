@@ -18,6 +18,10 @@ import { VRAGEN } from './vragen'
    en geheim op zijn eigen scherm. De onthulling komt in één klap — dat is
    precies wat aan een echte tafel niet lukt, want daar kijkt iedereen naar
    elkaar voordat hij wijst.
+
+   De vragen staan in vragen.ts en zijn allemaal aan de pittige kant. Dat
+   geheime stemmen is juist bij zulke vragen het hele punt: aan tafel durft
+   niemand als eerste te wijzen, en hier hoeft dat ook niet.
    ───────────────────────────────────────────────────────────── */
 
 interface WieState {
@@ -36,9 +40,9 @@ function nieuweRonde(s: WieState, ctx: SpelContext) {
 export const wievanons: GameModule<WieState> = {
   id: 'wievanons',
   naam: 'Wie van Ons',
-  uitleg: 'Iedereen stemt tegelijk en geheim. De meeste stemmen drinkt.',
+  uitleg: 'Pittige vragen over de groep. Iedereen stemt tegelijk en geheim.',
   regels: [
-    'Je krijgt een vraag over de groep.',
+    'Je krijgt een pittige vraag over de groep.',
     'Stem geheim op wie het het meest is.',
     'Als iedereen gestemd heeft, komt de uitslag.',
     'Wie de meeste stemmen krijgt, drinkt er evenveel.',
