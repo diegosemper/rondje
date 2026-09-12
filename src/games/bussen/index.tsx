@@ -68,6 +68,15 @@ import { Verdeler } from '../../ui/Verdeler'
 
       Vanaf 9 kaarten ligt er een checkpoint één over de helft, en daar
       herstart je voortaan.
+
+      IN- EN UITCHECKEN. Iedereen behalve de chauffeur krijgt een eigen kaart.
+      Komt jouw waarde tijdens de rit langs, dan check je in en drink je mee
+      zodra hij ernaast zit. Komt hij nóg een keer, dan ben je weer uit.
+
+      Zonder dat zit de halve tafel op zijn telefoon te wachten tot het
+      voorbij is. Nu moet iedereen blijven kijken of zijn kaart niet opduikt —
+      en het is het leukste moment van het spel als hij dat net doet op de
+      kaart waar de chauffeur op strandt.
    ───────────────────────────────────────────────────────────── */
 
 /** Aantal kaarten per rij van de boom, van onder naar boven. */
@@ -218,6 +227,17 @@ interface BussenState {
    * liggen, dus daar gok je écht blind.
    */
   busGezien: boolean[]
+  /**
+   * In- en uitchecken: elke speler behalve de chauffeur krijgt een kaart.
+   *
+   * Komt jouw waarde langs tijdens de rit, dan check je in en drink je mee als
+   * de chauffeur ernaast zit. Komt hij nóg een keer, dan ben je weer uit. Zo
+   * kan niemand achteroverleunen terwijl er iemand zit te zweten: je moet de
+   * hele rit blijven kijken of jouw kaart niet opduikt.
+   */
+  busKaarten: Record<string, Kaart>
+  /** wie er op dit moment ingecheckt is */
+  busIn: string[]
   /**
    * De stapeltjes op tafel, één per plek in de rij. De laatste kaart van een
    * stapeltje ligt bovenop, en dát is de kaart waar je vanaf gaat.
@@ -610,6 +630,8 @@ function startBus(s: BussenState, ctx: SpelContext) {
   s.checkpointIndex = 0
   s.checkpointGehaald = false
   s.busStapels = []
+  deelCheckKaarten(s, ctx)
+
   s.busWorp = null
   s.busWorpOp = 0
   s.busOpen = false
@@ -624,6 +646,24 @@ function startBus(s: BussenState, ctx: SpelContext) {
   for (const p of ctx.spelers) ctx.zetPrive(p.uid, null)
 
   ctx.log(`${ctx.naam(s.chauffeur!)} moet de bus in en pakt een kaart voor de lengte`)
+}
+
+/**
+ * Iedereen behalve de chauffeur krijgt een kaart om op te letten.
+ *
+ * Allemaal een andere waarde, anders checken er twee mensen tegelijk in en uit
+ * en is het niet meer jouw kaart.
+ */
+function deelCheckKaarten(s: BussenState, ctx: SpelContext) {
+  s.busKaarten = {}
+  s.busIn = []
+  const gebruikt: number[] = []
+  for (const p of ctx.spelers) {
+    if (p.uid === s.chauffeur) continue
+    const kaart = trekUniek(s.stapel, ctx.rng, gebruikt)
+    gebruikt.push(kaart.waarde)
+    s.busKaarten[p.uid] = kaart
+  }
 }
 
 /** Legt de rij neer zodra de lengte bekend is. */
@@ -659,6 +699,7 @@ export const bussen: GameModule<BussenState> = {
     'Dan de boom: heb je de kaart, tik hem aan. Snelheid telt.',
     'Wie als eerste legt, deelt als laatste uit.',
     'Meeste kaarten over? Jij rijdt de bus.',
+    'De rest krijgt een kaart: komt die langs, dan drink je mee.',
   ],
   minSpelers: 2,
   maxSpelers: 8,
@@ -722,6 +763,8 @@ export const bussen: GameModule<BussenState> = {
       busWorpOp: 0,
       busOpen: false,
       busGezien: [],
+      busKaarten: {},
+      busIn: [],
       busStapels: [],
       busPositie: 0,
       checkpointIndex: 0,
@@ -916,6 +959,11 @@ export const bussen: GameModule<BussenState> = {
         startBus(s, ctx)
       }
 
+      // Een potje dat al reed toen in- en uitchecken erbij kwam heeft nog geen
+      // kaarten. Die delen we alsnog uit; de rit overnieuw beginnen zou veel
+      // erger zijn dan een ronde zonder inchecken.
+      if (!s.busKaarten) deelCheckKaarten(s, ctx)
+
       // Blind een kaart pakken; die bepaalt hoe lang de bus wordt.
       if (s.busSubfase === 'trekken') {
         if (actie.type !== 'trek') return
@@ -964,6 +1012,20 @@ export const bussen: GameModule<BussenState> = {
       // De kaart gaat op het stapeltje waar je nu staat, goed of fout. Zit je
       // ernaast, dan ligt hij daar dus bovenop en is hij bij je volgende
       // poging de kaart waar je vanaf gaat.
+      // Wiens kaart komt hier langs? Die wisselt van kant: was je uit, dan ben
+      // je nu in, en andersom. Dit gebeurt vóór het beoordelen, dus de kaart
+      // die de chauffeur de das omdoet checkt je ook meteen in.
+      for (const [uid, kaart] of Object.entries(s.busKaarten ?? {})) {
+        if (kaart.waarde !== nieuwe.waarde) continue
+        if (s.busIn.includes(uid)) {
+          s.busIn = s.busIn.filter((u) => u !== uid)
+          ctx.log(`${ctx.naam(uid)} is weer uitgecheckt`)
+        } else {
+          s.busIn.push(uid)
+          ctx.log(`${ctx.naam(uid)} is ingecheckt — drinkt mee`)
+        }
+      }
+
       // Je hebt hem zien vallen, dus vanaf nu ken je deze plek. Bij een dichte
       // rij is dat het enige wat hem opendoet.
       s.busStapels[plek].push(nieuwe)
@@ -991,9 +1053,15 @@ export const bussen: GameModule<BussenState> = {
         return
       }
 
-      // Fout. Je drinkt zoveel kaarten als je in déze poging deed.
+      // Fout. Je drinkt zoveel kaarten als je in déze poging deed, en wie er
+      // ingecheckt staat drinkt hetzelfde mee.
       const herstart = s.checkpointGehaald ? s.checkpointIndex : 0
-      ctx.drink(s.chauffeur, plek - herstart + 1, `strandde op kaart ${plek + 1}`)
+      const straf = plek - herstart + 1
+      ctx.drink(s.chauffeur, straf, `strandde op kaart ${plek + 1}`)
+      for (const uid of s.busIn) {
+        if (uid === s.chauffeur) continue
+        ctx.drink(uid, straf, 'stond ingecheckt')
+      }
 
       s.busPositie = herstart
       s.busPoging++
@@ -1554,6 +1622,8 @@ function Bus({ s, ctx }: { s: BussenState; ctx: KijkContext }) {
 
       <BusRij s={s} />
 
+      <BusCheck s={s} ctx={ctx} />
+
       <div className="midden" style={{ gap: 10 }}>
         <div className="kop-klein">
           Kaart {s.busPositie + 1} van {s.busLengte} —{' '}
@@ -1584,6 +1654,8 @@ function Bus({ s, ctx }: { s: BussenState; ctx: KijkContext }) {
             {blind
               ? 'Deze kaart ligt nog dicht — je ziet hem pas als je hem gehad hebt.'
               : 'Zit je ernaast, dan blijft die kaart hier bovenop liggen.'}
+            <br />
+            Wie ingecheckt staat drinkt mee.
           </div>
         </div>
       ) : (
@@ -1816,6 +1888,45 @@ function BusLeg({ s, blind }: { s: BussenState; blind: boolean }) {
           <Speelkaart kaart={laatste!.kaart} maat="groot" />
         </div>
       )}
+    </div>
+  )
+}
+
+/**
+ * Wie er in- en uitgecheckt staat.
+ *
+ * Iedereen behalve de chauffeur heeft een kaart. Komt jouw waarde langs, dan
+ * spring je aan; komt hij nog een keer, dan ga je weer uit. Je eigen regel
+ * staat vooraan en springt eruit, want dat is de kaart die je moet bewaken.
+ */
+function BusCheck({ s, ctx }: { s: BussenState; ctx: KijkContext }) {
+  const kaarten = s.busKaarten ?? {}
+  const rij = ctx.spelers.filter((p) => kaarten[p.uid])
+  if (rij.length === 0) return null
+
+  const ingecheckt = s.busIn ?? []
+  // Jijzelf vooraan: dat is de kaart waar het voor jou om draait.
+  const volgorde = [...rij].sort((a, b) => (a.uid === ctx.ik ? -1 : b.uid === ctx.ik ? 1 : 0))
+
+  return (
+    <div className="check-rij">
+      {volgorde.map((p) => {
+        const aan = ingecheckt.includes(p.uid)
+        const ikzelf = p.uid === ctx.ik
+        return (
+          <div
+            key={p.uid}
+            className={`check-vak${aan ? ' aan' : ''}${ikzelf ? ' ik' : ''}`}
+            title={aan ? 'ingecheckt — drinkt mee' : 'uitgecheckt'}
+          >
+            <Speelkaart kaart={kaarten[p.uid]} maat="klein" />
+            <span className="check-naam">
+              {ikzelf ? 'jij' : p.naam}
+              {aan ? ' 🍺' : ''}
+            </span>
+          </div>
+        )
+      })}
     </div>
   )
 }
