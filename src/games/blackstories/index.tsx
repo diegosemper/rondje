@@ -2,49 +2,38 @@ import { useState } from 'react'
 import { husselen } from '../../engine/random'
 import { volgende } from '../../engine/beurten'
 import type { Actie, GameModule, KijkContext, SpelContext } from '../../engine/types'
-import { GroteKnop, Kaartje, SpelerBalk, tril } from '../../ui/Basis'
+import { GroteKnop, Kaartje, SpelerBalk } from '../../ui/Basis'
 import { Verdeler } from '../../ui/Verdeler'
 import { VERHALEN, type Zwart } from './verhalen'
 
 /* ─────────────────────────────────────────────────────────────
    BLACK STORIES
 
-   Volgens de regels van het kaartspel: er is één verteller die als enige de
-   oplossing kent. Hij leest het raadsel voor en beantwoordt daarna alleen nog
-   maar JA, NEE of NIET RELEVANT. De rest reconstrueert wat er gebeurd is.
+   Volgens de regels van het kaartspel. Eén verteller kent de oplossing en
+   leest het raadsel voor. De rest vraagt hardop door, en hij antwoordt alleen
+   maar ja, nee of niet relevant, tot ze het verhaal gereconstrueerd hebben.
 
-   Wat de app hier beter doet dan de kaartjes: aan een echte tafel raakt
-   iedereen kwijt wat er al gevraagd is, wordt er door elkaar heen geroepen en
-   komt de stilste van de groep nooit aan de beurt. Hier typ je je vraag, komt
-   hij in de wachtrij van de verteller, en blijft elk antwoord in een lijst
-   staan die iedereen kan teruglezen. Dat is hetzelfde idee als de regels die
-   Kingsen onthoudt: de app houdt bij wat de tafel vergeet.
+   DE APP DOET HIER WEINIG, EN DAT IS DE BEDOELING. Dit spel hoort aan tafel
+   te gebeuren, niet op zes schermen. Er is geen vragenteller, je typt je
+   vraag niet in, en er wordt niets bijgehouden: je vraagt het gewoon hardop.
+   Wie geen verteller is kan zijn telefoon wegleggen tot hij zelf aan de beurt
+   is.
 
-   De oplossing staat in `_geheim` en gaat via `zetPrive` alleen naar de
-   verteller. Op de andere telefoons staat hij simpelweg niet, dus er valt ook
-   niets te spieken.
+   Wat de app dan wél is: het kaartje. Het raadsel staat op ieders scherm zodat
+   je de details kunt teruglezen, en de oplossing gaat via zetPrive alleen naar
+   de verteller. Op de andere telefoons staat hij simpelweg niet, dus er valt
+   niets te spieken — en dat is precies het ding dat met echte kaartjes altijd
+   misgaat.
+
+   Aan het eind wijst de verteller aan wie hem kraakte, of hij verklapt hem.
+   Dat zijn de enige twee knoppen in het hele spel.
    ───────────────────────────────────────────────────────────── */
 
 const RAADSELS_PER_POTJE = 3
-/** Zoveel vragen heeft de groep per raadsel. */
-const VRAGEN_BUDGET = 20
 /** Wat degene die het kraakt mag uitdelen. */
 const WINST_UITDELEN = 5
-/** Wat de groep drinkt als de vragen op zijn. */
+/** Wat de groep drinkt als niemand eruit komt. */
 const STRAF_NIET_GEKRAAKT = 3
-const MAX_VRAAG = 90
-
-type Antwoord = 'ja' | 'nee' | 'nvt'
-
-interface Beurt {
-  id: string
-  uid: string
-  vraag: string
-}
-
-interface Gegeven extends Beurt {
-  antwoord: Antwoord
-}
 
 interface ZwartState {
   fase: 'raden' | 'onthuld' | 'klaar'
@@ -54,13 +43,6 @@ interface ZwartState {
   /** het raadsel zelf — dit mag iedereen zien */
   titel: string
   raadsel: string
-
-  /** de vragen die de verteller nog moet beantwoorden */
-  wachtrij: Beurt[]
-  /** alles wat al beantwoord is, voor iedereen zichtbaar */
-  spoor: Gegeven[]
-  vragenOver: number
-  teller: number
 
   /** gezet zodra het raadsel voorbij is */
   afloop: { gekraakt: boolean; oplosser: string | null; oplossing: string } | null
@@ -83,9 +65,6 @@ function nieuwRaadsel(s: ZwartState, ctx: SpelContext) {
   s.titel = z.titel
   s.raadsel = z.raadsel
   s._geheim.oplossing = z.oplossing
-  s.wachtrij = []
-  s.spoor = []
-  s.vragenOver = VRAGEN_BUDGET
   s.afloop = null
   s.magUitdelen = false
 
@@ -112,7 +91,7 @@ function sluitAf(
     return
   }
 
-  // Niet gekraakt: de hele tafel behalve de verteller drinkt. Die had het
+  // Niemand kwam eruit: de hele tafel behalve de verteller drinkt. Die had het
   // tenslotte makkelijk.
   for (const p of ctx.spelers) {
     if (p.uid === s.verteller) continue
@@ -125,10 +104,10 @@ export const blackstories: GameModule<ZwartState> = {
   naam: 'Black Stories',
   uitleg: 'Eén iemand kent de oplossing. De rest vraagt zich eruit met ja of nee.',
   regels: [
-    'De verteller kent als enige de oplossing.',
-    'Typ je vraag; hij mag alleen ja of nee antwoorden.',
-    'Alle antwoorden blijven staan, dus vraag niets dubbel.',
-    'Kraken jullie hem, dan deelt de oplosser uit. Zo niet, drinkt de groep.',
+    'De verteller leest het raadsel voor en kent als enige de oplossing.',
+    'De rest vraagt hardop door; hij zegt alleen ja, nee of niet relevant.',
+    'Geen tijd en geen vragenlimiet — je bent klaar als je het hebt.',
+    'Wie hem kraakt deelt uit. Komt niemand eruit, dan drinkt de groep.',
   ],
   minSpelers: 3,
   maxSpelers: 8,
@@ -143,10 +122,6 @@ export const blackstories: GameModule<ZwartState> = {
       verteller: ctx.spelers[0].uid,
       titel: '',
       raadsel: '',
-      wachtrij: [],
-      spoor: [],
-      vragenOver: VRAGEN_BUDGET,
-      teller: 0,
       afloop: null,
       magUitdelen: false,
       _geheim: {
@@ -163,52 +138,6 @@ export const blackstories: GameModule<ZwartState> = {
     const iedereen = ctx.spelers.map((p) => p.uid)
 
     if (s.fase === 'raden') {
-      /* Een vraag insturen. Iedereen mag, behalve de verteller. */
-      if (actie.type === 'vraag') {
-        if (actie.uid === s.verteller) return
-        if (s.vragenOver <= 0) return
-        const vraag = String(actie.payload?.vraag ?? '')
-          .trim()
-          .slice(0, MAX_VRAAG)
-        if (vraag.length < 3) return
-
-        // Eén vraag tegelijk per persoon: anders vult één iemand de hele
-        // wachtrij en komt de rest er niet meer tussen.
-        if (s.wachtrij.some((b) => b.uid === actie.uid)) return
-
-        s.teller++
-        s.wachtrij.push({ id: `v${s.teller}`, uid: actie.uid, vraag })
-        return
-      }
-
-      /* Antwoorden mag alleen de verteller. */
-      if (actie.type === 'antwoord') {
-        if (actie.uid !== s.verteller) return
-        const id = String(actie.payload?.id ?? '')
-        const antwoord = actie.payload?.antwoord as Antwoord
-        if (!['ja', 'nee', 'nvt'].includes(antwoord)) return
-
-        const i = s.wachtrij.findIndex((b) => b.id === id)
-        if (i < 0) return
-
-        const [beurt] = s.wachtrij.splice(i, 1)
-        s.spoor.push({ ...beurt, antwoord })
-        s.vragenOver--
-
-        if (s.vragenOver <= 0) sluitAf(s, ctx, false, null)
-        return
-      }
-
-      /* De verteller kapt een vraag af die geen ja/nee-vraag is. Dat kost geen
-         budget: anders wordt de groep gestraft voor iets wat de app niet kan
-         controleren. */
-      if (actie.type === 'weg') {
-        if (actie.uid !== s.verteller) return
-        const id = String(actie.payload?.id ?? '')
-        s.wachtrij = s.wachtrij.filter((b) => b.id !== id)
-        return
-      }
-
       /* Ze hebben het. De verteller wijst aan wie. */
       if (actie.type === 'gekraakt') {
         if (actie.uid !== s.verteller) return
@@ -218,7 +147,7 @@ export const blackstories: GameModule<ZwartState> = {
         return
       }
 
-      /* Opgeven. De oplossing komt in beeld en de groep drinkt. */
+      /* Niemand komt eruit. De oplossing komt in beeld en de groep drinkt. */
       if (actie.type === 'opgeven') {
         if (actie.uid !== s.verteller) return
         sluitAf(s, ctx, false, null)
@@ -275,9 +204,7 @@ function Scherm({ s, ctx }: { s: ZwartState; ctx: KijkContext }) {
         <span className="kop-klein">
           Raadsel {s.ronde}/{RAADSELS_PER_POTJE}
         </span>
-        <span className="kop-klein">
-          {s.fase === 'raden' ? `nog ${s.vragenOver} vragen` : 'opgelost'}
-        </span>
+        <span className="kop-klein">{ikVertel ? 'jij vertelt' : verteller?.naam}</span>
       </div>
 
       <Kaartje style={{ borderColor: 'var(--goud)' }}>
@@ -287,106 +214,45 @@ function Scherm({ s, ctx }: { s: ZwartState; ctx: KijkContext }) {
         <div style={{ fontSize: 17, lineHeight: 1.45 }}>{s.raadsel}</div>
       </Kaartje>
 
-      <div className="klein zacht" style={{ textAlign: 'center' }}>
-        {ikVertel ? 'Jij weet de oplossing' : `${verteller?.emoji} ${verteller?.naam} weet de oplossing`}
-      </div>
-
       {s.fase === 'onthuld' ? (
         <Onthuld s={s} ctx={ctx} />
       ) : ikVertel ? (
         <Verteller s={s} ctx={ctx} />
       ) : (
-        <Rader s={s} ctx={ctx} />
+        <Rader verteller={verteller?.naam ?? ''} />
       )}
     </>
   )
 }
 
-/** Het spoor van vragen en antwoorden. Iedereen ziet hetzelfde. */
-function Spoor({ s, ctx }: { s: ZwartState; ctx: KijkContext }) {
-  if (s.spoor.length === 0) {
-    return (
-      <div className="klein zacht" style={{ textAlign: 'center', padding: '8px 0' }}>
-        Nog niets gevraagd.
-      </div>
-    )
-  }
-
+/**
+ * Wat je ziet als je niet vertelt: het raadsel, en verder niets.
+ *
+ * Er is met opzet geen knop. Je vraagt hardop, je krijgt hardop antwoord, en
+ * je telefoon mag in je zak tot jij aan de beurt bent om te vertellen.
+ */
+function Rader({ verteller }: { verteller: string }) {
   return (
-    <div className="zwart-spoor">
-      {[...s.spoor].reverse().map((g) => (
-        <div key={g.id} className={`zwart-regel ${g.antwoord}`}>
-          <span className="zwart-vraag">
-            <span className="zwart-wie">{ctx.naam(g.uid)}:</span> {g.vraag}
-          </span>
-          <span className="zwart-antwoord">
-            {g.antwoord === 'ja' ? 'JA' : g.antwoord === 'nee' ? 'NEE' : 'N.V.T.'}
-          </span>
+    <div className="midden" style={{ gap: 12 }}>
+      <div style={{ fontSize: 48 }}>🗣️</div>
+      <h2 style={{ textAlign: 'center' }}>Vraag het hardop</h2>
+      <Kaartje style={{ textAlign: 'center', maxWidth: 340 }}>
+        {verteller} weet wat er gebeurd is en antwoordt alleen met{' '}
+        <strong>ja</strong>, <strong>nee</strong> of <strong>niet relevant</strong>.
+        <div className="klein zacht" style={{ marginTop: 8 }}>
+          Geen tijd, geen limiet. Leg je telefoon maar weg tot jij aan de beurt bent.
         </div>
-      ))}
+      </Kaartje>
+      <div className="klein zacht" style={{ textAlign: 'center' }}>
+        Denk je het te weten? Zeg het hardop — {verteller} wijst je aan.
+      </div>
     </div>
-  )
-}
-
-function Rader({ s, ctx }: { s: ZwartState; ctx: KijkContext }) {
-  const [vraag, zetVraag] = useState('')
-  const ikInWachtrij = s.wachtrij.some((b) => b.uid === ctx.ik)
-
-  return (
-    <>
-      <Spoor s={s} ctx={ctx} />
-
-      <div className="onderaan">
-        {s.wachtrij.length > 0 && (
-          <div className="klein zacht" style={{ textAlign: 'center' }}>
-            {s.wachtrij.length} {s.wachtrij.length === 1 ? 'vraag' : 'vragen'} in de rij
-          </div>
-        )}
-
-        {ikInWachtrij ? (
-          <Kaartje style={{ textAlign: 'center' }}>
-            <span className="zacht">Je vraag staat in de rij…</span>
-          </Kaartje>
-        ) : (
-          <>
-            <input
-              value={vraag}
-              onChange={(e) => zetVraag(e.target.value.slice(0, MAX_VRAAG))}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && vraag.trim().length >= 3) {
-                  ctx.stuur('vraag', { vraag })
-                  zetVraag('')
-                }
-              }}
-              placeholder="een vraag met ja of nee als antwoord"
-              autoComplete="off"
-            />
-            <GroteKnop
-              kleur="groen"
-              uit={vraag.trim().length < 3}
-              bijTik={() => {
-                tril(8)
-                ctx.stuur('vraag', { vraag })
-                zetVraag('')
-              }}
-            >
-              Vraag stellen
-            </GroteKnop>
-          </>
-        )}
-
-        <div className="klein zacht" style={{ textAlign: 'center' }}>
-          Denk je het te weten? Zeg het hardop — de verteller wijst je aan.
-        </div>
-      </div>
-    </>
   )
 }
 
 function Verteller({ s, ctx }: { s: ZwartState; ctx: KijkContext }) {
   const [wijst, zetWijst] = useState(false)
   const oplossing: string | undefined = ctx.prive?.oplossing
-  const nu = s.wachtrij[0]
 
   if (wijst) {
     return (
@@ -418,60 +284,23 @@ function Verteller({ s, ctx }: { s: ZwartState; ctx: KijkContext }) {
         <div className="kop-klein" style={{ marginBottom: 4 }}>
           🤫 Alleen jij ziet dit
         </div>
-        <div className="klein" style={{ lineHeight: 1.45 }}>
-          {oplossing ?? '…'}
-        </div>
+        <div style={{ fontSize: 15, lineHeight: 1.5 }}>{oplossing ?? '…'}</div>
       </Kaartje>
 
-      <Spoor s={s} ctx={ctx} />
+      <div className="midden" style={{ gap: 8 }}>
+        <div className="klein zacht" style={{ textAlign: 'center', maxWidth: 320 }}>
+          Lees het raadsel voor en antwoord alleen met <strong>ja</strong>,{' '}
+          <strong>nee</strong> of <strong>niet relevant</strong>.
+        </div>
+      </div>
 
       <div className="onderaan">
-        {nu ? (
-          <>
-            <Kaartje style={{ textAlign: 'center', borderColor: 'var(--goud)' }}>
-              <div className="kop-klein">{ctx.naam(nu.uid)} vraagt</div>
-              <div style={{ fontSize: 17, marginTop: 4 }}>{nu.vraag}</div>
-            </Kaartje>
-            <div className="rij">
-              <GroteKnop
-                kleur="groen"
-                bijTik={() => ctx.stuur('antwoord', { id: nu.id, antwoord: 'ja' })}
-              >
-                JA
-              </GroteKnop>
-              <GroteKnop
-                kleur="rood"
-                bijTik={() => ctx.stuur('antwoord', { id: nu.id, antwoord: 'nee' })}
-              >
-                NEE
-              </GroteKnop>
-            </div>
-            <div className="rij">
-              <GroteKnop
-                klein
-                bijTik={() => ctx.stuur('antwoord', { id: nu.id, antwoord: 'nvt' })}
-              >
-                Niet relevant
-              </GroteKnop>
-              <button className="knop leeg klein" onClick={() => ctx.stuur('weg', { id: nu.id })}>
-                Geen ja/nee-vraag
-              </button>
-            </div>
-          </>
-        ) : (
-          <Kaartje style={{ textAlign: 'center' }}>
-            <span className="zacht">Wachten op een vraag…</span>
-          </Kaartje>
-        )}
-
-        <div className="rij">
-          <GroteKnop kleur="goud" klein bijTik={() => zetWijst(true)}>
-            Ze hebben het
-          </GroteKnop>
-          <button className="knop leeg klein" onClick={() => ctx.stuur('opgeven')}>
-            Verklap de oplossing
-          </button>
-        </div>
+        <GroteKnop kleur="goud" enorm bijTik={() => zetWijst(true)}>
+          Ze hebben het
+        </GroteKnop>
+        <button className="knop leeg klein" onClick={() => ctx.stuur('opgeven')}>
+          Niemand komt eruit — verklap hem
+        </button>
       </div>
     </>
   )
@@ -501,9 +330,6 @@ function Onthuld({ s, ctx }: { s: ZwartState; ctx: KijkContext }) {
           <div style={{ fontSize: 15, lineHeight: 1.5 }}>{a.oplossing}</div>
         </Kaartje>
 
-        <div className="klein zacht" style={{ textAlign: 'center' }}>
-          {s.spoor.length} van de {VRAGEN_BUDGET} vragen gebruikt
-        </div>
         <SpelerBalk spelers={ctx.spelers} actief={a.oplosser ? [a.oplosser] : []} />
       </div>
 
