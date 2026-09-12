@@ -27,6 +27,13 @@ import { Verdeler } from '../../ui/Verdeler'
       of lager, enzovoort. Fout kost 1, 2, 3 of 4 slokken; gelijk kost dubbel.
       Je vier kaarten worden je hand.
 
+      De kaarten van wie aan zet is liggen open voor de hele tafel, en de
+      getrokken kaart komt uit de stapel gegleden en draait onderweg om. Aan
+      een echte tafel kijkt iedereen mee; zag je alleen je eigen vier, dan zit
+      je stil te wachten tot je zelf weer aan de beurt bent. Na elke kaart
+      staat het even stil, zodat er iets te zien valt in plaats van dat de
+      ronde in tien tellen voorbij is.
+
    2. DE BOOM. Elf kaarten, van onder naar boven 1-2-3-4-1, waard 1 t/m 5
       slokken. Ligt een kaart horizontaal, dan telt hij dubbel.
 
@@ -35,8 +42,13 @@ import { Verdeler } from '../../ui/Verdeler'
       de goede plek, want dan weet je al wat de rest gedaan heeft. Te laat is
       pech: je houdt de kaart, en met de meeste kaarten over moet jij de bus in.
 
-   3. DE BUS. Eerst pak je blind een van vijf dichte kaarten en draai je hem
-      om. De waarde eronder is de lengte: pak je een 10, dan wordt het een bus
+      Je eigen kaarten staan de hele tijd op je scherm en zijn allemaal
+      aantikbaar. Het spel wijst niet aan welke past -- dat moet je zelf zien.
+      Naast de goede grijpen kost een slok, want anders tik je gewoon alle vier
+      je kaarten aan en hoef je nergens naar te kijken.
+
+   3. DE BUS. Eerst pak je blind een kaart uit een uitgewaaierd dek en draai
+      je hem om. De waarde eronder is de lengte: pak je een 10, dan wordt het een bus
       van tien kaarten. Ze liggen allemaal tussen de 6 en de aas, dus korter
       dan zes wordt het nooit en langer dan veertien ook niet.
 
@@ -61,14 +73,24 @@ import { Verdeler } from '../../ui/Verdeler'
 /** Aantal kaarten per rij van de boom, van onder naar boven. */
 const BOOM_RIJEN = [1, 2, 3, 4, 1]
 const KANS_HORIZONTAAL = 0.4
-const RACE_SEC = 8
+const RACE_SEC = 14
+/** Wat een misgreep kost: de verkeerde kaart aanslaan in de boom. */
+const MISGREEP_STRAF = 1
 /** Hoe lang een kaart die niemand heeft in beeld blijft. */
-const LEEG_SEC = 2.5
+const LEEG_SEC = 4
 /** Steen-papier-schaar: kiezen, en hoe lang de uitslag blijft staan. */
 const SPS_SEC = 10
 const SPS_TOON_SEC = 3.5
 
 const VRAAG_INZET = [1, 2, 3, 4]
+
+/** Hoe lang de getrokken kaart erover doet om op tafel te komen. */
+const VRAAG_KAART_MS = 1300
+/** En hoe lang de uitslag daarna blijft staan voordat de volgende aan zet is. */
+const VRAAG_TOON_SEC = 3.2
+/** Maten van de tafel, zodat de vliegende kaart weet waar hij vandaan komt. */
+const VRAAG_PLEK_B = 60
+const VRAAG_STAPEL_X = 72
 
 /** De lengtekaart ligt altijd tussen deze twee: een 6 tot en met een aas. */
 const BUS_MIN = 6
@@ -142,8 +164,25 @@ interface BussenState {
   /* fase 1 — per vraag de kring rond */
   vraagNr: number
   vraagBeurt: string
+  /** kiezen, of de getrokken kaart laten zien voordat de volgende aan zet is */
+  vraagFase: 'kiezen' | 'tonen'
   gedaanDezeVraag: string[]
-  laatste: { uid: string; keuze: Keuze; kaart: Kaart; uitkomst: Uitkomst } | null
+  /**
+   * De kaarten van wie er aan zet is, voor iedereen zichtbaar.
+   *
+   * Aan een echte tafel liggen die kaarten open voor je neus en kijkt de hele
+   * kring mee. Zag je alleen je eigen vier, dan is er van dat meekijken niets
+   * over en zit je te wachten tot je zelf weer aan de beurt bent.
+   */
+  openHand: Kaart[]
+  laatste: {
+    uid: string
+    keuze: Keuze
+    kaart: Kaart
+    uitkomst: Uitkomst
+    /** loopt op bij elke kaart, zodat het scherm hem ziet vallen */
+    nr: number
+  } | null
   bonus: string | null
 
   /* fase 2 */
@@ -152,6 +191,8 @@ interface BussenState {
   boomFase: 'race' | 'uitdelen' | 'leeg'
   klok: Klok | null
   gelegd: Legging[]
+  /** wie er bij déze boomkaart al naar de verkeerde greep — één straf per plek */
+  misgegrepen: string[]
   uitdeelVolgorde: string[]
   uitdeelIndex: number
 
@@ -291,23 +332,33 @@ function volgendeVrager(s: BussenState, ctx: SpelContext, volgorde: string[], ui
 
   if (s.gedaanDezeVraag.length < volgorde.length) {
     s.vraagBeurt = volgende(volgorde, s.vraagBeurt)
+    toonHand(s)
     return
   }
 
   s.gedaanDezeVraag = []
   s.vraagNr++
   s.vraagBeurt = volgorde[0]
+  toonHand(s)
 
   if (s.vraagNr >= 4) {
     s.fase = 'boom'
+    s.klok = null
+    s.openHand = []
     opentVolgendeBoomkaart(s, ctx)
   }
+}
+
+/** Legt de kaarten van wie er aan zet is open op tafel, voor iedereen. */
+function toonHand(s: BussenState) {
+  s.openHand = [...(s._geheim.handen[s.vraagBeurt] ?? [])]
 }
 
 function opentVolgendeBoomkaart(s: BussenState, ctx: SpelContext) {
   const plek = s.boom[s.boomIndex]
   plek.kaart = s._geheim.boomKaarten[s.boomIndex]
   s.gelegd = []
+  s.misgegrepen = []
   s.uitdeelVolgorde = []
   s.uitdeelIndex = 0
 
@@ -646,7 +697,9 @@ export const bussen: GameModule<BussenState> = {
 
       vraagNr: 0,
       vraagBeurt: ctx.spelers[0].uid,
+      vraagFase: 'kiezen',
       gedaanDezeVraag: [],
+      openHand: handen[ctx.spelers[0].uid] ?? [],
       laatste: null,
       bonus: null,
 
@@ -655,6 +708,7 @@ export const bussen: GameModule<BussenState> = {
       boomFase: 'race',
       klok: null,
       gelegd: [],
+      misgegrepen: [],
       uitdeelVolgorde: [],
       uitdeelIndex: 0,
 
@@ -684,6 +738,9 @@ export const bussen: GameModule<BussenState> = {
 
     if (s.fase === 'vragen' && actie.type === 'antwoord') {
       if (actie.uid !== s.vraagBeurt) return
+      // Zolang de vorige kaart nog in beeld valt is er niets te kiezen. Zonder
+      // deze grens trekt een dubbele tik meteen twee kaarten.
+      if (s.vraagFase !== 'kiezen') return
       if (s.bonus) return // eerst je bonus uitdelen
       const keuze: Keuze = actie.payload?.keuze
       if (!keuze) return
@@ -695,7 +752,13 @@ export const bussen: GameModule<BussenState> = {
 
       hand.push(nieuw)
       s._geheim.handen[actie.uid] = hand
-      s.laatste = { uid: actie.uid, keuze, kaart: nieuw, uitkomst }
+      s.laatste = { uid: actie.uid, keuze, kaart: nieuw, uitkomst, nr: (s.laatste?.nr ?? 0) + 1 }
+      s.openHand = [...hand]
+
+      // Eerst de kaart laten vallen en de uitslag laten lezen. Daarna pas de
+      // volgende; zonder die pauze is de hele ronde in tien tellen voorbij.
+      s.vraagFase = 'tonen'
+      s.klok = startKlok(VRAAG_TOON_SEC, ctx.nu)
 
       if (uitkomst === 'fout') {
         ctx.drink(actie.uid, inzet, `vraag ${s.vraagNr + 1} fout`)
@@ -708,7 +771,17 @@ export const bussen: GameModule<BussenState> = {
       }
 
       duwHand(s, ctx, actie.uid)
-      if (!s.bonus) volgendeVrager(s, ctx, volgorde, actie.uid)
+      return
+    }
+
+    // De kaart is gezien; door naar de volgende. Wacht nog even als er eerst
+    // een bonus uitgedeeld moet worden.
+    if (s.fase === 'vragen' && actie.type === 'volgende-vrager') {
+      if (s.vraagFase !== 'tonen') return
+      if (s.bonus) return
+      s.klok = null
+      s.vraagFase = 'kiezen'
+      volgendeVrager(s, ctx, volgorde, s.laatste?.uid ?? s.vraagBeurt)
       return
     }
 
@@ -717,6 +790,8 @@ export const bussen: GameModule<BussenState> = {
       if (s.bonus !== actie.uid) return
       if (!verdeel(ctx, actie, volgorde, 'zebra/regenboog goed')) return
       s.bonus = null
+      s.klok = null
+      s.vraagFase = 'kiezen'
       volgendeVrager(s, ctx, volgorde, actie.uid)
       return
     }
@@ -735,8 +810,20 @@ export const bussen: GameModule<BussenState> = {
       if (s.boomFase === 'race') {
         if (actie.type === 'legop') {
           const hand = s._geheim.handen[actie.uid] ?? []
-          const idx = hand.findIndex((k) => k.waarde === waarde)
-          if (idx < 0) return // je hebt hem niet; bluffen bestaat hier niet
+          const kaartId = String(actie.payload?.id ?? '')
+          const idx = hand.findIndex((k) => k.id === kaartId)
+          if (idx < 0) return
+
+          // De verkeerde kaart aanslaan kost je. Zonder die straf tik je
+          // gewoon alle vier je kaarten aan en hoef je nergens naar te kijken,
+          // en dan valt er niets meer op te merken.
+          if (hand[idx].waarde !== waarde) {
+            if (!s.misgegrepen.includes(actie.uid)) {
+              s.misgegrepen.push(actie.uid)
+              ctx.drink(actie.uid, MISGREEP_STRAF, 'greep naar de verkeerde kaart')
+            }
+            return
+          }
 
           hand.splice(idx, 1)
           s._geheim.handen[actie.uid] = hand
@@ -921,7 +1008,14 @@ export const bussen: GameModule<BussenState> = {
    * gaat drinken. In de boom moet de melding juist meteen komen, anders ligt
    * de volgende kaart er al voordat je weet dat je aan de beurt bent.
    */
-  drinkVertraging: (s) => (s.fase === 'bus' ? BUS_LEG_MS + 420 : 0),
+  drinkVertraging: (s) =>
+    s.fase === 'bus'
+      ? BUS_LEG_MS + 420
+      : // Bij de vragen moet je de kaart eerst zien vallen; in de boom juist
+        // niet, want daar ligt de volgende kaart er al voordat je het weet.
+        s.fase === 'vragen'
+        ? VRAAG_KAART_MS + 400
+        : 0,
 
   View({ state: s, ctx }) {
     if (s.fase === 'vragen') return <Vragen s={s} ctx={ctx} />
@@ -939,7 +1033,11 @@ function Vragen({ s, ctx }: { s: BussenState; ctx: KijkContext }) {
   const mijnBeurt = ctx.ik === s.vraagBeurt
   const speler = ctx.speler(s.vraagBeurt)
   const magUitdelen = s.bonus === ctx.ik
-  const hand: Kaart[] = ctx.prive?.hand ?? []
+  const mijnHand: Kaart[] = ctx.prive?.hand ?? []
+  const toont = s.vraagFase === 'tonen'
+
+  // Na het tonen gaat de beurt vanzelf door. De host laat de klok aflopen.
+  useHostKlok(ctx, toont && !s.bonus, s.klok?.eind ?? 0, 'volgende-vrager')
 
   return (
     <>
@@ -950,23 +1048,38 @@ function Vragen({ s, ctx }: { s: BussenState; ctx: KijkContext }) {
           Vraag {s.vraagNr + 1} van 4 · fout kost {ctx.slok(VRAAG_INZET[s.vraagNr])}
         </div>
 
-        <div>
-          <div className="kop-klein" style={{ marginBottom: 4 }}>
-            Jouw kaarten
+        <div style={{ width: '100%' }}>
+          <div className="kop-klein" style={{ marginBottom: 6 }}>
+            {mijnBeurt ? 'Jouw kaarten' : `De kaarten van ${speler?.naam}`}
           </div>
-          <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
-            {[0, 1, 2, 3].map((i) => (
-              <Speelkaart key={i} kaart={hand[i] ?? null} maat="klein" dicht={!hand[i]} />
-            ))}
-          </div>
+          <VraagTafel s={s} />
         </div>
 
         {s.laatste && <Uitslagje laatste={s.laatste} ctx={ctx} />}
 
-        <h2>{mijnBeurt ? VRAAG_TEKST[s.vraagNr] : `${speler?.emoji} ${speler?.naam} is aan zet`}</h2>
+        <h2>
+          {toont
+            ? `${speler?.emoji} ${speler?.naam}`
+            : mijnBeurt
+              ? VRAAG_TEKST[s.vraagNr]
+              : `${speler?.emoji} ${speler?.naam} is aan zet`}
+        </h2>
         <div className="klein zacht">
           {s.gedaanDezeVraag.length} van {ctx.spelers.length} deze ronde gehad
         </div>
+
+        {!mijnBeurt && mijnHand.length > 0 && (
+          <div style={{ marginTop: 4 }}>
+            <div className="kop-klein" style={{ marginBottom: 4 }}>
+              Jouw eigen kaarten
+            </div>
+            <div style={{ display: 'flex', gap: 5, justifyContent: 'center' }}>
+              {mijnHand.map((k) => (
+                <Speelkaart key={k.id} kaart={k} maat="klein" />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {magUitdelen ? (
@@ -978,6 +1091,12 @@ function Vragen({ s, ctx }: { s: BussenState; ctx: KijkContext }) {
             bijKlaar={(verdeling) => ctx.stuur('geef', { verdeling })}
           />
         </div>
+      ) : toont ? (
+        <Kaartje style={{ textAlign: 'center' }}>
+          <span className="zacht">
+            {s.laatste?.uid === ctx.ik ? 'Jouw kaart ligt erbij…' : 'Kijken wat het wordt…'}
+          </span>
+        </Kaartje>
       ) : mijnBeurt ? (
         <div className="onderaan">
           {s.vraagNr === 0 && (
@@ -1045,6 +1164,61 @@ function Vragen({ s, ctx }: { s: BussenState; ctx: KijkContext }) {
   )
 }
 
+/**
+ * De kaarten van wie er aan zet is, met de stapel ernaast.
+ *
+ * De nieuwe kaart komt uit de stapel gegleden en draait halverwege om, zodat
+ * je hem ziet aankomen in plaats van dat hij er ineens staat. Hoe ver hij moet
+ * reizen hangt af van de plek waar hij landt, en dat rekenen we hier uit --
+ * met alleen CSS kan dat niet, want die weet niet hoeveel kaarten er al liggen.
+ */
+function VraagTafel({ s }: { s: BussenState }) {
+  const laatste = s.laatste
+  const [klaarNr, zetKlaarNr] = useState(() => laatste?.nr ?? 0)
+
+  useEffect(() => {
+    if (!laatste || laatste.nr <= klaarNr) return
+    const id = setTimeout(() => zetKlaarNr(laatste.nr), VRAAG_KAART_MS)
+    return () => clearTimeout(id)
+  }, [laatste?.nr, klaarNr])
+
+  const hand = s.openHand ?? []
+  const valt = !!laatste && laatste.nr > klaarNr && laatste.uid === s.vraagBeurt
+  // Zolang hij onderweg is hoort hij nog niet in de rij te staan.
+  const liggend = valt ? hand.slice(0, -1) : hand
+  const plek = Math.min(3, liggend.length)
+
+  return (
+    <div className="vraag-tafel">
+      <div className="vraag-stapel">
+        <Speelkaart maat="klein" dicht />
+      </div>
+
+      <div className="vraag-rij">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="vraag-plek">
+            <Speelkaart kaart={liggend[i] ?? null} maat="klein" dicht={!liggend[i]} />
+            {valt && i === plek && (
+              <div
+                key={laatste!.nr}
+                className={`vraag-val ${laatste!.uitkomst}`}
+                style={{ ['--vanx' as never]: `${-(VRAAG_STAPEL_X + i * VRAAG_PLEK_B)}px` }}
+              >
+                <span className="vraag-kant vraag-rug">
+                  <Speelkaart maat="klein" dicht />
+                </span>
+                <span className="vraag-kant vraag-voor">
+                  <Speelkaart kaart={laatste!.kaart} maat="klein" />
+                </span>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function Uitslagje({
   laatste,
   ctx,
@@ -1074,7 +1248,6 @@ function Boom({ s, ctx }: { s: BussenState; ctx: KijkContext }) {
   const plek = s.boom[s.boomIndex]
   const inzet = inzetVan(plek)
   const hand: Kaart[] = ctx.prive?.hand ?? []
-  const passend = plek.kaart ? hand.filter((k) => k.waarde === plek.kaart!.waarde).length : 0
 
   useHostKlok(ctx, s.boomFase === 'race', s.klok?.eind ?? 0, 'sluit-race')
   useHostKlok(ctx, s.boomFase === 'leeg', s.klok?.eind ?? 0, 'volgende-plek')
@@ -1116,17 +1289,13 @@ function Boom({ s, ctx }: { s: BussenState; ctx: KijkContext }) {
 
           <div className="onderaan">
             <div className="kop-klein" style={{ textAlign: 'center' }}>
-              {passend > 0
-                ? `Je hebt er ${passend} — tik erop, snel!`
-                : 'Jouw hand — je hebt hem niet'}
+              Jouw kaarten
             </div>
-            <HandKnoppen
-              hand={hand}
-              raak={plek.kaart?.waarde}
-              bijTik={() => ctx.stuur('legop')}
-            />
+            <HandKnoppen hand={hand} bijTik={(id) => ctx.stuur('legop', { id })} />
             <div className="klein zacht" style={{ textAlign: 'center' }}>
               Wie het eerst legt, deelt als laatste uit. Te laat = je houdt de kaart.
+              <br />
+              Naast de goede grijpen kost {ctx.slokKort(MISGREEP_STRAF)}.
             </div>
           </div>
         </>
@@ -1203,15 +1372,14 @@ function BoomPlaatje({ s }: { s: BussenState }) {
 }
 
 /** Je hand als knoppen: de passende kaarten lichten op en zijn tikbaar. */
-function HandKnoppen({
-  hand,
-  raak,
-  bijTik,
-}: {
-  hand: Kaart[]
-  raak?: number
-  bijTik: () => void
-}) {
+/**
+ * Je eigen hand, altijd zichtbaar en altijd aantikbaar.
+ *
+ * Er stond vroeger een gouden rand om de kaart die paste en de rest was
+ * uitgegrijsd. Daarmee hoefde je niet te kijken wat er op tafel lag: het
+ * scherm wees hem aan. Nu moet je het zelf zien, en dat is precies het spel.
+ */
+function HandKnoppen({ hand, bijTik }: { hand: Kaart[]; bijTik: (id: string) => void }) {
   if (hand.length === 0) {
     return (
       <div className="klein" style={{ textAlign: 'center', color: 'var(--groen)' }}>
@@ -1221,27 +1389,15 @@ function HandKnoppen({
   }
   return (
     <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
-      {hand.map((k) => {
-        const past = raak === k.waarde
-        return (
-          <button
-            key={k.id}
-            onClick={past ? bijTik : undefined}
-            disabled={!past}
-            style={{
-              padding: 0,
-              borderRadius: 14,
-              outline: past ? '3px solid var(--goud)' : 'none',
-              outlineOffset: 3,
-              opacity: past ? 1 : 0.45,
-              transform: past ? 'translateY(-4px)' : 'none',
-              transition: 'transform .1s ease',
-            }}
-          >
-            <Speelkaart kaart={k} maat="midden" />
-          </button>
-        )
-      })}
+      {hand.map((k) => (
+        <button
+          key={k.id}
+          onClick={() => bijTik(k.id)}
+          style={{ padding: 0, borderRadius: 14, transition: 'transform .1s ease' }}
+        >
+          <Speelkaart kaart={k} maat="midden" />
+        </button>
+      ))}
     </div>
   )
 }
