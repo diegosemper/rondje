@@ -4,6 +4,11 @@
  * Een goede schaal heeft twee uitersten waar iedereen hetzelfde beeld bij
  * heeft, en genoeg ruimte ertussen om over te twisten. "Koud - heet" werkt;
  * "goed - slecht" niet, want dat is bij iedereen anders.
+ *
+ * De pittige schalen onderaan zijn waar dit spel om gaat. Bij "klein - groot"
+ * leg je het gewoon ergens neer; bij "preuts - schaamteloos" moet de hele
+ * tafel het over iemands grens eens zien te worden, en dáár komt de discussie
+ * van waar je het spel voor speelt.
  */
 export interface Schaal {
   links: string
@@ -11,6 +16,22 @@ export interface Schaal {
 }
 
 export const SCHALEN: Schaal[] = [
+  { links: 'preuts', rechts: 'schaamteloos' },
+  { links: 'onschuldig', rechts: 'gênant' },
+  { links: 'braaf', rechts: 'gevaarlijk' },
+  { links: 'vergeeflijk', rechts: 'onvergeeflijk' },
+  { links: 'nuchter', rechts: 'lam' },
+  { links: 'saaie date', rechts: 'geslaagde date' },
+  { links: 'red flag', rechts: 'green flag' },
+  { links: 'vriendschappelijk', rechts: 'veel te close' },
+  { links: 'kan door de beugel', rechts: 'echt niet meer' },
+  { links: 'gewoon dronken', rechts: 'morgen sorry zeggen' },
+  { links: 'onschuldig appje', rechts: 'vreemdgaan' },
+  { links: 'niks aan de hand', rechts: 'relatie voorbij',},
+  { links: 'zou ik doen', rechts: 'nooit van mijn leven' },
+  { links: 'kan je aan je ouders vertellen', rechts: 'neem je mee in je graf' },
+  { links: 'aantrekkelijk', rechts: 'afknapper' },
+  { links: 'normaal op een feest', rechts: 'te ver' },
   { links: 'koud', rechts: 'heet' },
   { links: 'klein', rechts: 'groot' },
   { links: 'goedkoop', rechts: 'duur' },

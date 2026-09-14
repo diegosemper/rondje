@@ -12,6 +12,10 @@ export const VERBODEN_WOORDEN: string[] = [
   'thuis', 'auto', 'trein', 'fiets', 'vriendin', 'vriend', 'weet',
   'denk', 'zeg', 'kijk', 'natuurlijk', 'inderdaad', 'serieus', 'super',
   'altijd', 'nooit', 'straks', 'net', 'weer', 'toch', 'even',
+  // Deze moeten net zo gewoon zijn als de rest, anders valt het woord nooit.
+  // Aan een tafel van achttien komen ze vanzelf langs.
+  'dronken', 'zoenen', 'ex', 'kater', 'feestje', 'stappen', 'date',
+  'naakt', 'knuffelen', 'samen', 'liefde', 'knap', 'verliefd',
 ]
 
 /**

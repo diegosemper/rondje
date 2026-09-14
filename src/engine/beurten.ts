@@ -1,5 +1,32 @@
 /** Wie is er aan de beurt, en wie daarna. */
 
+/**
+ * Dezelfde kring, maar met een ander beginpunt.
+ *
+ * Bijna elk spel begint bij de eerste speler uit de volgorde, en dat was
+ * altijd de host — die staat vooraan omdat hij de kamer heeft gemaakt. Bij een
+ * spel als Perudo is dat geen kleinigheid: wie opent bepaalt het bod waar de
+ * rest overheen moet, en dan zit dezelfde persoon een hele avond in het
+ * voordeel. Ook bij Bussen, Opbouwen en de rest wil je niet dat steeds
+ * dezelfde mag beginnen.
+ *
+ * Husselen zou hier fout zijn. De volgorde is de kring zoals mensen echt aan
+ * tafel zitten; door elkaar gehusseld springt de beurt van links naar rechts
+ * naar de overkant en raakt iedereen kwijt wie er aan is. Draaien laat de
+ * kring heel en verzet alleen waar hij begint — `volgende()` geeft daardoor
+ * precies dezelfde antwoorden als eerst.
+ *
+ * `startgetal` moet het hele potje hetzelfde blijven (het startgetal van het
+ * spel, niet dat van een losse zet). Draaide het per actie mee, dan schoof de
+ * kring onder de beurt door.
+ */
+export function draaiVolgorde(volgorde: string[], startgetal: number): string[] {
+  if (volgorde.length < 2) return volgorde
+  if (!Number.isFinite(startgetal)) return volgorde
+  const stap = Math.abs(Math.floor(startgetal)) % volgorde.length
+  return [...volgorde.slice(stap), ...volgorde.slice(0, stap)]
+}
+
 export function index(volgorde: string[], uid: string): number {
   return volgorde.indexOf(uid)
 }

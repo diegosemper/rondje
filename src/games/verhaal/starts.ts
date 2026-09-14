@@ -32,4 +32,16 @@ export const STARTS: string[] = [
   'Ze vonden de auto terug, maar niet op de plek waar hij achtergelaten was.',
   'De vakantie begon goed, tot {naam} besloot dat hij wel kon zwemmen.',
   'Niemand wist wie er had aangebeld, en daar bleef het niet bij.',
+  // Een paar die meteen de goede kant op duwen. Een openingszin die keurig is
+  // levert acht rondes keurige zinnen op, en daar lacht niemand om.
+  '{naam} werd wakker naast iemand, en het duurde even voor {naam} doorhad wie.',
+  'De groepsapp ontplofte om zeven uur in de ochtend, en het ging allemaal over {naam}.',
+  '{naam} had die foto echt niet naar iedereen willen sturen.',
+  'Het was de eerste date, en {naam} had al drie dingen gedaan die niet meer uit te leggen waren.',
+  'De ouders van {naam} kwamen een dag eerder thuis dan afgesproken.',
+  'Niemand wist nog hoe {naam} aan dat kostuum was gekomen, of waar de rest van de kleren was.',
+  'Achteraf had {naam} die tattoo beter nuchter kunnen laten zetten.',
+  '{naam} belde zijn ex om half vier, en dat gesprek duurde twee uur.',
+  'Op de bruiloft ging het mis vanaf het moment dat {naam} de microfoon pakte.',
+  'De buren klopten voor de derde keer, en {naam} deed weer niet open.',
 ]

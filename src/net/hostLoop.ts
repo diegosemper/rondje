@@ -11,6 +11,7 @@ import {
 import { db, nu } from './firebase'
 import { pad, padRuw, stuurActie } from './kamer'
 import { geefSpel } from '../engine/registry'
+import { draaiVolgorde } from '../engine/beurten'
 import { stripGeheim, kopie } from '../engine/geheim'
 import { maakRng, nieuweSeed } from '../engine/random'
 import { berekenSlokken, slokTekst, werkwoord } from '../engine/slokken'
@@ -46,9 +47,16 @@ function leegEffect(): Effecten {
 }
 
 /** Bouwt het gereedschap dat init() en reduce() van een spel mogen gebruiken. */
-function maakContext(kamer: Kamer, seed: number, eff: Effecten): SpelContext {
+function maakContext(
+  kamer: Kamer,
+  seed: number,
+  eff: Effecten,
+  spelSeed: number,
+): SpelContext {
   const zwaarte = kamer.instelling.zwaarte
-  const spelers: Speler[] = kamer.volgorde.map((uid) => kamer.spelers[uid]).filter(Boolean)
+  const spelers: Speler[] = draaiVolgorde(kamer.volgorde, spelSeed)
+    .map((uid) => kamer.spelers[uid])
+    .filter(Boolean)
   const rng = maakRng(seed)
   const naam = (uid: string) => kamer.spelers[uid]?.naam ?? '?'
 
@@ -245,7 +253,10 @@ export async function startSpel(kamer: Kamer, gameId: string): Promise<void> {
   const code = kamer.meta.code
   const seed = nieuweSeed()
   const eff = leegEffect()
-  const ctx = maakContext(kamer, seed, eff)
+  // Hetzelfde startgetal voor het draaien als straks bij elke zet: init() en
+  // reduce() moeten dezelfde kring zien, anders begint het spel bij de een en
+  // gaat de beurt verder bij de ander.
+  const ctx = maakContext(kamer, seed, eff, seed)
   const state = mod.init(ctx)
 
   // Eerst het oude spel helemaal weg. Dat moet los, want Firebase weigert een
@@ -405,7 +416,7 @@ export function useHostLoop(kamer: Kamer | null, uid: string | null): void {
       // de host gebruikt deze generator, en de spellen die wél een gedeelde
       // baan nodig hebben (Flappy en de rest) krijgen hun eigen startgetal
       // meegestuurd in de spelstand.
-      const ctx = maakContext(huidig, nieuweSeed(), eff)
+      const ctx = maakContext(huidig, nieuweSeed(), eff, huidig.spel?.seed ?? 0)
 
       mod.reduce(werk, actie, ctx)
       if (!eff.klaar && mod.isKlaar?.(werk)) eff.klaar = true

@@ -39,6 +39,18 @@ export const GROEPEN: Groep[] = [
     woorden: ['regen', 'sneeuw', 'zon', 'mist', 'storm', 'hagel', 'onweer', 'wind', 'vorst', 'hitte'],
   },
   {
+    naam: 'uitgaan',
+    woorden: ['kater', 'shot', 'kroeg', 'dansvloer', 'taxi', 'rij', 'garderobe', 'afterparty', 'kotsen', 'portier'],
+  },
+  {
+    naam: 'daten',
+    woorden: ['ex', 'zoenen', 'Tinder', 'ghosten', 'flirten', 'nude', 'scharrel', 'friendzone', 'blind date', 'slippertje'],
+  },
+  {
+    naam: 'slaapkamer',
+    woorden: ['bed', 'bh', 'condoom', 'lakens', 'nachtkastje', 'string', 'wekker', 'gordijn', 'vloerkleed', 'lamp'],
+  },
+  {
     naam: 'kleding',
     woorden: ['jas', 'broek', 'schoenen', 'muts', 'sok', 'trui', 'jurk', 'riem', 'sjaal', 'hemd'],
   },

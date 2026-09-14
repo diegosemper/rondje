@@ -6,6 +6,22 @@
  * een piraat") is meteen door en levert niets op; te vaag merkt niemand.
  */
 export const SABOTAGE_REGELS: string[] = [
+  'Je moet iedereen aanspreken met schat',
+  'Je moet elke keer dat je drinkt kreunen alsof het lekker is',
+  'Je moet bij elke naam die valt zeggen dat je die persoon ooit leuk vond',
+  'Je moet elke keer als iemand lacht zeggen dat je het niet grappig vindt',
+  'Je moet om de paar minuten hardop zeggen dat je het warm hebt',
+  'Je moet elke vraag beantwoorden alsof je hem niet begrijpt',
+  'Je moet iedereen die iets vertelt een compliment over zijn uiterlijk geven',
+  'Je moet elke keer dat er over drank gepraat wordt kuchen',
+  'Je moet net doen alsof je iemand hier al jaren kent',
+  'Je moet elke keer als iemand opstaat vragen waar hij heen gaat',
+  'Je moet bij elk verhaal zeggen dat jou dat ook is overkomen',
+  'Je moet iedereen aankijken tot ze wegkijken',
+  'Je moet elke zin beginnen met "moet je horen"',
+  'Je moet steeds een stukje dichter naar je buurman schuiven',
+  'Je moet net doen of je een bericht krijgt en er niets over zeggen',
+  'Je moet elke keer als er gelachen wordt op je telefoon kijken',
   'Je mag nooit "ja" zeggen',
   'Je mag nooit "nee" zeggen',
   'Je mag niemands naam noemen',
