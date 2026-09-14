@@ -172,7 +172,7 @@ export interface SpelContext {
    * Pak stukken uit een lijst die deze lobby nog niet gehad heeft.
    *
    * Gebruik dit overal waar een spel aan het begin een greep uit zijn inhoud
-   * doet — de zinnen van Slecht Antwoord, de raadsels van Black Stories, de
+   * doet — de zinnen van de kaartenspellen, de raadsels van Black Stories, de
    * stellingen. Met een gewone greep is de vijfde ronde van de avond half
    * herhaling; hiermee komt eerst alles langs wat je nog niet zag.
    *

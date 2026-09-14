@@ -3,7 +3,7 @@
  *
  * Elk spel pakte zijn vragen, zinnen en woorden met een vers startgetal uit de
  * hele lijst. Dat is netjes willekeurig, maar willekeurig is niet hetzelfde als
- * afwisselend: Slecht Antwoord trekt tien zinnen uit zestig, dus na drie potjes
+ * afwisselend: dit spel trekt tien zinnen uit zestig, dus na drie potjes
  * heb je de helft van de lijst gehad en herken je bijna elke zin. Precies waar
  * de lol uit gaat.
  *

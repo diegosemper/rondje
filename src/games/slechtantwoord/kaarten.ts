@@ -1,5 +1,5 @@
 /**
- * De inhoud van Slecht Antwoord.
+ * De inhoud van Cards Against Humanity.
  *
  * Zelf geschreven; de kaartjes van het bekende spel zijn beschermd. Dat is
  * geen verlies, want dat spel is Amerikaans en de helft van de grappen landt
@@ -39,8 +39,25 @@
  */
 export const JOKER = '🃏 Zelf invullen'
 
-/** Hoeveel jokers er in het dek gaan. */
-export const JOKERS = 8
+/**
+ * Hoeveel jokers er in het dek gaan.
+ *
+ * Weinig, en met reden: zelf invullen wint bijna altijd. Je schrijft precies
+ * op wat er in díé zin past en waar déze groep om moet lachen, en daar kan een
+ * kaart van mij niet tegenop. Krijgt iedereen er elk potje een, dan is het geen
+ * buitenkansje meer maar de normale manier van spelen, en dan hadden de andere
+ * honderdzeventig kaarten net zo goed weg gekund.
+ *
+ * Eén dus. Nagerekend met een potje van vier: het dek is (spelers + 1) ×
+ * (hand + rondes) groot en daar gaat zo'n zeventig procent van doorheen, dus
+ * één joker betekent dat er in ruim de helft van de potjes eentje boven komt --
+ * bij één iemand, niet bij iedereen. Op twee kwam hij in bijna negen van de
+ * tien potjes langs, en dan is het geen buitenkansje meer.
+ *
+ * Dat het dek meegroeit met de tafel is precies goed: bij acht spelers is het
+ * dek groter, dus blijft de kans per persoon even klein.
+ */
+export const JOKERS = 1
 
 /** Hoeveel tekens iemand zelf mag intikken. */
 export const JOKER_MAX = 90

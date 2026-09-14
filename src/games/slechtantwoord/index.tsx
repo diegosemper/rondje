@@ -7,7 +7,7 @@ import { Verdeler } from '../../ui/Verdeler'
 import { ANTWOORDEN, ZINNEN, JOKER, JOKERS, JOKER_MAX } from './kaarten'
 
 /* ─────────────────────────────────────────────────────────────
-   SLECHT ANTWOORD
+   CARDS AGAINST HUMANITY
 
    Er staat een zin met een gat erin. Iedereen kiest uit zijn eigen hand het
    antwoord dat er het beste — of het ergste — in past. Alles komt anoniem in
@@ -124,14 +124,14 @@ function nieuweRonde(s: SlechtState, ctx: SpelContext) {
 
 export const slechtantwoord: GameModule<SlechtState> = {
   id: 'slechtantwoord',
-  naam: 'Slecht Antwoord',
+  naam: 'Cards Against Humanity',
   uitleg: 'Vul het gat in de zin met je smerigste kaart. De jury kiest.',
   regels: [
     'Er staat een zin met een gat erin.',
     'Kies uit je hand het antwoord dat er het beste in past.',
     'Alles komt anoniem in beeld; de jury kiest de winnaar.',
     'De winnaar deelt uit. De jury rouleert elke ronde.',
-    'Trek je een 🃏, dan vul je zelf iets in.',
+    'Trek je een 🃏 — zeldzaam — dan vul je zelf iets in.',
   ],
   minSpelers: 3,
   maxSpelers: 8,
