@@ -1,4 +1,3 @@
-import { husselen } from '../../engine/random'
 import { useHostKlok } from '../../engine/hooks'
 import { klokTekst, startKlok, voortgang, type Klok } from '../../engine/timer'
 import type { Actie, GameModule, KijkContext, SpelContext } from '../../engine/types'
@@ -49,7 +48,7 @@ interface DertigState {
 function nieuweKaart(s: DertigState, ctx: SpelContext) {
   const vrij = DERTIG_WOORDEN.filter((w) => !s._geheim.gebruikt.includes(w))
   const bron = vrij.length >= PER_KAART ? vrij : DERTIG_WOORDEN
-  const kaart = husselen(ctx.rng, bron).slice(0, PER_KAART)
+  const kaart = ctx.vers('dertig-woorden', bron, PER_KAART)
   s._geheim.kaart = kaart
   s._geheim.gebruikt.push(...kaart)
 

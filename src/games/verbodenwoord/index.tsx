@@ -49,8 +49,8 @@ function nieuweRonde(s: VerbodenState, ctx: SpelContext) {
   s.slachtoffer = pak(ctx.rng, pool)
   s.gehad.push(s.slachtoffer)
 
-  s.woord = pak(ctx.rng, VERBODEN_WOORDEN)
-  s.lokkertje = pak(ctx.rng, LOKKERTJES)
+  s.woord = ctx.vers('verbodenwoord-woorden', VERBODEN_WOORDEN, 1)[0]
+  s.lokkertje = ctx.vers('verbodenwoord-lokkertjes', LOKKERTJES, 1)[0]
   s.klok = startKlok(RONDE_SEC, ctx.nu)
   s.versprekingen = []
   s.betrapt = false

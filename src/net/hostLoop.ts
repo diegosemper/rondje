@@ -14,6 +14,7 @@ import { geefSpel } from '../engine/registry'
 import { draaiVolgorde } from '../engine/beurten'
 import { stripGeheim, kopie } from '../engine/geheim'
 import { maakRng, nieuweSeed } from '../engine/random'
+import { vers, bijgewerktGeheugen } from '../engine/vers'
 import { berekenSlokken, slokTekst, werkwoord } from '../engine/slokken'
 import { meldFout } from '../ui/Fout'
 import type { Actie, Kamer, SpelContext, Speler } from '../engine/types'
@@ -33,6 +34,8 @@ interface Effecten {
   priveWisAlles: boolean
   logs: string[]
   klaar: boolean
+  /** per lijst het bijgewerkte geheugen van wat er al geweest is */
+  gezien: Record<string, string[]>
 }
 
 function leegEffect(): Effecten {
@@ -43,8 +46,26 @@ function leegEffect(): Effecten {
     priveWisAlles: false,
     logs: [],
     klaar: false,
+    gezien: {},
   }
 }
+
+/**
+ * Wat deze host al heeft uitgedeeld, nog voordat de database het terugmeldt.
+ *
+ * Wegschrijven gaat via het net, en de kamer die deze lus leest komt uit de
+ * luisteraar. Tussen twee zetten door kan die dus nog de oude stand hebben --
+ * en dan trekt de ronde erna dezelfde categorie als de ronde ervoor. Precies
+ * de herhaling waar dit hele geheugen voor bedoeld is.
+ *
+ * De host is de enige die hieraan schrijft, dus zijn eigen aantekening is
+ * altijd minstens zo nieuw als wat er in de kamer staat. Staat er niets in --
+ * host net opgestart, of een andere telefoon die het overneemt -- dan is de
+ * database alsnog de waarheid.
+ *
+ * Op kamercode, zodat een volgende lobby op dezelfde telefoon schoon begint.
+ */
+const geheugenBuffer = new Map<string, Record<string, string[]>>()
 
 /** Bouwt het gereedschap dat init() en reduce() van een spel mogen gebruiken. */
 function maakContext(
@@ -83,6 +104,24 @@ function maakContext(
     zwaarte,
     rng,
     nu: nu(),
+
+    /*
+     * Firebase weigert sleutels met een punt, een slash of een haakje erin, en
+     * een slash zou van `slechtantwoord/zinnen` bovendien twee lagen maken in
+     * plaats van één sleutel. Alles wat niet mag wordt daarom een streepje.
+     */
+    vers(sleutel, lijst, aantal, tekstVan = (x) => String(x)) {
+      const naam = sleutel.replace(/[^a-zA-Z0-9_-]/g, '-')
+      const buffer = geheugenBuffer.get(kamer.meta.code) ?? {}
+      const alGehad = eff.gezien[naam] ?? buffer[naam] ?? kamer.gezien[naam] ?? []
+      const keuze = vers(rng, lijst, aantal, alGehad, tekstVan)
+
+      const bijgewerkt = bijgewerktGeheugen(alGehad, keuze)
+      eff.gezien[naam] = bijgewerkt
+      buffer[naam] = bijgewerkt
+      geheugenBuffer.set(kamer.meta.code, buffer)
+      return keuze.keuze
+    },
 
     drink,
 
@@ -162,6 +201,11 @@ async function schrijfWeg(
 
   for (const [uid, data] of Object.entries(eff.prive)) {
     u[padRuw(code, 'prive', uid)] = data === null ? null : JSON.stringify(data)
+  }
+
+  // Wat deze lobby gehad heeft, zodat het volgende potje andere zinnen pakt.
+  for (const [sleutel, merken] of Object.entries(eff.gezien)) {
+    u[pad(code, 'gezien', sleutel)] = merken.join(',')
   }
 
   // Vallen er slokken? Dan gaat het spel op pauze tot iedereen die moet

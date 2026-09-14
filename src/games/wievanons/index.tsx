@@ -6,7 +6,6 @@ import {
   stem,
   type Stemming,
 } from '../../engine/stemmen'
-import { husselen } from '../../engine/random'
 import type { Actie, GameModule, SpelContext } from '../../engine/types'
 import { GroteKnop, Kaartje, SpelerBalk } from '../../ui/Basis'
 import { VRAGEN } from './vragen'
@@ -57,7 +56,7 @@ export const wievanons: GameModule<WieState> = {
     const s: WieState = {
       ronde: 0,
       maxRondes: 5,
-      vragen: husselen(ctx.rng, VRAGEN).slice(0, 5),
+      vragen: ctx.vers('wievanons-vragen', VRAGEN, 5),
       stemming: nieuweStemming('', []),
       fase: 'stemmen',
     }

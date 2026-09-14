@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { husselen } from '../../engine/random'
 import { useHostKlok } from '../../engine/hooks'
 import { klokTekst, startKlok, voortgang, type Klok } from '../../engine/timer'
 import type { Actie, GameModule, KijkContext, SpelContext } from '../../engine/types'
@@ -54,7 +53,7 @@ interface SabotageState {
 }
 
 function nieuweRonde(s: SabotageState, ctx: SpelContext) {
-  const lijst = husselen(ctx.rng, SABOTAGE_REGELS)
+  const lijst = ctx.vers('sabotage-regels', SABOTAGE_REGELS, ctx.spelers.length)
   s._geheim.regels = {}
   ctx.spelers.forEach((p, i) => {
     s._geheim.regels[p.uid] = lijst[i % lijst.length]

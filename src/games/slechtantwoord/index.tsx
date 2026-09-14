@@ -1,9 +1,10 @@
+import { useEffect, useState } from 'react'
 import { husselen } from '../../engine/random'
 import { volgende } from '../../engine/beurten'
 import type { Actie, GameModule, KijkContext, SpelContext } from '../../engine/types'
 import { GroteKnop, Kaartje, SpelerBalk, tril } from '../../ui/Basis'
 import { Verdeler } from '../../ui/Verdeler'
-import { ANTWOORDEN, ZINNEN } from './kaarten'
+import { ANTWOORDEN, ZINNEN, JOKER, JOKERS, JOKER_MAX } from './kaarten'
 
 /* ─────────────────────────────────────────────────────────────
    SLECHT ANTWOORD
@@ -65,16 +66,43 @@ interface SlechtState {
   klaar: boolean
 }
 
+/**
+ * Het dek voor dit potje: zo veel kaarten als er hooguit doorheen gaan.
+ *
+ * Precies genoeg pakken en niet de hele lijst is het hele punt. Wat je pakt
+ * telt als gehad, dus zou ik hier alle antwoorden opvragen, dan was de lijst na
+ * één potje op en begon het geheugen meteen weer overnieuw — dan zie je alsnog
+ * elke avond dezelfde kaarten.
+ *
+ * Iedereen kan hoogstens een volle hand plus één kaart per ronde verspelen. Er
+ * gaat een marge overheen voor wie later aanschuift.
+ */
+function dekGrootte(ctx: SpelContext): number {
+  return Math.min(ANTWOORDEN.length, (ctx.spelers.length + 1) * (HAND + RONDES))
+}
+
+/**
+ * De jokers erdoorheen schudden.
+ *
+ * Ze gaan in het dek en niet in een vaste hand: zo weet je nooit wanneer je er
+ * een krijgt, en dat is leuker dan iedereen aan het begin één geven.
+ */
+function maakDek(ctx: SpelContext): string[] {
+  const kaarten = ctx.vers('slechtantwoord-antwoorden', ANTWOORDEN, dekGrootte(ctx))
+  const metJokers = [...kaarten, ...Array.from({ length: JOKERS }, () => JOKER)]
+  return husselen(ctx.rng, metJokers)
+}
+
 /** Vult iedereen aan tot een volle hand en stuurt die naar zijn eigen telefoon. */
 function vulHanden(s: SlechtState, ctx: SpelContext) {
   for (const p of ctx.spelers) {
     const hand = s._geheim.handen[p.uid] ?? []
     while (hand.length < HAND) {
-      // Stapel op? Dan schudden we de hele lijst opnieuw. Bij tien rondes en
-      // acht spelers gaan er hooguit tachtig kaarten doorheen, dus dit gebeurt
-      // vrijwel nooit — maar een lege stapel zou het spel laten hangen.
+      // Stapel op? Dan een nieuw dek. Dat hoort niet te gebeuren -- het dek is
+      // op de maximale afname berekend -- maar iemand die halverwege aanschuift
+      // eet er alsnog een hand uit, en een lege stapel zou het spel laten hangen.
       if (s._geheim.stapel.length === 0) {
-        s._geheim.stapel = husselen(ctx.rng, ANTWOORDEN)
+        s._geheim.stapel = maakDek(ctx)
       }
       hand.push(s._geheim.stapel.pop()!)
     }
@@ -103,6 +131,7 @@ export const slechtantwoord: GameModule<SlechtState> = {
     'Kies uit je hand het antwoord dat er het beste in past.',
     'Alles komt anoniem in beeld; de jury kiest de winnaar.',
     'De winnaar deelt uit. De jury rouleert elke ronde.',
+    'Trek je een 🃏, dan vul je zelf iets in.',
   ],
   minSpelers: 3,
   maxSpelers: 8,
@@ -121,8 +150,11 @@ export const slechtantwoord: GameModule<SlechtState> = {
       _geheim: {
         handen: {},
         van: {},
-        stapel: husselen(ctx.rng, ANTWOORDEN),
-        zinnen: husselen(ctx.rng, ZINNEN).slice(0, RONDES),
+        stapel: [],
+        // Zinnen die deze lobby nog niet gehad heeft. Met een gewone greep uit
+        // zestig zie je na drie potjes de helft terug, en een zin die je al
+        // kent is meteen een stuk minder leuk.
+        zinnen: ctx.vers('slechtantwoord-zinnen', ZINNEN, RONDES),
         teller: 0,
       },
       laatste: null,
@@ -131,6 +163,7 @@ export const slechtantwoord: GameModule<SlechtState> = {
     }
 
     s.zin = s._geheim.zinnen[0]
+    s._geheim.stapel = maakDek(ctx)
     vulHanden(s, ctx)
     return s
   },
@@ -148,6 +181,22 @@ export const slechtantwoord: GameModule<SlechtState> = {
       const i = hand.indexOf(kaart)
       if (i < 0) return
 
+      /*
+       * De joker wordt hier omgezet in de tekst die iemand zelf intikte.
+       * Afkappen en opschonen gebeurt bij de host en niet op de telefoon:
+       * alles wat van een gast binnenkomt is een voorstel, geen feit. Een lege
+       * joker wordt geweigerd -- dan blijft de kaart in de hand en kan hij het
+       * opnieuw proberen, wat beter is dan een leeg vakje bij de jury.
+       */
+      let tekst = kaart
+      if (kaart === JOKER) {
+        tekst = String(actie.payload?.eigen ?? '')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .slice(0, JOKER_MAX)
+        if (!tekst) return
+      }
+
       hand.splice(i, 1)
       s._geheim.handen[actie.uid] = hand
       ctx.zetPrive(actie.uid, { hand })
@@ -155,7 +204,7 @@ export const slechtantwoord: GameModule<SlechtState> = {
       s._geheim.teller++
       const id = `k${s._geheim.teller}`
       s._geheim.van[id] = actie.uid
-      s.inzetten.push({ id, tekst: kaart })
+      s.inzetten.push({ id, tekst })
       s.gelegd.push(actie.uid)
 
       if (!spelers.every((u) => s.gelegd.includes(u))) return
@@ -266,6 +315,15 @@ function Kiezen({
   const hand: string[] = ctx.prive?.hand ?? []
   const ikGelegd = s.gelegd.includes(ctx.ik)
   const nodig = ctx.spelers.length - 1
+  const [jokert, zetJokert] = useState(false)
+  const [eigen, zetEigen] = useState('')
+
+  // Nieuwe ronde? Dan het vakje weer dicht, anders sta je bij de volgende zin
+  // nog in je vorige antwoord te kijken.
+  useEffect(() => {
+    zetJokert(false)
+    zetEigen('')
+  }, [s.ronde])
 
   if (ikJury) {
     return (
@@ -293,19 +351,73 @@ function Kiezen({
     )
   }
 
+  // Heb je op de joker getikt, dan komt er een vakje in plaats van de hand.
+  if (jokert) {
+    const klaar = eigen.trim().length > 0
+    return (
+      <>
+        <div className="kop-klein" style={{ textAlign: 'center' }}>
+          🃏 Vul zelf iets in
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
+          <textarea
+            autoFocus
+            rows={3}
+            value={eigen}
+            onChange={(e) => zetEigen(e.target.value.slice(0, JOKER_MAX))}
+            placeholder="wat er in het gat moet…"
+            aria-label="Jouw eigen antwoord"
+            style={{ width: '100%' }}
+          />
+          <div className="klein zacht" style={{ textAlign: 'right' }}>
+            {eigen.length}/{JOKER_MAX}
+          </div>
+        </div>
+        <div className="onderaan">
+          <div className="rij">
+            <GroteKnop kleur="grijs" bijTik={() => zetJokert(false)}>
+              Terug
+            </GroteKnop>
+            <GroteKnop
+              kleur="goud"
+              uit={!klaar}
+              bijTik={() => {
+                if (!klaar) return
+                tril(8)
+                ctx.stuur('leg', { kaart: JOKER, eigen })
+              }}
+            >
+              Leg in
+            </GroteKnop>
+          </div>
+        </div>
+      </>
+    )
+  }
+
   return (
     <>
       <div className="kop-klein" style={{ textAlign: 'center' }}>
         Jouw hand
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
-        {hand.map((kaart) => (
+        {hand.map((kaart, i) => (
           <button
-            key={kaart}
+            // Op de tekst kan de sleutel niet: van de joker kun je er twee in
+            // je hand hebben, en dan tekent React er maar één.
+            key={`${kaart}-${i}`}
             className="kaartje"
-            style={{ textAlign: 'left' }}
+            style={{
+              textAlign: 'left',
+              borderColor: kaart === JOKER ? 'var(--goud)' : undefined,
+            }}
             onClick={() => {
               tril(8)
+              if (kaart === JOKER) {
+                zetEigen('')
+                zetJokert(true)
+                return
+              }
               ctx.stuur('leg', { kaart })
             }}
           >

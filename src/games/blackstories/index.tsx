@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { husselen } from '../../engine/random'
 import { volgende } from '../../engine/beurten'
 import type { Actie, GameModule, KijkContext, SpelContext } from '../../engine/types'
 import { GroteKnop, Kaartje, SpelerBalk } from '../../ui/Basis'
@@ -126,7 +125,7 @@ export const blackstories: GameModule<ZwartState> = {
       magUitdelen: false,
       _geheim: {
         oplossing: '',
-        lijst: husselen(ctx.rng, VERHALEN).slice(0, RAADSELS_PER_POTJE),
+        lijst: ctx.vers('blackstories-verhalen', VERHALEN, RAADSELS_PER_POTJE, (v) => v.titel),
       },
       klaar: false,
     }

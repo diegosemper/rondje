@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { husselen } from '../../engine/random'
 import type { Actie, GameModule, KijkContext, SpelContext } from '../../engine/types'
 import { GroteKnop, Kaartje, tril } from '../../ui/Basis'
 import { HITS, type HitNummer } from './lijst'
@@ -45,7 +44,7 @@ interface HitState {
 
 function pakNummer(s: HitState, ctx: SpelContext) {
   const vrij = HITS.filter((h) => !s._geheim.gebruikt.includes(h.url))
-  const nummer = husselen(ctx.rng, vrij.length > 0 ? vrij : HITS)[0]
+  const nummer = ctx.vers('hitster-nummers', vrij.length > 0 ? vrij : HITS, 1, (h) => h.url)[0]
   s._geheim.nummer = nummer
   s._geheim.gebruikt.push(nummer.url)
   s.url = nummer.url
@@ -91,7 +90,7 @@ export const hitster: GameModule<HitState> = {
 
     // Elk team begint met één kaart open op tafel; anders valt er niets te
     // plaatsen bij de eerste beurt.
-    const start = husselen(ctx.rng, HITS).slice(0, 2)
+    const start = ctx.vers('hitster-nummers', HITS, 2, (h) => h.url)
 
     const s: HitState = {
       teams: [teamA, teamB],

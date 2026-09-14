@@ -123,6 +123,13 @@ export interface Kamer {
   gereed: Record<string, boolean>
   /** gameId's die deze avond al gespeeld zijn */
   geschiedenis: string[]
+  /**
+   * Wat er per lijst al langsgekomen is, als vingerafdrukken.
+   *
+   * De sleutel is iets als `slechtantwoord/zinnen`. Hierop kiest een spel de
+   * dingen die deze lobby nog niet gehad heeft — zie `engine/vers.ts`.
+   */
+  gezien: Record<string, string[]>
 }
 
 /** Wat een gast naar de host stuurt. */
@@ -160,6 +167,23 @@ export interface SpelContext {
   deelUitPrecies(van: string, naar: string, aantal: number, reden?: string): void
   /** iedereen drinkt, optioneel behalve een paar uid's */
   iedereenDrinkt(aantal: number, reden?: string, behalve?: string[]): void
+
+  /**
+   * Pak stukken uit een lijst die deze lobby nog niet gehad heeft.
+   *
+   * Gebruik dit overal waar een spel aan het begin een greep uit zijn inhoud
+   * doet — de zinnen van Slecht Antwoord, de raadsels van Black Stories, de
+   * stellingen. Met een gewone greep is de vijfde ronde van de avond half
+   * herhaling; hiermee komt eerst alles langs wat je nog niet zag.
+   *
+   * `sleutel` is vrij te kiezen maar moet per lijst uniek zijn; houd het op
+   * `spelnaam-lijstnaam`. `tekstVan` is alleen nodig als de lijst geen tekst
+   * bevat maar objecten — geef dan het veld terug waaraan je een item herkent.
+   *
+   * Wat je pakt telt meteen als gehad, ook als het spel wordt afgebroken. Dat
+   * is de bedoeling: half gespeeld is ook gezien.
+   */
+  vers<T>(sleutel: string, lijst: readonly T[], aantal: number, tekstVan?: (item: T) => string): T[]
 
   /** geef deze speler iets dat alleen hij mag zien */
   zetPrive(uid: string, data: any): void

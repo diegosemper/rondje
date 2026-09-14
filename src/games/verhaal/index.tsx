@@ -110,7 +110,7 @@ function deelWoorden(s: VerhaalState, ctx: SpelContext) {
   // Raakt de lijst op — bij acht rondes en acht spelers zijn dat 64 woorden —
   // dan beginnen we gewoon opnieuw met de hele lijst.
   const bron = vers.length >= ctx.spelers.length ? vers : [...WOORDEN]
-  const gekozen = husselen(ctx.rng, bron).slice(0, ctx.spelers.length)
+  const gekozen = ctx.vers('verhaal-woorden', bron, ctx.spelers.length)
 
   s.woorden = {}
   ctx.spelers.forEach((p, i) => {
@@ -207,7 +207,7 @@ export const verhaal: GameModule<VerhaalState> = {
 
   init(ctx) {
     const naam = pak(ctx.rng, ctx.spelers).naam
-    const start = pak(ctx.rng, STARTS).replace(/\{naam\}/g, naam)
+    const start = ctx.vers('verhaal-starts', STARTS, 1)[0].replace(/\{naam\}/g, naam)
 
     const s: VerhaalState = {
       fase: 'schrijven',

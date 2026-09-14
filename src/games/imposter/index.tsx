@@ -73,8 +73,9 @@ interface ImposterState {
 
 function nieuwPotje(s: ImposterState, ctx: SpelContext) {
   const vrij = WOORDPAREN.map((_, i) => i).filter((i) => !s._geheim.gebruikt.includes(i))
-  const index = pak(ctx.rng, vrij.length > 0 ? vrij : WOORDPAREN.map((_, i) => i))
-  const paar = WOORDPAREN[index]
+  const bron = (vrij.length > 0 ? vrij : WOORDPAREN.map((_, i) => i)).map((i) => WOORDPAREN[i])
+  const paar = ctx.vers('imposter-paren', bron, 1, (p) => p.groep)[0]
+  const index = WOORDPAREN.indexOf(paar)
   const imposter = pak(ctx.rng, ctx.spelers.map((p) => p.uid))
 
   s._geheim.paar = paar

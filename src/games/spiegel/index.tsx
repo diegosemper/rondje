@@ -1,4 +1,4 @@
-import { husselen, pak } from '../../engine/random'
+import { husselen } from '../../engine/random'
 import { useHostKlok } from '../../engine/hooks'
 import { klokTekst, startKlok, voortgang, type Klok } from '../../engine/timer'
 import type { Actie, GameModule, SpelContext } from '../../engine/types'
@@ -55,7 +55,7 @@ interface SpiegelState {
 }
 
 function nieuweRonde(s: SpiegelState, ctx: SpelContext) {
-  const groep = pak(ctx.rng, GROEPEN)
+  const groep = ctx.vers('spiegel-groepen', GROEPEN, 1, (g) => g.naam)[0]
   const spelers = husselen(
     ctx.rng,
     ctx.spelers.map((p) => p.uid),

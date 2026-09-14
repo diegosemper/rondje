@@ -27,6 +27,24 @@
  * De zinnen hebben allemaal precies één gat, geschreven als ___.
  */
 
+/**
+ * De joker: geen antwoord, maar een leeg vakje.
+ *
+ * Wie deze kaart legt tikt zelf iets in. Dat is de beste kaart van het spel —
+ * de kaarten hieronder zijn van mij, en een tafel weet altijd iets te
+ * verzinnen dat beter op deze groep slaat dan wat ik kan bedenken.
+ *
+ * Hij wordt aan de tekst herkend en niet aan een aparte soort, zodat de rest
+ * van het spel een hand gewoon als een rij tekst kan blijven behandelen.
+ */
+export const JOKER = '🃏 Zelf invullen'
+
+/** Hoeveel jokers er in het dek gaan. */
+export const JOKERS = 8
+
+/** Hoeveel tekens iemand zelf mag intikken. */
+export const JOKER_MAX = 90
+
 export const ZINNEN: string[] = [
   'Mijn moeder ging naar de winkel en zag daar ___.',
   'Het eerste wat ik doe als ik de loterij win is ___.',

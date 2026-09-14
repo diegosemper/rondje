@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { husselen } from '../../engine/random'
 import type { Actie, GameModule, KijkContext } from '../../engine/types'
 import { GroteKnop, Kaartje, SpelerBalk } from '../../ui/Basis'
 import { GELIJK_VRAGEN } from './vragen'
@@ -64,7 +63,7 @@ export const gelijkdenken: GameModule<GelijkState> = {
   init(ctx) {
     return {
       ronde: 1,
-      vragen: husselen(ctx.rng, GELIJK_VRAGEN).slice(0, RONDES),
+      vragen: ctx.vers('gelijkdenken-vragen', GELIJK_VRAGEN, RONDES),
       _geheim: { antwoorden: {} },
       ingeleverd: [],
       uitslag: null,

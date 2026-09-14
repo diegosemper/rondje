@@ -87,8 +87,10 @@ export const golflengte: GameModule<GolfState> = {
         ctx.spelers.map((p) => p.uid),
       )[0],
       schaal: SCHALEN[0],
-      // Eigen, gehusselde kopie: de gedeelde lijst blijft ongemoeid.
-      schalen: husselen(ctx.rng, SCHALEN),
+      // Een greep voor dit potje, en bij voorkeur schalen die deze lobby nog
+      // niet gehad heeft. Ruim genomen: er gaan er nooit meer doorheen dan
+      // rondes, maar krap pakken zou betekenen dat een lange pot zonder valt.
+      schalen: ctx.vers('golflengte-schalen', SCHALEN, RONDES + 4),
       _geheim: { doel: 50, gokken: {} },
       hint: '',
       gegokt: [],

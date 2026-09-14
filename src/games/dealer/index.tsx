@@ -7,7 +7,6 @@ import {
   type Stapel,
 } from '../../engine/deck'
 import { volgende } from '../../engine/beurten'
-import { husselen } from '../../engine/random'
 import type { Actie, GameModule, KijkContext, SpelContext } from '../../engine/types'
 import { Speelkaart } from '../../ui/Kaart'
 import { GroteKnop, Kaartje, SpelerBalk } from '../../ui/Basis'
@@ -157,7 +156,7 @@ function legOpTafel(s: FtdState, ctx: SpelContext, kaart: Kaart, gokker: string)
 
   if (aantalOpTafel(s.tafel, kaart.waarde) < PER_WAARDE) return
 
-  const ideeen = husselen(ctx.rng, [...MINIGAME_IDEEEN]).slice(0, 3)
+  const ideeen = ctx.vers('dealer-minigames', MINIGAME_IDEEEN, 3)
   s.minigame = { waarde: kaart.waarde, uid: gokker, ideeen }
   ctx.log(
     `Alle vier de ${waardeTekst(kaart.waarde)}'s liggen — ${ctx.naam(gokker)} verzint een minigame`,

@@ -1,4 +1,3 @@
-import { husselen } from '../../engine/random'
 import type { Actie, GameModule } from '../../engine/types'
 import { GroteKnop, Kaartje, SpelerBalk } from '../../ui/Basis'
 
@@ -103,7 +102,7 @@ export const stellingen: GameModule<StellingState> = {
   init(ctx) {
     return {
       ronde: 1,
-      stellingen: husselen(ctx.rng, STELLINGEN).slice(0, RONDES),
+      stellingen: ctx.vers('stellingen', STELLINGEN, RONDES),
       _geheim: { keuzes: {} },
       gedaan: [],
       uitslag: null,

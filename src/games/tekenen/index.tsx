@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { husselen, pakMeerdere } from '../../engine/random'
+import { husselen } from '../../engine/random'
 import { useHostKlok } from '../../engine/hooks'
 import { klokTekst, startKlok, voortgang, type Klok } from '../../engine/timer'
 import type { Actie, GameModule, KijkContext, SpelContext } from '../../engine/types'
@@ -59,7 +59,7 @@ interface TekenState {
 function startBeurt(s: TekenState, ctx: SpelContext) {
   const tekenaar = s.volgorde[s.index]
   const vrij = TEKEN_WOORDEN.filter((w) => !s._geheim.gebruikt.includes(w))
-  const keuzes = pakMeerdere(ctx.rng, vrij.length >= KEUZES ? vrij : TEKEN_WOORDEN, KEUZES)
+  const keuzes = ctx.vers('tekenen-woorden', vrij.length >= KEUZES ? vrij : TEKEN_WOORDEN, KEUZES)
 
   s._geheim.keuzes = keuzes
   s._geheim.woord = ''

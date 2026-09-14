@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { husselen } from '../../engine/random'
 import type { Actie, GameModule, KijkContext, SpelContext } from '../../engine/types'
 import { GroteKnop, Kaartje, tril } from '../../ui/Basis'
 import { Verdeler } from '../../ui/Verdeler'
@@ -171,7 +170,7 @@ export const nummers: GameModule<NummerState> = {
     const s: NummerState = {
       ronde: 1,
       fase: 'spelen',
-      _geheim: { lijst: husselen(ctx.rng, NUMMERS).slice(0, RONDES + 3) },
+      _geheim: { lijst: ctx.vers('nummers-lijst', NUMMERS, RONDES + 3, (n) => n.url) },
       url: '',
       stap: 0,
       stemmen: [],

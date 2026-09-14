@@ -126,6 +126,15 @@ export function leesKamer(ruw: any, code: string): Kamer | null {
     skip: ruw.skip ?? {},
     gereed: ruw.gereed ?? {},
     geschiedenis: lijst(ruw.geschiedenis),
+    // Per lijst een rij vingerafdrukken, komma's ertussen — zoals de
+    // geschiedenis hierboven. Firebase slaat geen arrays op zonder er een map
+    // met nummers van te maken, en dat leest bij het terugkomen beroerd terug.
+    gezien: Object.fromEntries(
+      Object.entries<any>(ruw.gezien ?? {}).map(([sleutel, waarde]) => [
+        sleutel,
+        lijst(typeof waarde === 'string' ? waarde : ''),
+      ]),
+    ),
   }
 }
 

@@ -40,7 +40,7 @@ interface BomState {
 }
 
 function nieuweRonde(s: BomState, ctx: SpelContext) {
-  s.categorie = pak(ctx.rng, BOM_CATEGORIEEN)
+  s.categorie = ctx.vers('bom-categorieen', BOM_CATEGORIEEN, 1)[0]
   s.houder = pak(
     ctx.rng,
     ctx.spelers.map((p) => p.uid),
