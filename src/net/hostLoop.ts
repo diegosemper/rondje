@@ -492,10 +492,13 @@ export function useHostLoop(kamer: Kamer | null, uid: string | null): void {
       gateGedaan.current = null
       return
     }
-    // Wachten heeft geen zin op iemand die weg is.
-    const nodig = Object.keys(gate.wachtOp).filter(
-      (u) => kamer.spelers[u] && kamer.spelers[u].online,
-    )
+    // Alleen wie de lobby echt verlaten heeft slaan we over. Op `online` werd
+    // hier eerst ook gefilterd, en dat liet de melding wegflitsen: een telefoon
+    // die even op slot gaat of een tel wifi mist staat kort op offline, dan
+    // bleef er niemand over om op te wachten en ging het spel meteen door —
+    // voordat de drinker zijn scherm ook maar gezien had. Is iemand echt weg,
+    // dan heeft de host "Toch doorgaan".
+    const nodig = Object.keys(gate.wachtOp).filter((u) => kamer.spelers[u])
     const klaar = nodig.every((u) => gate.klaar[u])
     if (!klaar || gateGedaan.current === gate.id) return
 

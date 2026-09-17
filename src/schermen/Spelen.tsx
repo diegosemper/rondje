@@ -59,7 +59,11 @@ export function Spelen({
   // De stand verandert niet zolang het slokkenscherm openstaat — het spel ligt
   // dan stil — dus dit getal blijft staan zodra de pauze eenmaal begonnen is.
   const wacht = mod?.drinkVertraging?.(kamer.spel?.state) ?? 0
-  const gateId = kamer.drinkgate?.id ?? null
+  // Op `sinds` en niet op de id: komen er slokken bij tijdens een lopende
+  // pauze, dan krijgt de pauze een nieuwe id maar houdt hij zijn `sinds`. Op de
+  // id sloeg de vertraging dan opnieuw toe, verdween het slokkenscherm even en
+  // kwam het terug — precies het wegflitsen.
+  const gateId = kamer.drinkgate ? String(kamer.drinkgate.sinds) : null
   const [gateKlaar, zetGateKlaar] = useState<string | null>(null)
 
   useEffect(() => {

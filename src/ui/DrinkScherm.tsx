@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { drinkKreet, eenheid, isDroog } from '../engine/slokken'
 import type { Drinkgate, Speler, Zwaarte } from '../engine/types'
 import { GroteKnop, Kaartje, tril } from './Basis'
@@ -13,6 +14,17 @@ import { GroteKnop, Kaartje, tril } from './Basis'
    slokken moest, en twee tellen later moest je alweer opletten of de
    volgende kaart van jou was.
    ───────────────────────────────────────────────────────────── */
+
+/**
+ * Zo lang staat de knop uit nadat het scherm verschijnt.
+ *
+ * Het slokkenscherm valt over het spel heen op het moment dat je nog aan het
+ * tikken bent — "Hoger", een kaart, een reflexknop. De grote knop ligt precies
+ * waar je vinger al is, dus de tik die voor het spel bedoeld was drukt hem
+ * meteen weg. Dan heb je de melding nooit gezien. Een tel wachten vangt die
+ * doorgeschoten tik op; bewust drukken duurt toch langer dan dat.
+ */
+const KNOP_UIT_MS = 1200
 
 export function DrinkPauze({
   gate,
@@ -37,6 +49,24 @@ export function DrinkPauze({
   const klaar = nodig.filter((u) => gate.klaar[u])
   const naam = (uid: string) => spelers.find((p) => p.uid === uid)?.naam ?? '?'
 
+  // Per pauze-id opnieuw: komen er slokken bij, dan moet je opnieuw bevestigen
+  // en hoort de knop ook opnieuw even uit te staan.
+  const [scherp, zetScherp] = useState<string | null>(null)
+  useEffect(() => {
+    const id = setTimeout(() => zetScherp(gate.id), KNOP_UIT_MS)
+    return () => clearTimeout(id)
+  }, [gate.id])
+  const knopAan = scherp === gate.id
+
+  // "Toch doorgaan" wist de melding bij iedereen. Eén verdwaalde tik van de
+  // host mag dat niet doen, dus eerst vragen of het echt de bedoeling is.
+  const [zeker, zetZeker] = useState(false)
+  useEffect(() => {
+    if (!zeker) return
+    const id = setTimeout(() => zetZeker(false), 4000)
+    return () => clearTimeout(id)
+  }, [zeker])
+
   // Jij moet drinken en hebt nog niet bevestigd: scherm helemaal over.
   if (mijnAantal > 0 && !ikKlaar) {
     return (
@@ -50,8 +80,16 @@ export function DrinkPauze({
         <div style={{ width: '100%', maxWidth: 380 }}>
           <button
             className="knop enorm"
-            style={{ background: '#fff', color: 'var(--rood)', border: 'none' }}
+            disabled={!knopAan}
+            style={{
+              background: '#fff',
+              color: 'var(--rood)',
+              border: 'none',
+              opacity: knopAan ? 1 : 0.45,
+              transition: 'opacity .25s',
+            }}
             onClick={() => {
+              if (!knopAan) return
               tril(20)
               bijGedronken()
             }}
@@ -118,8 +156,19 @@ export function DrinkPauze({
 
       {benIkHost && (
         <div style={{ width: '100%', maxWidth: 380, marginTop: 8 }}>
-          <GroteKnop kleur="leeg" klein bijTik={bijDoorgaan}>
-            Toch doorgaan
+          <GroteKnop
+            kleur={zeker ? 'rood' : 'leeg'}
+            klein
+            bijTik={() => {
+              if (!zeker) {
+                zetZeker(true)
+                return
+              }
+              zetZeker(false)
+              bijDoorgaan()
+            }}
+          >
+            {zeker ? 'Tik nog een keer — iedereen gaat door' : 'Toch doorgaan'}
           </GroteKnop>
         </div>
       )}
