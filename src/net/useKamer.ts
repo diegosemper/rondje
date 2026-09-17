@@ -90,7 +90,23 @@ export function useKamer(code: string | null, uid: string | null): KamerHaak {
     const sleutel = `${code}:${uid}`
     if (gemeld.current === sleutel) return
     gemeld.current = sleutel
-    meldAanwezig(code, uid).catch(() => {})
+
+    /*
+     * Opnieuw melden bij élke herverbinding, niet alleen bij het openen.
+     *
+     * Een "zet me op offline als ik wegval" gaat bij Firebase maar één keer af.
+     * Een telefoon verliest zijn verbinding om de haverklap — van wifi naar 4G,
+     * scherm even uit — en Firebase verbindt daarna vanzelf opnieuw. Maar
+     * niemand zette je dan terug op online: je bleef de rest van de avond
+     * "offline" staan terwijl je gewoon meespeelde. De host sloeg je daardoor
+     * over bij het drinken, en je slokkenmelding verdween elke keer meteen.
+     *
+     * `.info/connected` wordt waar zodra de verbinding er (weer) is. Dan de
+     * afmelding opnieuw klaarzetten en jezelf weer online melden.
+     */
+    const stopVerbinding = onValue(ref(db(), '.info/connected'), (snap) => {
+      if (snap.val() === true) meldAanwezig(code, uid).catch(() => {})
+    })
 
     // Terugkomen uit de achtergrond (scherm was uit) → opnieuw melden.
     const bijZichtbaar = () => {
@@ -98,6 +114,7 @@ export function useKamer(code: string | null, uid: string | null): KamerHaak {
     }
     document.addEventListener('visibilitychange', bijZichtbaar)
     return () => {
+      stopVerbinding()
       document.removeEventListener('visibilitychange', bijZichtbaar)
       gemeld.current = null
     }
