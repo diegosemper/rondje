@@ -153,55 +153,167 @@ function kandidaten(code: number[]): Aanwijzing[] {
 }
 
 /**
- * Bouwt een puzzel met precies zoveel aanwijzingen als er spelers zijn.
+ * Hoeveel aanwijzingen we het liefst hebben, gegeven het aantal spelers.
  *
- * Eerst wordt er een set gekozen die de code helemaal vastlegt: telkens de
- * aanwijzing die de meeste kandidaten wegstreept. Zijn er daarna nog spelers
- * over, dan krijgen die een aanwijzing die ook waar is maar niets nieuws
- * toevoegt. Dat is met opzet — iedereen moet iets te zeggen hebben, en niemand
- * hoort te weten of zijn eigen aanwijzing de doorslag geeft.
+ * Meer dan er spelers zijn, met opzet. Elke aanwijzing die overblijft is er een
+ * die je nodig hebt, dus met meer aanwijzingen dan mensen krijgt iemand er twee
+ * op zijn scherm en moet de tafel echt alles bij elkaar leggen.
+ */
+function doelAantal(aantal: number): number {
+  // Hoogstens drie regels op één scherm: meer dan dat leest niemand voor aan
+  // een tafel die al drie glazen op heeft. Bij twee spelers is dat dus zes
+  // aanwijzingen, bij acht zou het er vierentwintig mogen zijn -- maar boven de
+  // twaalf wordt het boekhouden in plaats van puzzelen.
+  return Math.min(aantal * 3, 12)
+}
+
+/**
+ * Gooit alles eruit wat niet nodig is.
+ *
+ * Na het opbouwen zitten er vaak aanwijzingen tussen die achteraf niets meer
+ * toevoegen, omdat een latere aanwijzing hetzelfde werk deed. Die moeten weg:
+ * een aanwijzing die je kunt missen betekent dat één speler de hele ronde niets
+ * te melden heeft, en dat merkt hij.
+ *
+ * Wat overblijft is een set waarin élke aanwijzing nodig is. Laat er eentje weg
+ * en er blijven twee codes over.
+ */
+function snoei(gekozen: Aanwijzing[], alle: number[][]): Aanwijzing[] {
+  const uit = [...gekozen]
+  for (let i = uit.length - 1; i >= 0; i--) {
+    const zonder = uit.filter((_, j) => j !== i)
+    let over = alle
+    for (const a of zonder) over = over.filter(a.klopt)
+    if (over.length === 1) uit.splice(i, 1)
+  }
+  return uit
+}
+
+/**
+ * Bouwt de puzzel.
+ *
+ * DIT WAS EERST VEEL TE MAKKELIJK, en de oorzaak zat in de opzet: er werd
+ * telkens de aanwijzing gekozen die de meeste codes wegstreepte. Dat klinkt
+ * slim, maar de scherpste aanwijzing is altijd een weggevertje als "het eerste
+ * cijfer is 7". Met drie van die kaarten staat de halve code al op tafel en is
+ * het binnen twintig seconden klaar. Er viel niets af te leiden -- je hoefde
+ * alleen maar voor te lezen wat je had.
+ *
+ * Nu gebeurt het andersom. Er wordt gezocht naar aanwijzingen die ieder voor
+ * zich wéinig wegstrepen, zoals "het derde cijfer is even" of "de eerste twee
+ * cijfers zijn samen groter dan de laatste twee". Daar heb je er veel meer van
+ * nodig, en geen enkele geeft in zijn eentje iets weg. Pas als je ze
+ * combineert kom je ergens, en dat is precies het spel.
+ *
+ * De zoektocht doet een aantal pogingen met verschillende drempels voor hoe
+ * zwak een aanwijzing minimaal moet zijn. Zijn er alleen zwakke aanwijzingen
+ * toegestaan, dan lukt het soms niet om op één code uit te komen; dan wordt de
+ * drempel losser. Van alle gelukte pogingen wint die met het aantal
+ * aanwijzingen dat het dichtst bij het doel zit.
  */
 export function maakPuzzel(rng: () => number, aantal: number): Puzzel {
   const code = [0, 1, 2, 3].map(() => Math.floor(rng() * 10))
   const pool = kandidaten(code)
+  const alle = alleCodes()
+  const doel = doelAantal(aantal)
 
-  // Husselen, zodat twee potjes met dezelfde code toch anders aanvoelen.
-  for (let i = pool.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1))
-    ;[pool[i], pool[j]] = [pool[j], pool[i]]
-  }
+  // Hoeveel codes houdt elke aanwijzing over als je hem alleen gebruikt? Hoe
+  // meer er overblijft, hoe zwakker de aanwijzing en hoe liever we hem hebben.
+  const metKracht = pool.map((a) => ({ a, houdt: alle.filter(a.klopt).length }))
 
-  let over = alleCodes()
-  const gekozen: Aanwijzing[] = []
+  // Van streng naar los. Bij 4000 mogen alleen aanwijzingen mee die in hun
+  // eentje bijna niets wegstrepen; bij 0 mag alles, ook het weggevertje.
+  const drempels = [4000, 3000, 2000, 1000, 0]
+  let beste: Aanwijzing[] | null = null
 
-  // Zolang er meer dan één code mogelijk is: pak de scherpste aanwijzing.
-  while (over.length > 1 && gekozen.length < 8) {
-    let beste: Aanwijzing | null = null
-    let besteOver: number[][] = over
+  for (const drempel of drempels) {
+    const mag = metKracht.filter((x) => x.houdt >= drempel)
+    if (mag.length === 0) continue
 
-    for (const a of pool) {
-      if (gekozen.includes(a)) continue
-      const rest = over.filter(a.klopt)
-      if (rest.length < besteOver.length || beste === null) {
-        beste = a
-        besteOver = rest
+    for (let poging = 0; poging < 12; poging++) {
+      // Zwakste eerst, maar met ruis erdoorheen: anders krijgt elke puzzel met
+      // dezelfde code dezelfde aanwijzingen in dezelfde volgorde.
+      const volgorde = [...mag]
+        .map((x) => ({ x, sleutel: x.houdt * (0.75 + 0.5 * rng()) }))
+        .sort((p, q) => q.sleutel - p.sleutel)
+        .map((p) => p.x.a)
+
+      let over = alle
+      const gekozen: Aanwijzing[] = []
+      for (const a of volgorde) {
+        if (over.length === 1) break
+        const rest = over.filter(a.klopt)
+        // Voegt niets toe? Overslaan; anders staat er straks een aanwijzing
+        // tussen waar niemand iets aan heeft.
+        if (rest.length === over.length) continue
+        gekozen.push(a)
+        over = rest
       }
+
+      if (over.length !== 1) continue
+      const nodig = snoei(gekozen, alle)
+
+      // Van de sets die op één scherm passen willen we juist de grootste: hoe
+      // meer aanwijzingen er nodig zijn, hoe meer de tafel moet combineren.
+      // Past er niets, dan is de kleinste de minst slechte.
+      const past = nodig.length <= doel
+      const bestePast = beste !== null && beste.length <= doel
+      if (
+        beste === null ||
+        (past && !bestePast) ||
+        (past && bestePast && nodig.length > beste.length) ||
+        (!past && !bestePast && nodig.length < beste.length)
+      ) {
+        beste = nodig
+      }
+      if (beste.length === doel) break
     }
 
-    if (!beste || besteOver.length === over.length) break
-    gekozen.push(beste)
-    over = besteOver
+    if (beste && beste.length === doel) break
   }
 
-  // Aanvullen tot iedereen er een heeft. Deze voegen niets toe, en dat mag:
-  // ze zijn waar, en niemand kan aan zijn eigen kaartje zien of hij ertoe doet.
-  for (const a of pool) {
-    if (gekozen.length >= aantal) break
-    if (!gekozen.includes(a)) gekozen.push(a)
+  /*
+   * Past het nog steeds niet op de schermen, dan moet het scherper.
+   *
+   * Dat gebeurt vooral met z'n tweeën: twaalf zwakke aanwijzingen verdeeld over
+   * twee telefoons is vijf regels per scherm, en dat leest niemand voor. Dan is
+   * de oude aanpak beter -- steeds de aanwijzing die het meeste wegstreept --
+   * want die is met een stuk of vier klaar. Zo'n potje is makkelijker, maar met
+   * twee man valt er nu eenmaal weinig samen te leggen.
+   */
+  if (!beste || beste.length > doel) {
+    let over = alle
+    const scherp: Aanwijzing[] = []
+    while (over.length > 1 && scherp.length < 8) {
+      let besteA: Aanwijzing | null = null
+      let besteOver = over
+      for (const a of pool) {
+        if (scherp.includes(a)) continue
+        const rest = over.filter(a.klopt)
+        if (besteA === null || rest.length < besteOver.length) {
+          besteA = a
+          besteOver = rest
+        }
+      }
+      if (!besteA || besteOver.length === over.length) break
+      scherp.push(besteA)
+      over = besteOver
+    }
+    if (over.length === 1 && (!beste || scherp.length < beste.length)) {
+      beste = snoei(scherp, alle)
+    }
   }
 
-  // Meer aanwijzingen dan spelers? Dan moeten er een paar samen op één scherm,
-  // anders is de code niet meer af te leiden.
+  // Nog steeds niets? Dan is er altijd nog de code zelf, cijfer voor cijfer.
+  // Dat hoort niet te gebeuren, maar een puzzel die niet klopt is erger dan een
+  // makkelijke.
+  const gekozen =
+    beste ??
+    code.map((cijfer, i) => ({
+      tekst: `Het ${PLEK[i]} cijfer is ${cijfer}.`,
+      klopt: (c: number[]) => c[i] === cijfer,
+    }))
+
   return { code, aanwijzingen: verdeel(gekozen.map((a) => a.tekst), aantal) }
 }
 

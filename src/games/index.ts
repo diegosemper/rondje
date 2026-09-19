@@ -14,11 +14,8 @@ import { gelijkdenken } from './gelijkdenken'
 import { ezelen } from './ezelen'
 import { tekenen } from './tekenen'
 import { nummers } from './nummers'
-import { sabotage } from './sabotage'
 import { golflengte } from './golflengte'
-import { verbodenwoord } from './verbodenwoord'
 import { flappy } from './flappy'
-import { snelweg } from './snelweg'
 import { stapeltoren } from './stapeltoren'
 import { wiskunde } from './wiskunde'
 import { opbouwen } from './opbouwen'
@@ -73,7 +70,6 @@ export const ALLE_SPELLEN: GameModule[] = [
   nummers,
   hitster,
   flappy,
-  snelweg,
   stapeltoren,
   pijlen,
   wiskunde,
@@ -82,8 +78,6 @@ export const ALLE_SPELLEN: GameModule[] = [
   duel,
   opbouwen,
   golflengte,
-  sabotage,
-  verbodenwoord,
   spiegel,
   ketting,
   eenentwintig,
