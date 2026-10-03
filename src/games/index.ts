@@ -33,6 +33,9 @@ import { verhaal } from './verhaal'
 import { blackstories } from './blackstories'
 import { slechtantwoord } from './slechtantwoord'
 import { decode } from './decode'
+import { driekaart } from './driekaart'
+import { paardenrace } from './paardenrace'
+import { toepen } from './toepen'
 
 /* ─────────────────────────────────────────────────────────────
    Wat er niet (meer) in de lijst staat
@@ -67,6 +70,9 @@ export const ALLE_SPELLEN: GameModule[] = [
   blackstories,
   slechtantwoord,
   decode,
+  driekaart,
+  paardenrace,
+  toepen,
   nummers,
   hitster,
   flappy,
