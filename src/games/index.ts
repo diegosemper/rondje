@@ -36,6 +36,7 @@ import { decode } from './decode'
 import { driekaart } from './driekaart'
 import { paardenrace } from './paardenrace'
 import { toepen } from './toepen'
+import { renelebak } from './renelebak'
 
 /* ─────────────────────────────────────────────────────────────
    Wat er niet (meer) in de lijst staat
@@ -73,6 +74,7 @@ export const ALLE_SPELLEN: GameModule[] = [
   driekaart,
   paardenrace,
   toepen,
+  renelebak,
   nummers,
   hitster,
   flappy,
