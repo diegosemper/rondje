@@ -167,11 +167,15 @@ function onthul(s: DriekaartState, ctx: SpelContext) {
     }
 
     /*
-     * Pair Plus staat los van alles: ook wie paste heeft zijn slokken al
-     * ingezet voordat er gedeeld werd, dus die weddenschap loopt gewoon door.
+     * Pair Plus hangt aan meedoen. Pas je, dan vervalt hij helemaal: je deelt
+     * niets uit en je drinkt er ook niets voor.
+     *
+     * Dat is met opzet, want het maakt passen duurder dan het lijkt. Heb je een
+     * paar en pas je toch, dan gooi je je eigen bonus weg -- en dat is precies
+     * de twijfel die deze weddenschap moet opleveren.
      */
     let ppGoed: boolean | null = null
-    if (pp > 0) {
+    if (pp > 0 && mee) {
       ppGoed = mijn.soort >= SOORT.paar
       if (ppGoed) {
         uitdelen += pp * 2
@@ -208,6 +212,7 @@ export const driekaart: GameModule<DriekaartState> = {
     'Je krijgt drie kaarten die alleen jij ziet: meedoen of passen.',
     'Hoogste hand wint. Heeft de dealer minder dan vrouw hoog, dan win je altijd.',
     'Pair Plus: paar of beter is het dubbele uitdelen, anders één drinken.',
+    'Pas je, dan vervalt je Pair Plus — die geldt alleen als je meedoet.',
     'Let op: drie gelijk is hier sterker dan een straat.',
   ],
   minSpelers: 2,
@@ -355,9 +360,10 @@ function PairPlus({ s, ctx }: { s: DriekaartState; ctx: KijkContext }) {
         <div style={{ fontSize: 40 }}>🂡</div>
         <div className="kop-klein">Pair Plus</div>
         <div className="klein zacht" style={{ textAlign: 'center', maxWidth: 320 }}>
-          Een gok op je eigen hand, los van de dealer. Een paar of beter en je
-          deelt het dubbele uit; heb je niets, dan drink je er één. Je zet nu in,
-          dus nog voordat je je kaarten ziet.
+          Een gok op je eigen hand. Een paar of beter en je deelt het dubbele
+          uit; heb je niets, dan drink je er één. Hij geldt alleen als je straks
+          meedoet: pas je, dan vervalt hij. Je zet nu in, dus nog voordat je je
+          kaarten ziet.
         </div>
         <SpelerBalk spelers={ctx.spelers} actief={Object.keys(s.ppInzetten)} />
       </div>
@@ -410,7 +416,10 @@ function Kiezen({ s, ctx }: { s: DriekaartState; ctx: KijkContext }) {
             className="klein"
             style={{ color: ppGoed ? 'var(--groen)' : 'var(--rood)' }}
           >
-            Pair Plus van {ctx.slok(pp)}: {ppGoed ? `je deelt ${ctx.slok(pp * 2)} uit` : 'misgelopen'}
+            Pair Plus van {ctx.slok(pp)}:{' '}
+            {ppGoed
+              ? `${ctx.slok(pp * 2)} uitdelen, maar alleen als je meedoet`
+              : 'misgelopen'}
           </div>
         )}
         <SpelerBalk spelers={ctx.spelers} actief={Object.keys(s.keuzes)} />
@@ -477,9 +486,20 @@ function Uitslagen({ s, ctx }: { s: DriekaartState; ctx: KijkContext }) {
               {ctx.speler(u.uid)?.emoji} <strong>{ctx.naam(u.uid)}</strong>
               <span className="klein zacht"> · {u.soort}</span>
               {u.pp > 0 && (
-                <span className="klein" style={{ color: u.ppGoed ? 'var(--groen)' : 'var(--rood)' }}>
+                <span
+                  className="klein"
+                  style={{
+                    color:
+                      u.ppGoed === null
+                        ? undefined
+                        : u.ppGoed
+                          ? 'var(--groen)'
+                          : 'var(--rood)',
+                  }}
+                >
                   {' '}
                   · PP {u.pp}
+                  {u.ppGoed === null ? ' vervallen' : ''}
                 </span>
               )}
             </span>
