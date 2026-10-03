@@ -1,61 +1,81 @@
 import { useEffect, useRef, useState } from 'react'
-import { husselen, tussen } from '../../engine/random'
 import { volgende } from '../../engine/beurten'
 import { useHostKlok } from '../../engine/hooks'
 import { startKlok, voortgang, type Klok } from '../../engine/timer'
 import type { Actie, GameModule, KijkContext, SpelContext } from '../../engine/types'
 import { Balkje, GroteKnop, Kaartje, SpelerBalk, tril } from '../../ui/Basis'
-import { NUMMERS } from '../nummers/lijst'
-import { BAK_NUMMERS } from './lijst'
+import { BAK_NUMMERS, VEILIG } from './lijst'
 
 /* ─────────────────────────────────────────────────────────────
    RENÉ LE BAK
 
-   De playlist staat op shuffle en je drukt om de beurt op volgende. Komt "If I
-   tell you" van René Le Blanc langs, dan drinkt de hele tafel een bak; bij een
-   hardstyle-remix zijn het er twee. Verder gebeurt er niets -- en dat wachten
-   is het spel.
+   Je drukt om de beurt op volgende in een playlist op shuffle. Krijg jij "If I
+   tell you" van René Le Blanc, dan drink jíj de bak. Iedereen die iets anders
+   krijgt is save.
 
-   Er valt dus niets te kunnen, en dat is precies de bedoeling. Het is het potje
-   waarbij iedereen stil wordt zodra er een pianootje begint.
+   Dat het de drukker is en niet de hele tafel is het hele spel: je drukt zelf
+   op die knop, dus het is je eigen schuld. De rest kijkt toe en hoopt dat het
+   bij jou valt.
 
-   TWEE DINGEN DIE HET SPEL MAKEN, EN WAAROM ZE ZO ZIJN:
+   DE KANS, EN WAAROM HET GEEN VASTE PLAYLIST IS. Eerst zaten er twee tot vier
+   bakken in een lijst van vijftien nummers. Dat gaf een nette speelduur, maar
+   het voelde verkeerd: je wist dat ze eraan kwamen, en tegen het eind kon je
+   uitrekenen dat er nog één moest vallen. Nu is elke druk een losse kans van
+   één op tien. Hij kan dus bij de eerste druk vallen en net zo goed pas bij de
+   twintigste, en niemand kan iets uitrekenen.
+
+   Dat betekent wel dat een potje in theorie eeuwig kan duren, dus er is een
+   bovengrens: na dertig keer drukken is het klaar, ook als er niets gevallen
+   is. Dat gebeurt bij één op tien zelden, maar "zelden" is niet "nooit" en een
+   spel dat niet eindigt is erger dan een spel dat kort was.
+
+   Twee dingen die verder zo moeten:
 
    De titel blijft dicht terwijl het speelt. Je hóórt het aan de intro, net als
-   in het echt, en pas na het fragment staat er wat het was. Zette de app de
-   titel er meteen bij, dan was er niets meer om naar te luisteren.
-
-   Hoeveel bakken er in de playlist zitten weet niemand: twee, drie of vier. Bij
-   een vast aantal kan de tafel aftellen hoeveel er nog komen, en dan is de
-   spanning bij de laatste nummers weg.
+   in het echt, en pas daarna staat er wat het was.
 
    Het geluid komt van de telefoon van de host. Dat moet er één zijn: speelden
    alle telefoons mee, dan hoor je hetzelfde fragment acht keer net naast elkaar
    en herkent niemand er iets van.
    ───────────────────────────────────────────────────────────── */
 
-/** Hoeveel gewone nummers er tussen zitten. */
-const VULLING = 13
-/** Hoe lang je een fragment hoort. Lang genoeg om het te herkennen. */
-const FRAGMENT_SEC = 11
+/** Eén op zoveel kans dat de volgende druk de bak is. */
+const KANS = 10
+/** Zoveel bakken en dan is het potje klaar. */
+const BAKKEN_UIT = 2
+/** Harde bovengrens, zodat een potje niet eeuwig kan duren. */
+const MAX_DRUKKEN = 30
+/**
+ * Hoe lang je een fragment hoort.
+ *
+ * Korter dan bij de muziekspellen, want hier valt niets te raden: er zijn maar
+ * twee intro's en je weet binnen een halve seconde of je moet drinken. Acht
+ * seconden is genoeg om het te laten landen en om te juichen.
+ */
+const FRAGMENT_SEC = 8
 /** Wat een bak kost. */
 const BAK = 4
 
-interface Track {
+interface Nummer {
   titel: string
   artiest: string
   url: string
-  /** 0 voor een gewoon nummer */
+  /** 0 is veilig */
   bakken: number
 }
 
 interface RenelebakState {
-  /** de playlist van dit potje; blijft geheim tot een nummer gespeeld is */
-  _geheim: { lijst: Track[] }
-  index: number
+  _geheim: {
+    /** wat er nu speelt. Hier en niet publiek, want de titel is het antwoord. */
+    bezig: Nummer | null
+  }
+  /** hoeveel keer er gedrukt is */
+  gedrukt: number
   fase: 'wachten' | 'spelen' | 'uitslag'
   beurt: string
-  /** het nummer dat nu speelt of net gespeeld is, zonder titel tijdens 'spelen' */
+  /** wie er op volgende drukte; die drinkt als het de bak is */
+  drukker: string
+  /** de link van wat er speelt; de titel blijft geheim tot het afgelopen is */
   url: string
   /** pas gevuld in de uitslagfase */
   nu: { titel: string; artiest: string; bakken: number } | null
@@ -65,45 +85,44 @@ interface RenelebakState {
   klaar: boolean
 }
 
-function maakPlaylist(ctx: SpelContext): Track[] {
-  const vulling = ctx
-    .vers('renelebak-vulling', NUMMERS, VULLING, (n) => n.url)
-    .map((n) => ({ titel: n.titel, artiest: n.artiest, url: n.url, bakken: 0 }))
-
-  // Twee, drie of vier bakken. Zo kan niemand aftellen hoeveel er nog komen.
-  const hoeveel = tussen(ctx.rng, 2, 4)
-  const bakken: Track[] = []
-  for (let i = 0; i < hoeveel; i++) {
+/**
+ * Wat er nu gaat spelen.
+ *
+ * De kans wordt per druk opnieuw gegooid, dus hij kan twee keer achter elkaar
+ * vallen. Dat hoort zo: zodra er een regel zou zijn als "niet twee keer op
+ * rij", kun je er weer op rekenen.
+ */
+function trekNummer(ctx: SpelContext): Nummer {
+  if (Math.floor(ctx.rng() * KANS) === 0) {
     const keuze = BAK_NUMMERS[Math.floor(ctx.rng() * BAK_NUMMERS.length)]
-    bakken.push({ ...keuze })
+    return { ...keuze }
   }
-
-  return husselen(ctx.rng, [...vulling, ...bakken])
+  return { ...VEILIG }
 }
 
 export const renelebak: GameModule<RenelebakState> = {
   id: 'renelebak',
   naam: 'René le Bak',
-  uitleg: 'Playlist op shuffle. Hoor je dát nummer, dan drinkt iedereen een bak.',
+  uitleg: 'Playlist op shuffle. Krijg jij dát nummer, dan drink jij de bak.',
   regels: [
     'Om de beurt druk je op volgende.',
     'Je hoort een fragment, maar niet welk nummer het is.',
-    'Is het "If I tell you"? Dan drinkt iedereen een bak.',
-    'Bij een hardstyle-remix zijn het twee bakken.',
+    'Krijg jij "If I tell you"? Dan drink jij een bak.',
+    'Bij een hardstyle-remix zijn het er twee. De rest is save.',
   ],
   minSpelers: 2,
   maxSpelers: 8,
-  duur: 'kort',
+  duur: 'middel',
   tags: ['geluk', 'chaos'],
   privescherm: false,
 
   init(ctx) {
-    const lijst = maakPlaylist(ctx)
     return {
-      _geheim: { lijst },
-      index: 0,
+      _geheim: { bezig: null },
+      gedrukt: 0,
       fase: 'wachten',
       beurt: ctx.spelers[0].uid,
+      drukker: '',
       url: '',
       nu: null,
       klok: null,
@@ -117,43 +136,49 @@ export const renelebak: GameModule<RenelebakState> = {
 
     if (s.fase === 'wachten' && actie.type === 'volgende') {
       if (actie.uid !== s.beurt) return
-      const track = s._geheim.lijst[s.index]
-      if (!track) return
+
+      const nummer = trekNummer(ctx)
+      s.gedrukt++
+      s.drukker = actie.uid
 
       /*
-       * Alleen de url gaat naar de telefoons, niet de titel. Die staat in het
-       * geheim tot het fragment klaar is -- anders leest iemand het antwoord
-       * van zijn scherm terwijl de intro nog loopt.
+       * Alleen de url gaat naar de telefoons, niet de titel. Die blijft hier
+       * tot het fragment klaar is -- anders leest iemand het antwoord van zijn
+       * scherm terwijl de intro nog loopt.
        */
       s.fase = 'spelen'
-      s.url = track.url
+      s.url = nummer.url
       s.nu = null
+      s._geheim.bezig = nummer
       s.klok = startKlok(FRAGMENT_SEC, ctx.nu)
       return
     }
 
     if (s.fase === 'spelen' && actie.type === 'afgelopen') {
-      const track = s._geheim.lijst[s.index]
-      if (!track) return
+      const nummer = s._geheim.bezig
+      if (!nummer) return
 
       s.fase = 'uitslag'
-      s.nu = { titel: track.titel, artiest: track.artiest, bakken: track.bakken }
+      s.nu = { titel: nummer.titel, artiest: nummer.artiest, bakken: nummer.bakken }
       s.klok = null
 
-      if (track.bakken > 0) {
+      if (nummer.bakken > 0) {
         s.gevallen++
-        ctx.iedereenDrinkt(
-          BAK * track.bakken,
-          track.bakken === 1 ? 'een bak' : 'twee bakken — hardstyle',
+        // Alleen de drukker. Hij heeft zelf op die knop gedrukt.
+        ctx.drink(
+          s.drukker,
+          BAK * nummer.bakken,
+          nummer.bakken === 1 ? 'kreeg de bak' : 'kreeg de hardstyle — twee bakken',
         )
-        ctx.log(`${track.titel} — iedereen ${track.bakken === 1 ? 'een bak' : 'twee bakken'}`)
+        ctx.log(
+          `${ctx.naam(s.drukker)} kreeg ${nummer.titel} — ${nummer.bakken === 1 ? 'een bak' : 'twee bakken'}`,
+        )
       }
       return
     }
 
     if (s.fase === 'uitslag' && actie.type === 'verder') {
-      s.index++
-      if (s.index >= s._geheim.lijst.length) {
+      if (s.gevallen >= BAKKEN_UIT || s.gedrukt >= MAX_DRUKKEN) {
         s.klaar = true
         ctx.klaar()
         return
@@ -215,17 +240,21 @@ function Scherm({ s, ctx }: { s: RenelebakState; ctx: KijkContext }) {
   }, [s.fase, s.url])
 
   const mijnBeurt = s.beurt === ctx.ik
+  const teller = `${s.gevallen}/${BAKKEN_UIT} bakken`
 
   if (s.fase === 'spelen') {
+    const ikDrukte = s.drukker === ctx.ik
     return (
       <>
         <div className="balk">
-          <span className="kop-klein">Nummer {s.index + 1}</span>
-          <span className="kop-klein">{s.gevallen > 0 ? `${s.gevallen} bakken gevallen` : 'nog geen bak'}</span>
+          <span className="kop-klein">Nummer {s.gedrukt}</span>
+          <span className="kop-klein">{teller}</span>
         </div>
         <div className="midden" style={{ gap: 14 }}>
           <div style={{ fontSize: 64 }}>🔊</div>
-          <h1 style={{ textAlign: 'center' }}>Luisteren…</h1>
+          <h1 style={{ textAlign: 'center' }}>
+            {ikDrukte ? 'Dit is voor jou…' : `${ctx.naam(s.drukker)} drukte…`}
+          </h1>
           <div className="klein zacht" style={{ textAlign: 'center', maxWidth: 300 }}>
             {fout
               ? 'Het geluid wil niet starten. Tik op het scherm en probeer het nog een keer.'
@@ -241,11 +270,14 @@ function Scherm({ s, ctx }: { s: RenelebakState; ctx: KijkContext }) {
 
   if (s.fase === 'uitslag' && s.nu) {
     const bak = s.nu.bakken > 0
+    const ikDrukte = s.drukker === ctx.ik
+    const klaarNa = s.gevallen >= BAKKEN_UIT || s.gedrukt >= MAX_DRUKKEN
+
     return (
       <>
         <div className="balk">
-          <span className="kop-klein">Nummer {s.index + 1}</span>
-          <span className="kop-klein">{s.gevallen} gevallen</span>
+          <span className="kop-klein">Nummer {s.gedrukt}</span>
+          <span className="kop-klein">{teller}</span>
         </div>
 
         <div className="midden" style={{ gap: 10 }}>
@@ -257,18 +289,24 @@ function Scherm({ s, ctx }: { s: RenelebakState; ctx: KijkContext }) {
           {bak ? (
             <Kaartje style={{ textAlign: 'center', borderColor: 'var(--rood)' }}>
               <strong>
-                {s.nu.bakken === 1 ? 'Een bak voor iedereen' : 'Twee bakken — hardstyle'}
+                {ikDrukte ? 'Jij drukte' : ctx.naam(s.drukker)} —{' '}
+                {s.nu.bakken === 1 ? 'een bak' : 'twee bakken, hardstyle'}
               </strong>
+              <div className="klein zacht" style={{ marginTop: 3 }}>
+                De rest is save
+              </div>
             </Kaartje>
           ) : (
-            <div className="klein zacht">Geen bak. Doorgeven.</div>
+            <div className="klein zacht">
+              {ikDrukte ? 'Save. Doorgeven.' : `${ctx.naam(s.drukker)} is save.`}
+            </div>
           )}
         </div>
 
         <div className="onderaan">
           {ctx.benIkHost ? (
             <GroteKnop kleur="goud" enorm bijTik={() => ctx.stuur('verder')}>
-              Doorgeven
+              {klaarNa ? 'Klaar' : 'Doorgeven'}
             </GroteKnop>
           ) : (
             <Kaartje style={{ textAlign: 'center' }}>
@@ -283,8 +321,8 @@ function Scherm({ s, ctx }: { s: RenelebakState; ctx: KijkContext }) {
   return (
     <>
       <div className="balk">
-        <span className="kop-klein">Nummer {s.index + 1}</span>
-        <span className="kop-klein">{s.gevallen > 0 ? `${s.gevallen} bakken gevallen` : 'nog geen bak'}</span>
+        <span className="kop-klein">Nummer {s.gedrukt + 1}</span>
+        <span className="kop-klein">{teller}</span>
       </div>
 
       <div className="midden" style={{ gap: 10 }}>
@@ -293,8 +331,9 @@ function Scherm({ s, ctx }: { s: RenelebakState; ctx: KijkContext }) {
           {mijnBeurt ? 'Jij mag drukken' : `${ctx.naam(s.beurt)} mag drukken`}
         </h2>
         <div className="klein zacht" style={{ textAlign: 'center', maxWidth: 300 }}>
-          Zorg dat je drinken klaarstaat. Niemand weet hoeveel bakken er in deze
-          playlist zitten.
+          {mijnBeurt
+            ? 'Krijg jij het nummer, dan drink jij alleen. De rest is save.'
+            : 'Hij kan nu vallen, of pas over twintig nummers. Niemand weet het.'}
         </div>
         <SpelerBalk spelers={ctx.spelers} actief={[s.beurt]} />
       </div>

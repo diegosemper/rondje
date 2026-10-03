@@ -98,10 +98,10 @@ export const DEMOS: Record<string, Beeld[]> = {
     { kop: 'Minste slagen', tekst: 'Wie de meeste slagen pakt wint en deelt uit. De rest drinkt de inzet.', slok: '2 slokken' },
   ],
   renelebak: [
-    { teken: '⏭️', kop: 'Jij mag drukken', tekst: 'De playlist staat op shuffle. Zorg dat je drinken klaarstaat.' },
-    { teken: '🔊', kop: 'Luisteren', tekst: 'Elf seconden muziek, maar je ziet niet welk nummer het is.' },
-    { kop: 'If I Tell You', tekst: 'Dát nummer. Iedereen een bak.', slok: '4 slokken' },
-    { kop: 'Hardstyle', tekst: 'Bij een remix zijn het er twee. Niemand weet hoeveel er nog komen.', slok: '8 slokken' },
+    { teken: '⏭️', kop: 'Jij mag drukken', tekst: 'Krijg jij het nummer, dan drink jij alleen. De rest is save.' },
+    { teken: '🔊', kop: 'Solid Stigma', tekst: 'Hardcore. Save — doorgeven aan de volgende.' },
+    { kop: 'If I Tell You', tekst: 'Dát nummer. Jij drukte, dus jij drinkt.', slok: '4 slokken' },
+    { kop: 'Hardstyle', tekst: 'Bij een remix zijn het er twee. Hij kan meteen vallen of pas bij de twintigste.', slok: '8 slokken' },
   ],
   nummers: [
     { teken: '🎵', kop: 'Een tiende seconde', tekst: 'Dat is alles wat je hoort. Typ wat je denkt.' },

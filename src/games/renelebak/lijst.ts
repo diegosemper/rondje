@@ -1,28 +1,49 @@
 /**
- * De nummers waar het om gaat bij René le Bak.
+ * De playlist van René le Bak, en dat zijn maar drie nummers.
  *
- * Het spel draait om één plaat: "If I tell you" van René Le Blanc uit 2020.
- * In studentenhuizen gaat de playlist op shuffle, iedereen drukt om de beurt op
- * volgende, en zodra dát nummer begint drinkt de hele tafel een bak. Bij een
- * hardstyle-remix zijn het er twee.
+ * Het spel komt uit de studentenhuizen: de playlist staat op shuffle, iedereen
+ * drukt om de beurt op volgende, en zodra "If I tell you" van René Le Blanc
+ * begint drinkt degene die drukte een bak. Bij een hardstyle-remix zijn het er
+ * twee.
  *
- * Hier zijn het fragmenten van dertig seconden van Apple, dezelfde bron die
- * Raad het Nummer en Hitster ook gebruiken. Geen eigen bestanden dus, en geen
- * Spotify: de app heeft er al een speler voor.
+ * Al het andere in die playlist is "Solid Stigma" van Angerfist, en dat is
+ * precies de grap: hardcore waar je niets van hoeft, afgewisseld met een
+ * zoetsappige plaat uit 2020 waar je een bak van moet. Je weet binnen een halve
+ * seconde welke kant het op gaat.
  *
- * De remixen staan er allebei in. Dat is geen detail: hoor je de intro van het
- * origineel dan weet je wat komt, maar een hardstyle-versie herken je pas een
- * seconde later -- en dan is het al twee bakken.
+ * Er zit dus met opzet géén lijst met honderd gewone nummers achter. Hoorde je
+ * elke keer iets anders, dan is het een muziekquiz; nu is het de spanning van
+ * twee intro's die je allebei uit je hoofd kent.
+ *
+ * De fragmenten zijn de dertig-seconden-previews van Apple, dezelfde bron die
+ * Raad het Nummer en Hitster ook gebruiken. Geen Spotify en geen eigen
+ * bestanden dus.
  */
 
 export interface BakNummer {
   titel: string
   artiest: string
   url: string
-  /** hoeveel bakken dit nummer kost */
-  bakken: 1 | 2
+  /** hoeveel bakken dit nummer kost; 0 is veilig */
+  bakken: 0 | 1 | 2
 }
 
+/** Het veilige nummer. Dit hoor je de meeste keren. */
+export const VEILIG: BakNummer = {
+  titel: 'Solid Stigma',
+  artiest: 'Angerfist',
+  url: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview125/v4/c8/71/74/c8717452-8bd9-da89-39f8-e3d5aaf6f4de/mzaf_13102584456711041914.plus.aac.p.m4a',
+  bakken: 0,
+}
+
+/**
+ * De nummers waar het om gaat.
+ *
+ * Het origineel kost één bak, de twee hardstyle-remixen kosten er twee. De
+ * remixen staan er allebei in zodat het niet altijd dezelfde intro is: hoor je
+ * het origineel dan weet je meteen hoe duur het is, bij een remix duurt dat een
+ * seconde langer -- en dan is het al twee bakken.
+ */
 export const BAK_NUMMERS: BakNummer[] = [
   {
     titel: 'If I Tell You',
