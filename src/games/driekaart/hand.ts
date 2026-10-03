@@ -108,20 +108,3 @@ export function dealerDoetMee(w: Waardering): boolean {
   if (w.soort > SOORT.hoogsteKaart) return true
   return w.sleutels[0] >= 12
 }
-
-/**
- * De bonus voor een mooie hand.
- *
- * Die staat los van de dealer: heb je drie azen en heeft de dealer een
- * straatflush, dan heb je verloren maar krijg je de bonus nog steeds. Anders
- * zou de mooiste hand van de avond helemaal niets opleveren, en daar wordt een
- * tafel terecht boos om.
- */
-export const BONUS: Record<Soort, number> = {
-  1: 0,
-  2: 1,
-  3: 2,
-  4: 3,
-  5: 5,
-  6: 8,
-}
