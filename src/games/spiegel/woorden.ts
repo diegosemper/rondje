@@ -130,4 +130,64 @@ export const GROEPEN: Groep[] = [
     naam: 'studentenhuis',
     woorden: ['vaatwasser', 'wasmand', 'koelkast', 'bank', 'trap', 'gang', 'schimmel', 'rooster', 'fiets', 'kratje'],
   },
+  {
+    naam: 'in de keuken',
+    woorden: ['pan', 'mes', 'bord', 'vork', 'glas', 'oven', 'koelkast', 'spatel', 'zeef', 'snijplank'],
+  },
+  {
+    naam: 'in de badkamer',
+    woorden: ['douche', 'spiegel', 'handdoek', 'zeep', 'tandpasta', 'scheermes', 'kam', 'weegschaal', 'bad', 'kraan'],
+  },
+  {
+    naam: 'op kantoor',
+    woorden: ['printer', 'toetsenbord', 'bureau', 'stoel', 'beamer', 'agenda', 'nietmachine', 'koffie', 'muis', 'whiteboard'],
+  },
+  {
+    naam: 'op school',
+    woorden: ['krijtje', 'tentamen', 'rugzak', 'pen', 'rooster', 'kluisje', 'kantine', 'gymzaal', 'agenda', 'bord'],
+  },
+  {
+    naam: 'in de auto',
+    woorden: ['stuur', 'gordel', 'spiegel', 'radio', 'pedaal', 'ruitenwisser', 'kofferbak', 'krik', 'navigatie', 'handrem'],
+  },
+  {
+    naam: 'in de sportschool',
+    woorden: ['halter', 'loopband', 'spiegel', 'handdoek', 'shaker', 'mat', 'bank', 'fiets', 'kluisje', 'weegschaal'],
+  },
+  {
+    naam: 'in het ziekenhuis',
+    woorden: ['pleister', 'spuit', 'gips', 'bed', 'rolstoel', 'thermometer', 'verband', 'wachtkamer', 'arts', 'brancard'],
+  },
+  {
+    naam: 'bij de supermarkt',
+    woorden: ['karretje', 'kassa', 'mandje', 'schap', 'bon', 'weegschaal', 'koeling', 'aanbieding', 'tas', 'band'],
+  },
+  {
+    naam: 'oud en nieuw',
+    woorden: ['vuurpijl', 'oliebol', 'champagne', 'knalerwt', 'aftellen', 'vonk', 'kurk', 'glas', 'sterretje', 'vuurwerk'],
+  },
+  {
+    naam: 'op de camping',
+    woorden: ['tent', 'haring', 'luchtbed', 'veldbed', 'koelbox', 'douchemuntje', 'gasbrander', 'zaklamp', 'scheerlijn', 'stoeltje'],
+  },
+  {
+    naam: 'in de trein',
+    woorden: ['kaartje', 'perron', 'coupé', 'conducteur', 'rek', 'raam', 'stoel', 'tunnel', 'vertraging', 'omroep'],
+  },
+  {
+    naam: 'gereedschap',
+    woorden: ['hamer', 'schroevendraaier', 'tang', 'zaag', 'boor', 'waterpas', 'duimstok', 'vijl', 'beitel', 'moersleutel'],
+  },
+  {
+    naam: 'in de tuin',
+    woorden: ['schep', 'hark', 'gieter', 'slang', 'kruiwagen', 'heg', 'gras', 'bloempot', 'schutting', 'vuurkorf'],
+  },
+  {
+    naam: 'muziek maken',
+    woorden: ['gitaar', 'drum', 'piano', 'microfoon', 'versterker', 'snaar', 'stokje', 'luidspreker', 'kabel', 'standaard'],
+  },
+  {
+    naam: 'een verjaardag',
+    woorden: ['taart', 'kaarsje', 'slinger', 'ballon', 'cadeau', 'kaart', 'lied', 'strik', 'muts', 'confetti'],
+  },
 ]
