@@ -18,9 +18,11 @@ import { ANTWOORDEN, ZINNEN, JOKER, JOKERS, JOKER_MAX } from './kaarten'
    groep stemmen, dan wint elke ronde de veiligste grap, en juist daar gaat
    dit spel niet over.
 
-   Je hand blijft de hele pot van jou en wordt na elke ronde aangevuld. Dat
-   betekent dat je een goede kaart kunt bewaren voor een betere zin, en dat is
-   het enige stukje tactiek dat erin zit.
+   Elke ronde krijgt iedereen zes compleet nieuwe kaarten. Eerst werd alleen de
+   gelegde kaart aangevuld, en dan zit je halverwege met vijf kaarten die je uit
+   je hoofd kent en die bij geen enkele zin passen. Daarmee verdwijnt het enige
+   tactische laagje -- een kaart bewaren voor een betere zin -- en dat is het
+   waard: dit spel gaat over wat er toevallig in je hand ligt bij deze zin.
 
    Wat wel en niet naar de andere telefoons gaat: je hand staat in `_geheim`,
    want anders weet iedereen wat jij kunt spelen. De ingezette kaarten staan
@@ -67,18 +69,21 @@ interface SlechtState {
 }
 
 /**
- * Het dek voor dit potje: zo veel kaarten als er hooguit doorheen gaan.
+ * Het dek voor dit potje: zo veel kaarten als er doorheen gaan.
  *
- * Precies genoeg pakken en niet de hele lijst is het hele punt. Wat je pakt
- * telt als gehad, dus zou ik hier alle antwoorden opvragen, dan was de lijst na
- * één potje op en begon het geheugen meteen weer overnieuw — dan zie je alsnog
- * elke avond dezelfde kaarten.
+ * Sinds iedereen elke ronde een compleet nieuwe hand krijgt, is dat een stuk
+ * meer dan eerst: elke speler verbrandt per ronde een volle hand. Bij vijf man
+ * en tien rondes zijn dat driehonderd kaarten.
  *
- * Iedereen kan hoogstens een volle hand plus één kaart per ronde verspelen. Er
- * gaat een marge overheen voor wie later aanschuift.
+ * Precies genoeg pakken en niet gewoon de hele lijst blijft belangrijk. Wat je
+ * pakt telt als gehad, dus zou ik hier altijd alle antwoorden opvragen, dan was
+ * de lijst na één potje op en begon het geheugen meteen overnieuw -- en zie je
+ * alsnog elke avond dezelfde kaarten.
+ *
+ * Er gaat een marge overheen voor wie halverwege aanschuift.
  */
 function dekGrootte(ctx: SpelContext): number {
-  return Math.min(ANTWOORDEN.length, (ctx.spelers.length + 1) * (HAND + RONDES))
+  return Math.min(ANTWOORDEN.length, (ctx.spelers.length + 1) * HAND * RONDES)
 }
 
 /**
@@ -119,6 +124,19 @@ function nieuweRonde(s: SlechtState, ctx: SpelContext) {
   s._geheim.van = {}
   s.laatste = null
   s.magUitdelen = false
+
+  /*
+   * Alles weg en zes nieuwe. Eerst werd alleen de kaart die je gelegd had
+   * aangevuld, en dan zit je met vijf kaarten die je al negen rondes aan het
+   * wegwerken bent: je kent ze uit je hoofd, ze passen bij geen enkele zin, en
+   * je legt uiteindelijk maar iets.
+   *
+   * Hiermee verdwijnt het enige tactische laagje dat het spel had -- een goede
+   * kaart bewaren voor een betere zin kan nu niet meer. Dat is het waard: dit
+   * spel moet gaan over wat er tóevallig in je hand ligt bij déze zin, en niet
+   * over het beheren van een voorraad.
+   */
+  s._geheim.handen = {}
   vulHanden(s, ctx)
 }
 
@@ -129,6 +147,7 @@ export const slechtantwoord: GameModule<SlechtState> = {
   regels: [
     'Er staat een zin met een gat erin.',
     'Kies uit je hand het antwoord dat er het beste in past.',
+    'Elke ronde krijg je zes nieuwe kaarten.',
     'Alles komt anoniem in beeld; de jury kiest de winnaar.',
     'De winnaar deelt uit. De jury rouleert elke ronde.',
     'Trek je een 🃏 — zeldzaam — dan vul je zelf iets in.',

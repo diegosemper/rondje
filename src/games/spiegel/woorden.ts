@@ -90,4 +90,44 @@ export const GROEPEN: Groep[] = [
     naam: 'op vakantie',
     woorden: ['koffer', 'hotel', 'paspoort', 'zonnebrand', 'camping', 'vliegveld', 'kaart', 'gids', 'souvenir', 'strandbed'],
   },
+  {
+    naam: 'in de slaapkamer',
+    woorden: ['bed', 'kussen', 'dekbed', 'lamp', 'spiegel', 'kast', 'wekker', 'gordijn', 'matras', 'nachtkastje'],
+  },
+  {
+    naam: 'drankspellen',
+    woorden: ['bierpong', 'kingsen', 'waterval', 'mexicanen', 'pesten', 'bussen', 'hoger of lager', 'dobbelen', 'kaarten', 'shotje'],
+  },
+  {
+    naam: 'de kroeg',
+    woorden: ['bar', 'kruk', 'tap', 'dansvloer', 'uitsmijter', 'garderobe', 'wc', 'muntje', 'terras', 'jukebox'],
+  },
+  {
+    naam: 'eerste dates',
+    woorden: ['bioscoop', 'restaurant', 'wandeling', 'terrasje', 'museum', 'strand', 'etentje', 'koffie', 'festival', 'picknick'],
+  },
+  {
+    naam: 'de ochtend erna',
+    woorden: ['kater', 'water', 'paracetamol', 'kroket', 'douche', 'bed', 'gordijn', 'telefoon', 'spijt', 'koffie'],
+  },
+  {
+    naam: 'kleding uit',
+    woorden: ['shirt', 'broek', 'sok', 'jas', 'schoen', 'trui', 'pet', 'sjaal', 'rok', 'zwembroek'],
+  },
+  {
+    naam: 'op een festival',
+    woorden: ['tent', 'bandje', 'muntjes', 'podium', 'modder', 'regenjas', 'zonnebril', 'slaapzak', 'glitter', 'wc'],
+  },
+  {
+    naam: 'bij de schoonouders',
+    woorden: ['bank', 'thee', 'koekje', 'fotoalbum', 'tuin', 'hond', 'tafelkleed', 'borrel', 'buffet', 'kerstboom'],
+  },
+  {
+    naam: 'lichaamsdelen',
+    woorden: ['hand', 'voet', 'knie', 'elleboog', 'oor', 'neus', 'hals', 'rug', 'schouder', 'duim'],
+  },
+  {
+    naam: 'studentenhuis',
+    woorden: ['vaatwasser', 'wasmand', 'koelkast', 'bank', 'trap', 'gang', 'schimmel', 'rooster', 'fiets', 'kratje'],
+  },
 ]
