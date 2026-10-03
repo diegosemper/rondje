@@ -2109,3 +2109,147 @@ input.code-invoer {
   color: var(--tekst-zacht);
   white-space: nowrap;
 }
+
+/* ── Het voorbeeldje bij een spel ─────────────────────────────
+   Een laag over de lobby heen met een rijtje beeldjes dat doorloopt. Donkerder
+   dan de lobby zelf, zodat duidelijk is dat je even ergens anders bent. */
+.demo-laag {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  background: rgba(8, 6, 4, 0.82);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+}
+
+.demo-doos {
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-radius: var(--straal);
+  border: 2px solid #b9843c;
+  background: linear-gradient(180deg, #4a2a0d, #2a1707);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
+}
+
+.demo-sluit {
+  background: none;
+  border: none;
+  color: var(--tekst);
+  opacity: 0.7;
+  font-size: 18px;
+  padding: 2px 6px;
+  min-height: 0;
+  cursor: pointer;
+}
+
+.demo-beeld {
+  min-height: 188px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.26);
+  cursor: pointer;
+}
+
+.demo-teken { font-size: 52px; line-height: 1 }
+
+.demo-kaarten { display: flex; gap: 5px; flex-wrap: wrap; justify-content: center }
+
+.demo-kaart {
+  min-width: 34px;
+  padding: 6px 7px;
+  border-radius: 6px;
+  background: #fbf6e9;
+  color: #1d1a14;
+  font-weight: 800;
+  font-size: 15px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+.demo-kaart.rood { color: #b3261e }
+
+.demo-kop {
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--goud);
+  line-height: 1.2;
+}
+
+.demo-tekst { font-size: 14px; line-height: 1.45; opacity: 0.92 }
+
+.demo-knop {
+  font-size: 13px;
+  font-weight: 700;
+  padding: 7px 11px;
+  border-radius: 9px;
+  border: 2px solid #b9843c;
+  background: linear-gradient(180deg, #5b3511, #3a2109);
+  max-width: 100%;
+}
+
+.demo-slok {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--rood);
+  background: rgba(0, 0, 0, 0.3);
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.demo-stippen { display: flex; gap: 5px; justify-content: center }
+
+.demo-stip {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(255, 238, 205, 0.25);
+}
+.demo-stip.nu { background: var(--goud) }
+
+.demo-verder {
+  min-height: 42px;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 10px;
+  border: 2px solid #b9843c;
+  background: linear-gradient(180deg, #4a2a0d, #331c07);
+  color: var(--tekst);
+  cursor: pointer;
+}
+
+/* Het ▶ naast een spel in de lijst. */
+.spel-play {
+  flex: 0 0 auto;
+  width: 38px;
+  min-height: 38px;
+  border-radius: 10px;
+  border: 1px solid rgba(185, 132, 60, 0.55);
+  background: rgba(0, 0, 0, 0.22);
+  color: var(--goud);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* De scheidingslijn zat op de spelrij zelf, maar die zit nu in een wikkel met
+   het ▶ ernaast. Daardoor was elke rij "last-child" en verdwenen alle lijnen.
+   De lijn hoort dus op de wikkel. */
+.spelrij-houder {
+  border-bottom: 1px solid rgba(255, 220, 160, 0.18);
+}
+.spelrij-houder:last-child {
+  border-bottom: none;
+}
+.spelrij-houder .spelrij {
+  border-bottom: none;
+}

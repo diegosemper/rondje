@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import type { Kamer, Zwaarte } from '../engine/types'
 import { pastBijGroep, spelEmoji, SPELLEN } from '../engine/registry'
+import { DEMOS } from '../games/demos'
+import { Voorbeeld } from '../ui/Demo'
 import { ZWAARTE_LABEL, ZWAARTE_UITLEG } from '../engine/slokken'
 import {
   MAX_SPELERS,
@@ -39,6 +41,8 @@ export function Lobby({
   bijVertrek: () => void
 }) {
   const [toonSpellen, zetToonSpellen] = useState(false)
+  // Welk spel staat als voorbeeld open? null is dicht.
+  const [voorbeeld, zetVoorbeeld] = useState<string | null>(null)
   const [gedeeld, zetGedeeld] = useState(false)
 
   const code = kamer.meta.code
@@ -168,27 +172,47 @@ export function Lobby({
                 {SPELLEN.map((s) => {
                   const aan = isAan(s.id)
                   const teWeinig = !pastBijGroep(s, kamer.instelling.verwacht)
+                  const demo = DEMOS[s.id]
                   return (
-                    <button
+                    <div
                       key={s.id}
-                      className="spelrij"
-                      style={{ width: '100%', textAlign: 'left' }}
-                      onClick={() => wisselSpel(s.id)}
+                      className="rij spelrij-houder"
+                      style={{ gap: 6, alignItems: 'stretch' }}
                     >
-                      <span className={aan && !teWeinig ? '' : 'uit'} style={{ minWidth: 0 }}>
-                        <span className="spel-teken">{spelEmoji(s.id)}</span>{' '}
-                        <strong>{s.naam}</strong>
-                        {teWeinig && (
-                          <span style={{ color: '#ffd166', fontSize: 12 }}>
-                            {' '}
-                            · vanaf {s.minSpelers}
-                          </span>
-                        )}
-                        <br />
-                        <span style={{ fontSize: 12, opacity: 0.7 }}>{s.uitleg}</span>
-                      </span>
-                      <span className={`vinkje ${aan ? 'aan' : ''}`}>✓</span>
-                    </button>
+                      {/* Het ▶ staat los van de rij zelf: tik je ernaast, dan
+                          vink je het spel aan of uit en ga je niet kijken. */}
+                      {demo && (
+                        <button
+                          className="spel-play"
+                          aria-label={`Voorbeeld van ${s.naam}`}
+                          onClick={() => {
+                            tril(6)
+                            zetVoorbeeld(s.id)
+                          }}
+                        >
+                          ▶
+                        </button>
+                      )}
+                      <button
+                        className="spelrij"
+                        style={{ flex: 1, minWidth: 0, textAlign: 'left' }}
+                        onClick={() => wisselSpel(s.id)}
+                      >
+                        <span className={aan && !teWeinig ? '' : 'uit'} style={{ minWidth: 0 }}>
+                          <span className="spel-teken">{spelEmoji(s.id)}</span>{' '}
+                          <strong>{s.naam}</strong>
+                          {teWeinig && (
+                            <span style={{ color: '#ffd166', fontSize: 12 }}>
+                              {' '}
+                              · vanaf {s.minSpelers}
+                            </span>
+                          )}
+                          <br />
+                          <span style={{ fontSize: 12, opacity: 0.7 }}>{s.uitleg}</span>
+                        </span>
+                        <span className={`vinkje ${aan ? 'aan' : ''}`}>✓</span>
+                      </button>
+                    </div>
                   )
                 })}
               </div>
@@ -240,6 +264,15 @@ export function Lobby({
           </button>
         </div>
       </div>
+
+      {voorbeeld && DEMOS[voorbeeld] && (
+        <Voorbeeld
+          naam={SPELLEN.find((x) => x.id === voorbeeld)?.naam ?? ''}
+          teken={spelEmoji(voorbeeld)}
+          beelden={DEMOS[voorbeeld]}
+          bijSluiten={() => zetVoorbeeld(null)}
+        />
+      )}
     </>
   )
 }
