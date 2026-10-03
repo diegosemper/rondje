@@ -98,9 +98,9 @@ export const DEMOS: Record<string, Beeld[]> = {
     { kop: 'Minste slagen', tekst: 'Wie de meeste slagen pakt wint en deelt uit. De rest drinkt de inzet.', slok: '2 slokken' },
   ],
   renelebak: [
-    { teken: '⏭️', kop: 'Jij mag drukken', tekst: 'Krijg jij het nummer, dan drink jij alleen. De rest is save.' },
-    { teken: '🔊', kop: 'Solid Stigma', tekst: 'Hardcore. Save — doorgeven aan de volgende.' },
-    { kop: 'If I Tell You', tekst: 'Dát nummer. Jij drukte, dus jij drinkt.', slok: '4 slokken' },
+    { teken: '🔈', kop: 'Wie heeft de box?', tekst: 'Die telefoon speelt alle nummers. Daarna drukt iedereen om de beurt.' },
+    { teken: '🔊', kop: 'Solid Stigma', tekst: 'Hardcore, acht seconden. Save — doorgeven aan de volgende.' },
+    { kop: 'If I Tell You', tekst: 'Dát nummer. Jij drukte, dus jij drinkt, en hij speelt helemaal uit.', slok: '4 slokken' },
     { kop: 'Hardstyle', tekst: 'Bij een remix zijn het er twee. Hij kan meteen vallen of pas bij de twintigste.', slok: '8 slokken' },
   ],
   nummers: [

@@ -34,9 +34,16 @@ import { BAK_NUMMERS, VEILIG } from './lijst'
    De titel blijft dicht terwijl het speelt. Je hóórt het aan de intro, net als
    in het echt, en pas daarna staat er wat het was.
 
-   Het geluid komt van de telefoon van de host. Dat moet er één zijn: speelden
-   alle telefoons mee, dan hoor je hetzelfde fragment acht keer net naast elkaar
-   en herkent niemand er iets van.
+   Het geluid komt van één telefoon, en je kiest aan het begin welke. Dat moet
+   één bron zijn -- speelden alle telefoons mee, dan hoor je hetzelfde fragment
+   acht keer net naast elkaar en herkent niemand er iets van -- en het moet die
+   ene telefoon zijn die aan de box hangt. Dat is zelden de host van de lobby,
+   dus dat is een eigen keuze geworden.
+
+   Krijg je de bak, dan speelt het nummer helemaal uit. Dat is het moment van
+   het spel: iedereen schreeuwt, jij drinkt, en die plaat gaat gewoon door tot
+   hij klaar is. Wie door wil, drukt op doorgeven en dan stopt hij. Bij Solid
+   Stigma hoor je maar acht seconden, want daar is niets aan.
    ───────────────────────────────────────────────────────────── */
 
 /** Eén op zoveel kans dat de volgende druk de bak is. */
@@ -46,13 +53,20 @@ const BAKKEN_UIT = 2
 /** Harde bovengrens, zodat een potje niet eeuwig kan duren. */
 const MAX_DRUKKEN = 30
 /**
- * Hoe lang je een fragment hoort.
+ * Hoe lang je een veilig fragment hoort.
  *
  * Korter dan bij de muziekspellen, want hier valt niets te raden: er zijn maar
- * twee intro's en je weet binnen een halve seconde of je moet drinken. Acht
- * seconden is genoeg om het te laten landen en om te juichen.
+ * twee intro's en je weet binnen een halve seconde of je moet drinken.
  */
-const FRAGMENT_SEC = 8
+const VEILIG_SEC = 8
+
+/**
+ * Hoe lang het duurt voordat de uitslag in beeld komt als het de bak is.
+ *
+ * Kort, want de tafel weet het al. Daarna blijft het nummer doorspelen tot het
+ * einde of tot iemand op doorgeven drukt.
+ */
+const BAK_SEC = 4
 /** Wat een bak kost. */
 const BAK = 4
 
@@ -69,9 +83,11 @@ interface RenelebakState {
     /** wat er nu speelt. Hier en niet publiek, want de titel is het antwoord. */
     bezig: Nummer | null
   }
+  /** wie er aan de box hangt; die telefoon speelt alles af */
+  dj: string
   /** hoeveel keer er gedrukt is */
   gedrukt: number
-  fase: 'wachten' | 'spelen' | 'uitslag'
+  fase: 'kiesdj' | 'wachten' | 'spelen' | 'uitslag'
   beurt: string
   /** wie er op volgende drukte; die drinkt als het de bak is */
   drukker: string
@@ -105,9 +121,9 @@ export const renelebak: GameModule<RenelebakState> = {
   naam: 'René le Bak',
   uitleg: 'Playlist op shuffle. Krijg jij dát nummer, dan drink jij de bak.',
   regels: [
+    'Kies eerst wie aan de box hangt — die telefoon speelt alles af.',
     'Om de beurt druk je op volgende.',
-    'Je hoort een fragment, maar niet welk nummer het is.',
-    'Krijg jij "If I tell you"? Dan drink jij een bak.',
+    'Krijg jij "If I tell you"? Dan drink jij een bak, en hij speelt uit.',
     'Bij een hardstyle-remix zijn het er twee. De rest is save.',
   ],
   minSpelers: 2,
@@ -119,8 +135,9 @@ export const renelebak: GameModule<RenelebakState> = {
   init(ctx) {
     return {
       _geheim: { bezig: null },
+      dj: '',
       gedrukt: 0,
-      fase: 'wachten',
+      fase: 'kiesdj',
       beurt: ctx.spelers[0].uid,
       drukker: '',
       url: '',
@@ -133,6 +150,19 @@ export const renelebak: GameModule<RenelebakState> = {
 
   reduce(s, actie: Actie, ctx) {
     const volgorde = ctx.spelers.map((p) => p.uid)
+
+    /*
+     * Wie hangt aan de box? Iedereen mag dat aanwijzen, ook zichzelf: aan tafel
+     * roept die persoon gewoon "ik heb de box" en tikt het aan. De eerste tik
+     * geldt, want er valt niets te onderhandelen.
+     */
+    if (s.fase === 'kiesdj' && actie.type === 'dj') {
+      const wie = String(actie.payload?.uid ?? '')
+      if (!volgorde.includes(wie)) return
+      s.dj = wie
+      s.fase = 'wachten'
+      return
+    }
 
     if (s.fase === 'wachten' && actie.type === 'volgende') {
       if (actie.uid !== s.beurt) return
@@ -150,7 +180,9 @@ export const renelebak: GameModule<RenelebakState> = {
       s.url = nummer.url
       s.nu = null
       s._geheim.bezig = nummer
-      s.klok = startKlok(FRAGMENT_SEC, ctx.nu)
+      // De bak krijgt een korte aanloop en speelt daarna in de uitslag door;
+      // een veilig nummer is na acht seconden klaar.
+      s.klok = startKlok(nummer.bakken > 0 ? BAK_SEC : VEILIG_SEC, ctx.nu)
       return
     }
 
@@ -211,12 +243,14 @@ function Scherm({ s, ctx }: { s: RenelebakState; ctx: KijkContext }) {
 
   useHostKlok(ctx, s.fase === 'spelen', s.klok?.eind ?? 0, 'afgelopen')
 
+  const ikBenDj = s.dj === ctx.ik
+
   /*
-   * Alleen de host speelt af. Dat is de telefoon die aan de speaker hangt, en
-   * één bron betekent dat de tafel één keer dezelfde intro hoort.
+   * Alleen de telefoon van de dj speelt af. Dat is de telefoon die aan de box
+   * hangt, en één bron betekent dat de tafel één keer dezelfde intro hoort.
    */
   useEffect(() => {
-    if (!ctx.benIkHost) return
+    if (!ikBenDj) return
     const el = new Audio()
     el.preload = 'auto'
     audioRef.current = el
@@ -224,23 +258,71 @@ function Scherm({ s, ctx }: { s: RenelebakState; ctx: KijkContext }) {
       el.pause()
       audioRef.current = null
     }
-  }, [ctx.benIkHost])
+  }, [ikBenDj])
 
+  // Starten doet hij op een nieuwe link, en alleen dan. Zou dit ook op de fase
+  // reageren, dan begon het nummer opnieuw op het moment dat de uitslag in
+  // beeld kwam -- precies waar het moet doorspelen.
   useEffect(() => {
     const el = audioRef.current
-    if (!el) return
-    if (s.fase !== 'spelen' || !s.url) {
-      el.pause()
-      return
-    }
+    if (!el || !s.url) return
     zetFout(false)
     el.src = s.url
     el.currentTime = 0
     el.play().catch(() => zetFout(true))
-  }, [s.fase, s.url])
+  }, [s.url])
+
+  /*
+   * Stoppen is een eigen afweging. Een veilig nummer gaat uit zodra de uitslag
+   * er is, maar de bak speelt door: dat is het moment van het spel. Hij stopt
+   * als hij uit zichzelf klaar is of als iemand op doorgeven drukt.
+   */
+  useEffect(() => {
+    const el = audioRef.current
+    if (!el) return
+    const bak = (s.nu?.bakken ?? 0) > 0
+    const magSpelen = s.fase === 'spelen' || (s.fase === 'uitslag' && bak)
+    if (!magSpelen) el.pause()
+  }, [s.fase, s.nu])
 
   const mijnBeurt = s.beurt === ctx.ik
   const teller = `${s.gevallen}/${BAKKEN_UIT} bakken`
+
+  if (s.fase === 'kiesdj') {
+    return (
+      <>
+        <div className="balk">
+          <span className="kop-klein">René le Bak</span>
+          <span className="kop-klein">voor we beginnen</span>
+        </div>
+        <div className="midden" style={{ gap: 10 }}>
+          <div style={{ fontSize: 56 }}>🔈</div>
+          <h2 style={{ textAlign: 'center' }}>Wie hangt aan de box?</h2>
+          <div className="klein zacht" style={{ textAlign: 'center', maxWidth: 300 }}>
+            Die telefoon speelt alle nummers. Meestal is er maar één met de
+            speaker verbonden, en dat is zelden de host.
+          </div>
+        </div>
+        <div className="onderaan">
+          <div className="rij" style={{ flexWrap: 'wrap', gap: 6 }}>
+            {ctx.spelers.map((p) => (
+              <button
+                key={p.uid}
+                className="knop klein"
+                onClick={() => {
+                  tril(8)
+                  ctx.stuur('dj', { uid: p.uid })
+                }}
+              >
+                {p.emoji} {p.naam}
+                {p.uid === ctx.ik ? ' (ik)' : ''}
+              </button>
+            ))}
+          </div>
+        </div>
+      </>
+    )
+  }
 
   if (s.fase === 'spelen') {
     const ikDrukte = s.drukker === ctx.ik
@@ -258,9 +340,9 @@ function Scherm({ s, ctx }: { s: RenelebakState; ctx: KijkContext }) {
           <div className="klein zacht" style={{ textAlign: 'center', maxWidth: 300 }}>
             {fout
               ? 'Het geluid wil niet starten. Tik op het scherm en probeer het nog een keer.'
-              : ctx.benIkHost
-                ? 'Je telefoon speelt het fragment.'
-                : 'Het geluid komt van de telefoon van de host.'}
+              : ikBenDj
+                ? 'Jouw telefoon speelt het af.'
+                : `Het geluid komt van de telefoon van ${ctx.naam(s.dj)}.`}
           </div>
           {s.klok && <Balkje waarde={1 - voortgang(s.klok, ctx.nu)} />}
         </div>
@@ -293,7 +375,7 @@ function Scherm({ s, ctx }: { s: RenelebakState; ctx: KijkContext }) {
                 {s.nu.bakken === 1 ? 'een bak' : 'twee bakken, hardstyle'}
               </strong>
               <div className="klein zacht" style={{ marginTop: 3 }}>
-                De rest is save
+                De rest is save · het nummer speelt uit
               </div>
             </Kaartje>
           ) : (
@@ -304,13 +386,15 @@ function Scherm({ s, ctx }: { s: RenelebakState; ctx: KijkContext }) {
         </div>
 
         <div className="onderaan">
-          {ctx.benIkHost ? (
+          {ctx.benIkHost || ikBenDj ? (
             <GroteKnop kleur="goud" enorm bijTik={() => ctx.stuur('verder')}>
-              {klaarNa ? 'Klaar' : 'Doorgeven'}
+              {klaarNa ? 'Klaar' : bak ? 'Doorgeven · zet het nummer uit' : 'Doorgeven'}
             </GroteKnop>
           ) : (
             <Kaartje style={{ textAlign: 'center' }}>
-              <span className="zacht">Wachten op de host…</span>
+              <span className="zacht">
+                {bak ? 'Het nummer speelt uit…' : 'Wachten op de host…'}
+              </span>
             </Kaartje>
           )}
         </div>
