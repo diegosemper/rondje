@@ -104,6 +104,7 @@ export const SPEL_EMOJI: Record<string, string> = {
   ketting: '🔗',
   kingsen: '👑',
   kleurenklap: '🌈',
+  lift: '🛗',
   mexicanen: '🎲',
   nognooit: '🙊',
   nummers: '🎵',

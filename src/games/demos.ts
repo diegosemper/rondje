@@ -91,6 +91,12 @@ export const DEMOS: Record<string, Beeld[]> = {
     { kop: 'If I Tell You', tekst: 'Dát nummer. Jij drukte, dus jij drinkt, en hij speelt door.', slok: '4 slokken' },
     { kop: 'Hardstyle', tekst: 'Bij een remix zijn het er twee. Hij kan meteen vallen of pas bij de twintigste.', slok: '8 slokken' },
   ],
+  lift: [
+    { teken: '🛗', kop: 'Verdieping 1', tekst: 'Je pot staat op 1. Omhoog of eruit?' },
+    { kop: 'Verdieping 6', tekst: 'Pot van 9. Nog een verdieping is 3 erbij, maar de kans op een klap groeit.' },
+    { teken: '💥', kop: 'Verdieping 7', tekst: 'Daar zat hij. Je drinkt je hele pot zelf.', slok: '9 slokken' },
+    { teken: '🚪', kop: 'Of je stapt uit', tekst: 'Dan deel je je pot uit aan de rest, zo gespreid als je wil.', slok: '9 uitdelen' },
+  ],
   nummers: [
     { teken: '🎵', kop: 'Een tiende seconde', tekst: 'Dat is alles wat je hoort. Typ wat je denkt.' },
     { knop: 'Langer horen', kop: 'Samen beslissen', tekst: 'Meer horen mag alleen als iedereen die nog zoekt dat wil.' },

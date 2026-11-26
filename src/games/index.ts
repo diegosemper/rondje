@@ -35,6 +35,7 @@ import { renelebak } from './renelebak'
 import { geheugen } from './geheugen'
 import { juffen } from './juffen'
 import { steenpapier } from './steenpapier'
+import { lift } from './lift'
 
 /* ─────────────────────────────────────────────────────────────
    Wat er niet (meer) in de lijst staat
@@ -74,6 +75,7 @@ export const ALLE_SPELLEN: GameModule[] = [
   geheugen,
   juffen,
   steenpapier,
+  lift,
   nummers,
   flappy,
   stapeltoren,
