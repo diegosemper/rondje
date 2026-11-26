@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import type { PowerupStand } from './powerups'
 
 /* ─────────────────────────────────────────────────────────────
    De vaste vorm van alles in DORST!
@@ -13,7 +14,20 @@ export type Zwaarte = 'zacht' | 'normaal' | 'hard' | 'droog'
  * spel      → spelen
  * scorebord → eindstand van de avond
  */
-export type Fase = 'lobby' | 'kiezen' | 'uitleg' | 'spel' | 'scorebord'
+/**
+ * powerups → de trekronde: iedereen krijgt een kaart en kiest zo nodig een
+ *             doelwit. Komt na elke twee spellen.
+ * inzet     → de vraag of je je sterke powerup inzet. Dit gebeurt vóórdat de
+ *             app een spel kiest, zodat je echt blind beslist.
+ */
+export type Fase =
+  | 'lobby'
+  | 'powerups'
+  | 'inzet'
+  | 'kiezen'
+  | 'uitleg'
+  | 'spel'
+  | 'scorebord'
 export type Duur = 'kort' | 'middel' | 'lang'
 
 export type Tag =
@@ -65,6 +79,14 @@ export interface Instelling {
    * het vast.
    */
   verwacht: number
+  /**
+   * Doen de powerups mee?
+   *
+   * Standaard aan, maar uit te zetten in de lobby: het is een flinke laag die
+   * bovenop elk spel komt, en soms wil je gewoon spelen. Boven de vier spelers
+   * staan ze altijd uit.
+   */
+  powerups: boolean
 }
 
 export interface SpelBlok {
@@ -123,6 +145,8 @@ export interface Kamer {
   gereed: Record<string, boolean>
   /** gameId's die deze avond al gespeeld zijn */
   geschiedenis: string[]
+  /** de powerups van deze lobby; ronde 0 betekent dat er niets loopt */
+  powerups: PowerupStand
   /**
    * Wat er per lijst al langsgekomen is, als vingerafdrukken.
    *

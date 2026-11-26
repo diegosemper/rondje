@@ -4,6 +4,7 @@ import { geefSpel } from '../engine/registry'
 import { beginSpel, stopSpel } from '../net/hostLoop'
 import { zetGereed } from '../net/kamer'
 import { GroteKnop, Kaartje } from '../ui/Basis'
+import { MijnPowerup } from '../ui/Powerup'
 import { meldFout } from '../ui/Fout'
 
 /**
@@ -39,7 +40,7 @@ export function Uitleg({ kamer, uid }: { kamer: Kamer; uid: string }) {
         <span className="kop-klein">Volgende spel</span>
         <button
           className="knop klein leeg"
-          onClick={() => benHost && stopSpel(code).catch(meldFout)}
+          onClick={() => benHost && stopSpel(kamer).catch(meldFout)}
         >
           {benHost ? 'Toch niet' : ''}
         </button>
@@ -78,6 +79,8 @@ export function Uitleg({ kamer, uid }: { kamer: Kamer; uid: string }) {
         {mod.privescherm && (
           <div className="klein zacht">🤫 Dit spel heeft geheimen — hou je scherm afgeschermd.</div>
         )}
+
+        <MijnPowerup kamer={kamer} uid={uid} />
       </div>
 
       <div className="onderaan">

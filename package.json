@@ -8,6 +8,7 @@
     "dev": "vite",
     "telefoon": "vite --host",
     "build": "tsc --noEmit && vite build",
+    "test": "node tests/alles.cjs",
     "preview": "vite preview"
   },
   "dependencies": {

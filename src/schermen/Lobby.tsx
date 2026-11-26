@@ -4,15 +4,17 @@ import { pastBijGroep, spelEmoji, SPELLEN } from '../engine/registry'
 import { DEMOS } from '../games/demos'
 import { Voorbeeld } from '../ui/Demo'
 import { ZWAARTE_LABEL, ZWAARTE_UITLEG } from '../engine/slokken'
+import { CYCLUS, MAX_SPELERS as POWERUP_MAX } from '../engine/powerups'
 import {
   MAX_SPELERS,
   MIN_SPELERS,
   verlaatKamer,
+  zetPowerups,
   zetSpellenUit,
   zetVerwacht,
   zetZwaarte,
 } from '../net/kamer'
-import { naarFase } from '../net/hostLoop'
+import { naarFase, powerupsMogelijk, trekPowerups } from '../net/hostLoop'
 import { deelLink } from '../net/profiel'
 import { tril } from '../ui/Basis'
 import { Kroeg } from '../ui/Kroeg'
@@ -50,11 +52,26 @@ export function Lobby({
   const spelers = kamer.volgorde.map((u) => kamer.spelers[u]).filter(Boolean)
   const genoeg = spelers.length >= MIN_SPELERS
 
+  // Boven vier spelers kunnen ze niet; dan staat de schakelaar op slot.
+  const teVeelVoorPowerups = spelers.length > POWERUP_MAX
+
   const uit = kamer.instelling.uit
   const isAan = (id: string) => !uit.includes(id)
   const passend = SPELLEN.filter(
     (s) => s.id !== 'testspel' && isAan(s.id) && pastBijGroep(s, kamer.instelling.verwacht),
   ).length
+
+  /**
+   * De avond beginnen.
+   *
+   * Staan de powerups aan, dan trekt iedereen eerst een kaart. Daarna komt het
+   * kiezen van een spel; met de kaart in je hand, zodat je weet waar je aan
+   * begint.
+   */
+  async function beginDeAvond() {
+    if (powerupsMogelijk(kamer)) await trekPowerups(kamer)
+    else await naarFase(code, 'kiezen')
+  }
 
   async function deel() {
     const link = deelLink(code)
@@ -163,6 +180,36 @@ export function Lobby({
               </div>
             </div>
 
+            <div className="plank">
+              <div className="plank-kop">
+                Powerups
+                <small>
+                  {teVeelVoorPowerups
+                    ? `kan niet boven ${POWERUP_MAX} spelers`
+                    : `${CYCLUS} spellen per kaart`}
+                </small>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                {[true, false].map((aan) => (
+                  <button
+                    key={String(aan)}
+                    className={`keuze ${kamer.instelling.powerups === aan ? 'gekozen' : ''}`}
+                    disabled={teVeelVoorPowerups}
+                    onClick={() => {
+                      tril(8)
+                      zetPowerups(code, aan).catch(meldFout)
+                    }}
+                  >
+                    {aan ? 'Aan' : 'Uit'}
+                  </button>
+                ))}
+              </div>
+              <div className="klein zacht" style={{ marginTop: 6 }}>
+                Iedereen trekt een kaart die ingrijpt op wat je drinkt en uitdeelt. Alleen jij
+                ziet welke kaart je hebt.
+              </div>
+            </div>
+
             <button className="plaat hout" onClick={() => zetToonSpellen(!toonSpellen)}>
               {toonSpellen ? 'Verberg de spellijst' : `Welke spellen? (${passend} aan)`}
             </button>
@@ -232,6 +279,9 @@ export function Lobby({
                 {kamer.instelling.verwacht} spelers
               </div>
             </div>
+            <div className="klein zacht" style={{ marginTop: 6 }}>
+              Powerups {powerupsMogelijk(kamer) ? 'aan' : 'uit'}
+            </div>
           </div>
         )}
 
@@ -241,7 +291,7 @@ export function Lobby({
             <button
               className="plaat"
               disabled={!genoeg}
-              onClick={() => naarFase(code, 'kiezen').catch(meldFout)}
+              onClick={() => beginDeAvond().catch(meldFout)}
             >
               {genoeg
                 ? '🍻 Begin de avond'

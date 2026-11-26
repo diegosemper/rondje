@@ -10,6 +10,7 @@ import {
 } from 'firebase/database'
 import { db, nu } from './firebase'
 import type { Kamer, Instelling, Speler, Zwaarte, LogRegel, Fase } from '../engine/types'
+import { legeStand, voegKeuzesSamen, type PowerupStand } from '../engine/powerups'
 
 export const MAX_SPELERS = 8
 export const MIN_SPELERS = 2
@@ -68,6 +69,17 @@ function lijst(s: string | undefined | null): string[] {
   return s.split(',').filter(Boolean)
 }
 
+/**
+ * De powerupstand lezen: de stand van de host, met de keuzes van de spelers er
+ * bovenop. Waarom dat in twee stukken staat, staat bij voegKeuzesSamen.
+ */
+function leesPowerups(ruw: any): PowerupStand {
+  const stand: PowerupStand = ruw?.standJson
+    ? { ...legeStand(), ...JSON.parse(ruw.standJson) }
+    : legeStand()
+  return voegKeuzesSamen(stand, ruw?.keuze ?? {})
+}
+
 export function leesKamer(ruw: any, code: string): Kamer | null {
   if (!ruw || !ruw.meta) return null
 
@@ -90,6 +102,8 @@ export function leesKamer(ruw: any, code: string): Kamer | null {
     zwaarte: (ruw.instelling?.zwaarte ?? 'normaal') as Zwaarte,
     uit: lijst(ruw.instelling?.uit),
     verwacht: ruw.instelling?.verwacht ?? MAX_SPELERS,
+    // Standaard aan; een oude lobby zonder dit veld krijgt dus powerups.
+    powerups: ruw.instelling?.powerups !== false,
   }
 
   return {
@@ -129,6 +143,12 @@ export function leesKamer(ruw: any, code: string): Kamer | null {
     // Per lijst een rij vingerafdrukken, komma's ertussen — zoals de
     // geschiedenis hierboven. Firebase slaat geen arrays op zonder er een map
     // met nummers van te maken, en dat leest bij het terugkomen beroerd terug.
+    /*
+     * De powerupstand als één JSON-tekst, zoals de spelstand en de drinkpauze.
+     * Firebase maakt van een array een map met nummers, en dat leest beroerd
+     * terug; één tekst heeft dat probleem niet.
+     */
+    powerups: leesPowerups(ruw.powerups),
     gezien: Object.fromEntries(
       Object.entries<any>(ruw.gezien ?? {}).map(([sleutel, waarde]) => [
         sleutel,
@@ -155,7 +175,7 @@ export async function maakKamer(
     await set(ref(db(), pad(code)), {
       meta: { code, hostUid: uid, fase: 'lobby', gemaaktOp: serverTimestamp() },
       // Het testspel staat standaard uit; dat is geen echt spel.
-      instelling: { zwaarte: 'normaal', uit: 'testspel', verwacht },
+      instelling: { zwaarte: 'normaal', uit: 'testspel', verwacht, powerups: true },
       spelers: { [uid]: { naam, emoji, online: true, laatstGezien: serverTimestamp() } },
       volgorde: uid,
       score: { [uid]: { uitgedeeld: 0, gedronken: 0 } },
@@ -225,7 +245,29 @@ export async function zetZwaarte(code: string, zwaarte: Zwaarte): Promise<void> 
   await update(ref(db(), pad(code, 'instelling')), { zwaarte })
 }
 
-/** Met hoeveel mensen je van plan bent te spelen; filtert de spellijst. */
+/**
+ * Doen de powerupkaarten mee in deze lobby?
+ *
+ * Uitzetten gooit de hele stand weg. Anders zou je bij weer aanzetten midden in
+ * een oude cyclus belanden, met kaarten die niemand meer gezien heeft.
+ */
+export async function zetPowerups(code: string, aan: boolean): Promise<void> {
+  await update(ref(db(), pad(code, 'instelling')), { powerups: aan })
+  if (!aan) await remove(ref(db(), pad(code, 'powerups')))
+}
+
+/* ── Powerups: je eigen keuzes ──────────────────────────────── */
+
+/** Op wie je je kaart richt. Eigen sleutel, dus geen botsing met anderen. */
+export async function kiesDoel(code: string, uid: string, doel: string): Promise<void> {
+  await update(ref(db(), pad(code, 'powerups', 'keuze', uid)), { doel })
+}
+
+/** Je sterke kaart inzetten voor het spel dat komt, of niet. */
+export async function kiesInzet(code: string, uid: string, ja: boolean): Promise<void> {
+  await update(ref(db(), pad(code, 'powerups', 'keuze', uid)), { inzet: ja ? 'ja' : 'nee' })
+}
+
 export async function zetVerwacht(code: string, verwacht: number): Promise<void> {
   await update(ref(db(), pad(code, 'instelling')), { verwacht })
 }

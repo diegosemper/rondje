@@ -7,6 +7,7 @@ import { stuurActie, zetGedronken, zetSkip } from '../net/kamer'
 import { useNu } from '../net/useKamer'
 import { GroteKnop, Kaartje } from '../ui/Basis'
 import { DrinkPauze } from '../ui/DrinkScherm'
+import { PowerupChip } from '../ui/Powerup'
 import { meldFout } from '../ui/Fout'
 
 export function Spelen({
@@ -83,7 +84,7 @@ export function Spelen({
       <div className="scherm">
         <Kaartje>Spel niet gevonden.</Kaartje>
         {benHost && (
-          <GroteKnop kleur="goud" bijTik={() => stopSpel(code).catch(meldFout)}>
+          <GroteKnop kleur="goud" bijTik={() => stopSpel(kamer).catch(meldFout)}>
             Kies iets anders
           </GroteKnop>
         )}
@@ -117,6 +118,7 @@ export function Spelen({
     <div className="scherm">
       <div className="balk">
         <span className="kop-klein">{mod.naam}</span>
+        <PowerupChip kamer={kamer} uid={uid} />
         <button
           className={`knop klein ${ikGeskipt ? 'goud' : 'leeg'}`}
           onClick={() => zetSkip(code, uid, !ikGeskipt).catch(meldFout)}
@@ -145,7 +147,7 @@ export function Spelen({
           </div>
           <div className="onderaan">
             {benHost ? (
-              <GroteKnop kleur="goud" enorm bijTik={() => stopSpel(code).catch(meldFout)}>
+              <GroteKnop kleur="goud" enorm bijTik={() => stopSpel(kamer).catch(meldFout)}>
                 Volgende spel
               </GroteKnop>
             ) : (

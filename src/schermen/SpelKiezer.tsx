@@ -10,9 +10,10 @@ import {
   waaromNiet,
 } from '../engine/registry'
 import { maakRng } from '../engine/random'
-import { naarFase, startSpel } from '../net/hostLoop'
+import { iemandKanInzetten, naarFase, naarInzet, startSpel } from '../net/hostLoop'
 import { verlaatKamer } from '../net/kamer'
 import { GroteKnop, Kaartje } from '../ui/Basis'
+import { MijnPowerup } from '../ui/Powerup'
 import { meldFout } from '../ui/Fout'
 
 export function SpelKiezer({
@@ -38,7 +39,22 @@ export function SpelKiezer({
     .slice(0, 3)
     .filter((r) => r.n > 0)
 
-  function dobbel() {
+  /**
+   * Een spel op de rails zetten: meteen, of eerst langs de inzetronde.
+   *
+   * `gameId` is null voor het dobbelsteentje. Kan er nog iemand een sterke
+   * powerup inzetten, dan komt die keuze eerst -- en bij het dobbelsteentje
+   * weet dan nog niemand welk spel het wordt. Precies de bedoeling.
+   */
+  function begin(gameId: string | null) {
+    if (iemandKanInzetten(kamer)) {
+      naarInzet(kamer, gameId).catch(meldFout)
+      return
+    }
+    if (gameId) {
+      startSpel(kamer, gameId).catch(meldFout)
+      return
+    }
     const rng = maakRng(Date.now() & 0x7fffffff)
     const keuze = kiesWillekeurig(rng, spelers.length, kamer.instelling.uit, kamer.geschiedenis)
     if (keuze) startSpel(kamer, keuze.id).catch(meldFout)
@@ -63,6 +79,8 @@ export function SpelKiezer({
       )}
 
       <h1>Wat nu?</h1>
+
+      <MijnPowerup kamer={kamer} uid={uid} />
 
       {!benHost && (
         <Kaartje style={{ textAlign: 'center' }}>
@@ -91,7 +109,7 @@ export function SpelKiezer({
               key={s.id}
               className="kaartje"
               disabled={!klikbaar}
-              onClick={() => klikbaar && startSpel(kamer, s.id).catch(meldFout)}
+              onClick={() => klikbaar && begin(s.id)}
               style={{
                 textAlign: 'left',
                 opacity: blokkade ? 0.4 : gespeeld ? 0.6 : 1,
@@ -120,7 +138,7 @@ export function SpelKiezer({
 
       {benHost && (
         <div className="onderaan">
-          <GroteKnop kleur="goud" enorm uit={lijst.length === 0} bijTik={dobbel}>
+          <GroteKnop kleur="goud" enorm uit={lijst.length === 0} bijTik={() => begin(null)}>
             🎲 Laat het lot beslissen
           </GroteKnop>
           <div className="rij">

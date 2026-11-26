@@ -10,11 +10,25 @@ import {
 } from 'firebase/database'
 import { db, nu } from './firebase'
 import { pad, padRuw, stuurActie } from './kamer'
-import { geefSpel } from '../engine/registry'
+import { geefSpel, kiesWillekeurig } from '../engine/registry'
 import { draaiVolgorde } from '../engine/beurten'
 import { stripGeheim, kopie } from '../engine/geheim'
 import { maakRng, nieuweSeed } from '../engine/random'
 import { vers, bijgewerktGeheugen } from '../engine/vers'
+import {
+  CYCLUS,
+  INZETTEN,
+  MAX_SPELERS as POWERUP_MAX,
+  geefPowerup,
+  heeftZinZonderUitdelen,
+  legeStand,
+  omkeringUitdelen,
+  pasDrinkAan,
+  pasUitdelenAan,
+  trekKaarten,
+  werkzaam,
+  type PowerupStand,
+} from '../engine/powerups'
 import { berekenSlokken, slokTekst, werkwoord } from '../engine/slokken'
 import { meldFout } from '../ui/Fout'
 import type { Actie, Kamer, SpelContext, Speler } from '../engine/types'
@@ -36,6 +50,8 @@ interface Effecten {
   klaar: boolean
   /** per lijst het bijgewerkte geheugen van wat er al geweest is */
   gezien: Record<string, string[]>
+  /** de powerupstand, als die tijdens deze zet veranderd is */
+  powerups: PowerupStand | null
 }
 
 function leegEffect(): Effecten {
@@ -47,6 +63,7 @@ function leegEffect(): Effecten {
     logs: [],
     klaar: false,
     gezien: {},
+    powerups: null,
   }
 }
 
@@ -67,6 +84,38 @@ function leegEffect(): Effecten {
  */
 const geheugenBuffer = new Map<string, Record<string, string[]>>()
 
+/**
+ * Mogen er in deze kamer überhaupt powerups zijn?
+ *
+ * Boven de vier spelers staan ze uit. Met meer mensen zitten er te veel kaarten
+ * tegelijk op tafel en is niet meer te volgen waarom iemand wat drinkt.
+ */
+export function powerupsMogelijk(kamer: Kamer): boolean {
+  if (kamer.instelling.powerups === false) return false
+  return Object.keys(kamer.spelers).length <= POWERUP_MAX
+}
+
+/** Doen ze op dit moment ook echt mee -- is er al getrokken? */
+export function powerupsAan(kamer: Kamer): boolean {
+  return powerupsMogelijk(kamer) && kamer.powerups.ronde > 0
+}
+
+/**
+ * Is er iemand die nog een sterke powerup kan inzetten?
+ *
+ * Zo niet, dan hoeft er geen inzetronde te komen en gaat het spel meteen van
+ * start. Een scherm met "jij hoeft niets te kiezen" voor iedereen is alleen
+ * een extra tik.
+ */
+export function iemandKanInzetten(kamer: Kamer): boolean {
+  if (!powerupsAan(kamer)) return false
+  return kamer.volgorde.some((uid) => {
+    if (!kamer.spelers[uid]) return false
+    const p = geefPowerup(kamer.powerups.kaarten[uid] ?? '')
+    return !!p?.sterk && (kamer.powerups.inzetten[uid] ?? 0) > 0
+  })
+}
+
 /** Bouwt het gereedschap dat init() en reduce() van een spel mogen gebruiken. */
 function maakContext(
   kamer: Kamer,
@@ -81,8 +130,23 @@ function maakContext(
   const rng = maakRng(seed)
   const naam = (uid: string) => kamer.spelers[uid]?.naam ?? '?'
 
-  const drink = (uid: string, ruw: number, reden?: string) => {
-    const aantal = berekenSlokken(ruw, zwaarte)
+  /*
+   * De powerups grijpen hier in, op één plek, en daarom werken ze in elk spel.
+   * Een spel meldt "deze speler drinkt drie", en wat er daarna werkelijk
+   * gebeurt kan heel iets anders zijn: bij iemand anders, dubbel, of nergens.
+   *
+   * De stand gaat in een kopie, want Sneeuwbal telt uitdelingen en de teruggave
+   * van een inzet moet weten of er dit spel iets uitgedeeld is. Verandert er
+   * iets, dan gaat die kopie mee naar de database.
+   */
+  const pAan = powerupsAan(kamer)
+  const pStand: PowerupStand = pAan
+    ? { ...kamer.powerups, uitdelingen: { ...kamer.powerups.uitdelingen } }
+    : legeStand()
+  const beurtVolgorde = spelers.map((p) => p.uid)
+
+  /** Eén regel wegschrijven, zonder er nog powerups op los te laten. */
+  const rauwDrink = (uid: string, aantal: number, reden?: string) => {
     if (aantal <= 0) return
     eff.gedronken[uid] = (eff.gedronken[uid] ?? 0) + aantal
     eff.logs.push(
@@ -90,13 +154,77 @@ function maakContext(
     )
   }
 
+  const drink = (uid: string, ruw: number, reden?: string) => {
+    const aantal = berekenSlokken(ruw, zwaarte)
+    if (aantal <= 0) return
+
+    if (!pAan) {
+      rauwDrink(uid, aantal, reden)
+      return
+    }
+
+    const regels = pasDrinkAan(pStand, beurtVolgorde, uid, aantal)
+    for (const r of regels) {
+      const waarom =
+        r.uid === uid ? reden : `${reden ?? 'powerup'} · via ${naam(uid)}`
+      rauwDrink(r.uid, r.aantal, waarom)
+    }
+    // Omkering maakt van jouw drinken een uitdeling aan de rest.
+    const omgekeerd = omkeringUitdelen(pStand, beurtVolgorde, uid, aantal)
+    for (const r of omgekeerd) {
+      rauwDrink(r.uid, r.aantal, `omkering van ${naam(uid)}`)
+    }
+
+    /*
+     * Viel alles weg? Dan moet er toch iets in het logboek komen te staan.
+     * Zonder regel gebeurt er op het scherm helemaal niets en snapt niemand
+     * waarom die slokken niet aankwamen.
+     */
+    if (regels.length === 0 && omgekeerd.length === 0) {
+      const kaart = werkzaam(pStand, uid)
+      eff.logs.push(
+        `${naam(uid)} ontloopt ${slokTekst(aantal, zwaarte)}${kaart ? ` — ${kaart.naam}` : ''}`,
+      )
+    }
+    eff.powerups = pStand
+  }
+
   const geef = (van: string, naar: string, aantal: number, reden?: string) => {
     if (aantal <= 0) return
-    eff.uitgedeeld[van] = (eff.uitgedeeld[van] ?? 0) + aantal
-    eff.gedronken[naar] = (eff.gedronken[naar] ?? 0) + aantal
-    eff.logs.push(
-      `${naam(van)} geeft ${naam(naar)} ${slokTekst(aantal, zwaarte)}${reden ? ` — ${reden}` : ''}`,
-    )
+
+    if (!pAan) {
+      eff.uitgedeeld[van] = (eff.uitgedeeld[van] ?? 0) + aantal
+      eff.gedronken[naar] = (eff.gedronken[naar] ?? 0) + aantal
+      eff.logs.push(
+        `${naam(van)} geeft ${naam(naar)} ${slokTekst(aantal, zwaarte)}${reden ? ` — ${reden}` : ''}`,
+      )
+      return
+    }
+
+    pStand.uitgedeeld = true
+    const regels = pasUitdelenAan(pStand, beurtVolgorde, van, naar, aantal)
+    /*
+     * Op het scorebord blijft staan wat hij uitdeelde. Wie het opdrinkt kan door
+     * een powerup iemand anders zijn, maar uitgedeeld heeft hij het wel.
+     */
+    const totaal = regels.reduce((a, r) => a + r.aantal, 0)
+    if (totaal > 0) eff.uitgedeeld[van] = (eff.uitgedeeld[van] ?? 0) + totaal
+
+    for (const r of regels) {
+      eff.gedronken[r.uid] = (eff.gedronken[r.uid] ?? 0) + r.aantal
+      eff.logs.push(
+        `${naam(van)} geeft ${naam(r.uid)} ${slokTekst(r.aantal, zwaarte)}${reden ? ` — ${reden}` : ''}`,
+      )
+    }
+
+    // Ook hier: een uitdeling die nergens aankomt hoort wel te zien te zijn.
+    if (regels.length === 0) {
+      const kaart = werkzaam(pStand, van)
+      eff.logs.push(
+        `${naam(van)} deelt niets uit${kaart ? ` — ${kaart.naam}` : ''}`,
+      )
+    }
+    eff.powerups = pStand
   }
 
   return {
@@ -136,13 +264,35 @@ function maakContext(
     iedereenDrinkt(ruw, reden, behalve = []) {
       const aantal = berekenSlokken(ruw, zwaarte)
       if (aantal <= 0) return
-      for (const s of spelers) {
-        if (behalve.includes(s.uid)) continue
-        eff.gedronken[s.uid] = (eff.gedronken[s.uid] ?? 0) + aantal
-      }
+
       eff.logs.push(
         `Iedereen ${werkwoord(zwaarte)} ${slokTekst(aantal, zwaarte)}${reden ? ` — ${reden}` : ''}`,
       )
+
+      if (!pAan) {
+        for (const s of spelers) {
+          if (behalve.includes(s.uid)) continue
+          eff.gedronken[s.uid] = (eff.gedronken[s.uid] ?? 0) + aantal
+        }
+        return
+      }
+
+      /*
+       * Per speler door de laag, zodat Schild en Vlucht hier ook gelden -- en
+       * zodat Omkering zijn deel alsnog rondstuurt. Zonder dat laatste zouden
+       * die slokken stilletjes verdwijnen: pasDrinkAan levert bij Omkering
+       * niets op, want het wordt een uitdeling.
+       */
+      for (const s of spelers) {
+        if (behalve.includes(s.uid)) continue
+        for (const r of pasDrinkAan(pStand, beurtVolgorde, s.uid, aantal)) {
+          eff.gedronken[r.uid] = (eff.gedronken[r.uid] ?? 0) + r.aantal
+        }
+        for (const r of omkeringUitdelen(pStand, beurtVolgorde, s.uid, aantal)) {
+          eff.gedronken[r.uid] = (eff.gedronken[r.uid] ?? 0) + r.aantal
+        }
+      }
+      eff.powerups = pStand
     },
 
     zetPrive(uid, data) {
@@ -206,6 +356,11 @@ async function schrijfWeg(
   // Wat deze lobby gehad heeft, zodat het volgende potje andere zinnen pakt.
   for (const [sleutel, merken] of Object.entries(eff.gezien)) {
     u[pad(code, 'gezien', sleutel)] = merken.join(',')
+  }
+
+  // De powerupstand, als er tijdens deze zet iets aan veranderd is.
+  if (eff.powerups) {
+    u[pad(code, 'powerups/standJson')] = JSON.stringify(eff.powerups)
   }
 
   // Vallen er slokken? Dan gaat het spel op pauze tot iedereen die moet
@@ -311,6 +466,39 @@ export async function startSpel(kamer: Kamer, gameId: string): Promise<void> {
 
   const geschiedenis = [...kamer.geschiedenis.filter((g) => g !== gameId), gameId]
 
+  /*
+   * De cyclus een spel verder, en de keuzes van de spelers vastleggen.
+   *
+   * De stand die hier binnenkomt heeft de losse keuzes er al bovenop (zie
+   * leesPowerups in kamer.ts); hier worden ze echt vastgelegd. Wie ja zei
+   * raakt zijn inzet kwijt, en daarna kunnen de losse sleutels weg.
+   *
+   * `actief` blijft dus juist staan: dat is net in de inzetronde gekozen,
+   * vóórdat dit spel bekend was. Dat is het hele punt van blind inzetten.
+   *
+   * Wat per spel geteld wordt gaat op nul: de uitdelingen voor Sneeuwbal, en
+   * of er dit spel iets uitgedeeld is -- dat laatste bepaalt of een inzet
+   * teruggegeven wordt.
+   */
+  const pExtra: Record<string, unknown> = {}
+  if (powerupsAan(kamer)) {
+    const inzetten = { ...kamer.powerups.inzetten }
+    for (const uid of kamer.powerups.actief) {
+      inzetten[uid] = Math.max(0, (inzetten[uid] ?? 0) - 1)
+    }
+
+    const stand: PowerupStand = {
+      ...kamer.powerups,
+      over: Math.max(0, kamer.powerups.over - 1),
+      inzetten,
+      uitdelingen: {},
+      uitgedeeld: false,
+      wacht: null,
+    }
+    pExtra[pad(code, 'powerups/standJson')] = JSON.stringify(stand)
+    pExtra[pad(code, 'powerups/keuze')] = null
+  }
+
   // Om dezelfde reden schrijven we de velden van `spel` los, en niet het blok
   // in één keer: schrijfWeg zet er `spel/stateJson` bij.
   await schrijfWeg(kamer, state, eff, {
@@ -323,7 +511,103 @@ export async function startSpel(kamer: Kamer, gameId: string): Promise<void> {
     [pad(code, 'skip')]: null,
     [pad(code, 'gereed')]: null,
     [pad(code, 'geschiedenis')]: geschiedenis.join(','),
+    ...pExtra,
   })
+}
+
+/**
+ * Een willekeurig spel starten.
+ *
+ * Staat hier en niet op het scherm, omdat het op twee plekken nodig is: de
+ * dobbelknop in de spelkiezer, en de onthulling na de inzetronde.
+ */
+export async function startWillekeurig(kamer: Kamer): Promise<void> {
+  const spelers = Object.keys(kamer.spelers).length
+  const rng = maakRng(nieuweSeed())
+  const keuze = kiesWillekeurig(rng, spelers, kamer.instelling.uit, kamer.geschiedenis)
+  if (keuze) await startSpel(kamer, keuze.id)
+}
+
+/* ── Powerups: de cyclus ─────────────────────────────────────── */
+
+/**
+ * De stand wegschrijven, en de losse keuzes opruimen.
+ *
+ * Die twee horen bij elkaar: wat in de stand staat is vastgelegd, dus moeten de
+ * losse keuzes weg -- anders zouden ze er bij het lezen nog een keer bovenop
+ * komen.
+ */
+async function schrijfStand(code: string, stand: PowerupStand): Promise<void> {
+  await update(ref(db(), pad(code, 'powerups')), {
+    standJson: JSON.stringify(stand),
+    keuze: null,
+  })
+}
+
+/**
+ * Een nieuwe trekronde uitdelen.
+ *
+ * Levert alleen de nieuwe stand op; het wegschrijven gebeurt bij de aanroeper.
+ * Dat is nodig omdat dit op twee momenten gebeurt: bij de start vanuit de
+ * lobby, en meteen bij het afsluiten van het laatste spel van een cyclus. In
+ * dat tweede geval gaat het in dezelfde schrijfbeurt mee als de rest.
+ */
+function nieuweRonde(kamer: Kamer): PowerupStand {
+  const spelers = kamer.volgorde.filter((u) => kamer.spelers[u])
+  const rng = maakRng(nieuweSeed())
+  const kaarten = trekKaarten(rng, spelers, kamer.powerups.kaarten)
+
+  const inzetten: Record<string, number> = {}
+  for (const uid of spelers) {
+    const p = geefPowerup(kaarten[uid])
+    if (p?.sterk) inzetten[uid] = INZETTEN
+  }
+
+  return {
+    ...legeStand(),
+    ronde: kamer.powerups.ronde + 1,
+    over: CYCLUS,
+    kaarten,
+    inzetten,
+  }
+}
+
+/**
+ * Nieuwe kaarten, en iedereen krijgt ze te zien.
+ *
+ * De fase blijft daarna op 'powerups' staan, want wie een kaart heeft die om
+ * een doelwit vraagt moet die eerst kiezen. Pas als iedereen klaar is gaat het
+ * door naar de spelkiezer.
+ */
+export async function trekPowerups(kamer: Kamer): Promise<void> {
+  const code = kamer.meta.code
+  await schrijfStand(code, nieuweRonde(kamer))
+  await update(ref(db(), pad(code, 'meta')), { fase: 'powerups' })
+}
+
+/**
+ * Van de spelkiezer naar de inzetronde.
+ *
+ * `gameId` is het spel dat de host aanwees, of null als het dobbelsteentje
+ * beslist. Bij null weet niemand waar hij op wedt -- dat is precies de
+ * bedoeling van een sterke powerup.
+ */
+export async function naarInzet(kamer: Kamer, gameId: string | null): Promise<void> {
+  const stand: PowerupStand = {
+    ...kamer.powerups,
+    actief: [],
+    gereed: [],
+    wacht: gameId,
+  }
+  await schrijfStand(kamer.meta.code, stand)
+  await update(ref(db(), pad(kamer.meta.code, 'meta')), { fase: 'inzet' })
+}
+
+/** Iedereen heeft gekozen: het spel komt tevoorschijn en begint. */
+export async function onthul(kamer: Kamer): Promise<void> {
+  const gameId = kamer.powerups.wacht
+  if (gameId) await startSpel(kamer, gameId)
+  else await startWillekeurig(kamer)
 }
 
 /** Van het uitlegscherm naar het spel zelf. */
@@ -332,15 +616,67 @@ export async function beginSpel(code: string): Promise<void> {
 }
 
 /** Spel afgelopen of overgeslagen → terug naar de spelkiezer. */
-export async function stopSpel(code: string): Promise<void> {
+export async function stopSpel(kamer: Kamer): Promise<void> {
+  const code = kamer.meta.code
   await remove(ref(db(), padRuw(code, 'prive')))
   await remove(ref(db(), padRuw(code, 'acties')))
   await remove(ref(db(), padRuw(code, 'hostState')))
+
+  const extra: Record<string, unknown> = {}
+  let volgendeFase = 'kiezen'
+
+  if (powerupsAan(kamer)) {
+    /*
+     * Een inzet teruggeven die niets kon doen. Je koos blind, en als het spel
+     * niet eens uitdeelt kan Dubbel uitdelen niets -- dan is het zonde om je
+     * inzet daaraan kwijt te zijn.
+     */
+    const inzetten = { ...kamer.powerups.inzetten }
+    for (const uid of kamer.powerups.actief) {
+      const id = kamer.powerups.kaarten[uid]
+      if (!id) continue
+      if (kamer.powerups.uitgedeeld) continue
+      if (heeftZinZonderUitdelen(id)) continue
+      inzetten[uid] = (inzetten[uid] ?? 0) + 1
+    }
+
+    // Inzetten en doelwitten van sterke kaarten gelden maar één spel.
+    const doelwit: Record<string, string> = {}
+    for (const [uid, doel] of Object.entries(kamer.powerups.doelwit)) {
+      const p = geefPowerup(kamer.powerups.kaarten[uid] ?? '')
+      if (p && !p.sterk) doelwit[uid] = doel
+    }
+
+    let stand: PowerupStand = {
+      ...kamer.powerups,
+      inzetten,
+      doelwit,
+      actief: [],
+      gereed: [],
+      uitdelingen: {},
+      uitgedeeld: false,
+      wacht: null,
+    }
+
+    /*
+     * Cyclus voorbij? Meteen nieuwe kaarten erbij, in dezelfde schrijfbeurt.
+     * Anders zou je even op het trekscherm staan met je oude kaart in beeld.
+     */
+    if (stand.over <= 0) {
+      stand = nieuweRonde(kamer)
+      volgendeFase = 'powerups'
+    }
+
+    extra[pad(code, 'powerups/standJson')] = JSON.stringify(stand)
+    extra[pad(code, 'powerups/keuze')] = null
+  }
+
   await update(ref(db()), {
-    [pad(code, 'meta/fase')]: 'kiezen',
+    [pad(code, 'meta/fase')]: volgendeFase,
     [pad(code, 'spel')]: null,
     [pad(code, 'skip')]: null,
     [pad(code, 'gereed')]: null,
+    ...extra,
   })
 }
 
@@ -517,7 +853,7 @@ export function useHostLoop(kamer: Kamer | null, uid: string | null): void {
     if (stemmen === 0) return
 
     if (kamer.skip[kamer.meta.hostUid] || stemmen * 2 > aanwezig) {
-      stopSpel(code).catch(meldFout)
+      stopSpel(kamer).catch(meldFout)
     }
   }, [benHost, code, kamer])
 }

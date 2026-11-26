@@ -10,6 +10,8 @@ import { Setup } from './schermen/Setup'
 import { Splash } from './schermen/Splash'
 import { Start } from './schermen/Start'
 import { Lobby } from './schermen/Lobby'
+import { Powerups } from './schermen/Powerups'
+import { Inzet } from './schermen/Inzet'
 import { SpelKiezer } from './schermen/SpelKiezer'
 import { Uitleg } from './schermen/Uitleg'
 import { Spelen } from './schermen/Spelen'
@@ -149,6 +151,10 @@ function Scherm({
   verlaat: () => void
 }) {
   switch (kamer.meta.fase) {
+    case 'powerups':
+      return <Powerups kamer={kamer} uid={uid} />
+    case 'inzet':
+      return <Inzet kamer={kamer} uid={uid} />
     case 'kiezen':
       return <SpelKiezer kamer={kamer} uid={uid} bijVertrek={verlaat} />
     case 'uitleg':
