@@ -97,6 +97,7 @@ export const SPEL_EMOJI: Record<string, string> = {
   hitster: '📅',
   imposter: '🕵️',
   jetpack: '🚀',
+  juffen: '🧮',
   ketting: '🔗',
   kingsen: '👑',
   kleurenklap: '🌈',

@@ -170,6 +170,12 @@ export const DEMOS: Record<string, Beeld[]> = {
     { kop: 'Hinten', tekst: 'Praat erover, maar zeg je woord nooit hardop.' },
     { kop: 'Wijs aan', tekst: 'Wie is jouw spiegel? Fout gewezen kost je slokken.', slok: '3 slokken' },
   ],
+  juffen: [
+    { teken: '🧮', kop: 'De tafel van 7', tekst: 'Verboden: veelvouden van 7, alles met een 7 erin, en dubbele getallen.' },
+    { kop: 'Er staat 13', tekst: 'Jouw getal is 14. Zeggen of overslaan?' },
+    { knop: 'Verboden', kop: 'Goed', tekst: '14 is een veelvoud van 7. Je blijft aan zet met 15.' },
+    { kop: 'Te lang gedacht', tekst: 'De telling klapt en de tafel drinkt het getal, verdeeld over iedereen.', slok: '5 per persoon' },
+  ],
   ketting: [
     { teken: '🔗', kop: 'Jouw getal', tekst: '63. Alleen jij ziet het.' },
     { kop: 'Op volgorde', tekst: 'Samen leggen jullie ze van laag naar hoog. Praten mag niet. Kreunen wel.' },
