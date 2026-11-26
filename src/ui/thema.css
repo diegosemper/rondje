@@ -2253,3 +2253,46 @@ input.code-invoer {
 .spelrij-houder .spelrij {
   border-bottom: none;
 }
+
+/* ── De vakjes van Geheugenreeks ──────────────────────────────
+   Vier grote vlakken met een eigen kleur én een eigen plek, zodat je de reeks
+   ook onthoudt als je kleuren slecht ziet. Oplichten is een harde sprong in
+   helderheid en niet een zachte overgang: bij een trage fade weet je niet meer
+   of het derde vakje nu wel of niet aan stond. */
+.vakjes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  width: 100%;
+  max-width: 320px;
+}
+
+.vakje {
+  aspect-ratio: 1;
+  border-radius: 16px;
+  border: 3px solid rgba(0, 0, 0, 0.35);
+  min-height: 0;
+  padding: 0;
+  cursor: pointer;
+  filter: brightness(0.42) saturate(0.7);
+  transition: filter 0.06s linear, transform 0.06s linear;
+}
+
+.vakje.aan {
+  filter: brightness(1.35) saturate(1.1);
+  transform: scale(1.04);
+}
+
+.vakje:disabled {
+  cursor: default;
+}
+
+.vakje.v0 { background: linear-gradient(160deg, #ff6b57, #c62f1c) }
+.vakje.v1 { background: linear-gradient(160deg, #68b7ff, #1f6fc4) }
+.vakje.v2 { background: linear-gradient(160deg, #7fe08a, #2f9b46) }
+.vakje.v3 { background: linear-gradient(160deg, #ffd66b, #d39a16) }
+
+@media (prefers-reduced-motion: reduce) {
+  .vakje { transition: filter 0.06s linear }
+  .vakje.aan { transform: none }
+}

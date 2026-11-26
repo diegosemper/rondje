@@ -185,6 +185,12 @@ export const DEMOS: Record<string, Beeld[]> = {
     { kop: 'Noem er een', tekst: 'En geef meteen door. De timer is onzichtbaar.' },
     { kop: 'Boem', tekst: 'Tussen de 30 en 120 seconden. Wie hem vasthoudt, drinkt.', slok: '5 slokken' },
   ],
+  geheugen: [
+    { teken: '🧠', kop: 'Eén vakje', tekst: 'Er licht er één op. Tik hem na — dat is ronde één.' },
+    { kop: 'Nu twee', tekst: 'Elke ronde komt er een vakje bij. Iedereen tikt tegelijk op zijn eigen telefoon.' },
+    { kop: 'Mis', tekst: 'Fout getikt en je ligt eruit. Je streak staat stil waar hij stond.' },
+    { kop: 'Zeven op een rij', tekst: 'Je streak is wat je uitdeelt. Zeven goed is zeven slokken.', slok: '7 uitdelen' },
+  ],
   gelijkdenken: [
     { teken: '👯', kop: 'De vraag', tekst: '"Noem de drank waar je gegarandeerd ziek van wordt."' },
     { knop: 'tequila', kop: 'Typ je antwoord', tekst: 'Iedereen tegelijk. Het suffe antwoord is het goede.' },

@@ -90,6 +90,7 @@ export const SPEL_EMOJI: Record<string, string> = {
   eenentwintig: '🛟',
   ezelen: '🐴',
   flappy: '🐤',
+  geheugen: '🧠',
   gelijkdenken: '👯',
   golflengte: '📻',
   hilo: '📈',
