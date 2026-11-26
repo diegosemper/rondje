@@ -33,6 +33,9 @@ export function waaromNiet(
     return `vanaf ${spel.minSpelers} spelers — nog ${tekort} nodig`
   }
   if (aantalSpelers > spel.maxSpelers) return `hoogstens ${spel.maxSpelers} spelers`
+  // Een spel mag nog een eigen eis hebben, zoals een even aantal spelers.
+  const eigen = spel.extraEis?.(aantalSpelers)
+  if (eigen) return eigen
   return null
 }
 
@@ -120,6 +123,7 @@ export const SPEL_EMOJI: Record<string, string> = {
   spiegel: '🪞',
   springen: '🦘',
   stapeltoren: '🏗️',
+  steenpapier: '✊',
   stellingen: '⚖️',
   tekenen: '🎨',
   testspel: '🧪',

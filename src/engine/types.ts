@@ -271,6 +271,18 @@ export interface GameModule<S = any> {
   isKlaar?(state: S): boolean
 
   /**
+   * Optioneel: een eigen eis aan het aantal spelers, naast min en max.
+   *
+   * Geeft een korte reden terug waarom het nu niet kan, of null als het wel
+   * kan. Steen Papier Schaar heeft een even aantal nodig, want anders blijft
+   * er elke ronde iemand over en zou de app moeten kiezen wie dat is.
+   *
+   * De reden komt letterlijk op de spelkiezer te staan, dus houd hem kort en
+   * schrijf hem af als "alleen met...".
+   */
+  extraEis?(aantalSpelers: number): string | null
+
+  /**
    * Optioneel: hoeveel milliseconden het slokkenscherm wacht voordat het
    * eroverheen komt. Voor spellen die eerst nog iets willen laten zien —
    * Bussen laat de kaart vallen, en het is flauw als je al staat te drinken

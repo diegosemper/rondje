@@ -179,6 +179,12 @@ export const DEMOS: Record<string, Beeld[]> = {
     { kop: 'Niet het woord zelf', tekst: 'Vastgelopen? Overslaan mag, maar dat kost tijd.' },
     { kop: 'Drie gehaald', tekst: 'Wat jij haalt, drinkt iedereen van het andere team.', slok: '3 slokken' },
   ],
+  steenpapier: [
+    { teken: '✊', kop: 'Jij tegen Sanne', tekst: 'Elke ronde zet de app je tegenover iemand anders. Even aantal spelers dus.' },
+    { kop: 'Kies tegelijk', tekst: 'Niemand ziet wat de ander koos. Gelijk? Dan nog een keer.' },
+    { kop: 'Gewonnen', tekst: 'Twee slokken om uit te delen — maar nog niet nu.', slok: '2 sparen' },
+    { teken: '🤫', kop: 'Na vijf rondes', tekst: 'Iedereen verdeelt in het geheim. Pas als de laatste klaar is zie je wie wat moet.' },
+  ],
   stellingen: [
     { teken: '⚖️', kop: 'De stelling', tekst: '"Zoenen op een feestje telt niet."' },
     { kop: 'Eens of oneens', tekst: 'Iedereen tegelijk, niemand ziet de rest.' },
