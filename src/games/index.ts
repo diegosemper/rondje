@@ -22,20 +22,15 @@ import { opbouwen } from './opbouwen'
 import { perudo } from './perudo'
 import { vingers } from './vingers'
 import { kleurenklap } from './kleurenklap'
-import { duel } from './duel'
 import { tienseconden } from './tienseconden'
 import { stellingen } from './stellingen'
 import { dertig } from './dertig'
-import { hitster } from './hitster'
 import { pijlen } from './pijlen'
-import { spiegel } from './spiegel'
 import { verhaal } from './verhaal'
 import { blackstories } from './blackstories'
 import { slechtantwoord } from './slechtantwoord'
-import { decode } from './decode'
 import { driekaart } from './driekaart'
 import { paardenrace } from './paardenrace'
-import { toepen } from './toepen'
 import { renelebak } from './renelebak'
 import { geheugen } from './geheugen'
 import { juffen } from './juffen'
@@ -72,25 +67,20 @@ export const ALLE_SPELLEN: GameModule[] = [
   verhaal,
   blackstories,
   slechtantwoord,
-  decode,
   driekaart,
   paardenrace,
-  toepen,
   renelebak,
   geheugen,
   juffen,
   nummers,
-  hitster,
   flappy,
   stapeltoren,
   pijlen,
   wiskunde,
   kleurenklap,
   tienseconden,
-  duel,
   opbouwen,
   golflengte,
-  spiegel,
   ketting,
   eenentwintig,
   bom,

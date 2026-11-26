@@ -73,12 +73,6 @@ export const DEMOS: Record<string, Beeld[]> = {
     { teken: '⚖️', kop: 'De jury kiest', tekst: 'Alles komt anoniem in beeld. De jury van die ronde beslist.' },
     { kop: 'Gewonnen', tekst: 'De winnaar deelt uit. Trek je een 🃏, dan vul je zelf iets in.', slok: '3 slokken' },
   ],
-  decode: [
-    { teken: '🔐', kop: 'Vier cijfers', tekst: 'Er is één code en drie minuten.' },
-    { kop: 'Jouw aanwijzing', tekst: '"Het derde cijfer is even." Vertel hem hardop, laat je scherm niet zien.' },
-    { kop: 'Samen', tekst: 'Alle aanwijzingen zijn nodig. Laat er één weg en er blijven twee codes over.' },
-    { kop: 'Te laat', tekst: 'Niet gekraakt? Dan drinkt iedereen.', slok: '4 slokken' },
-  ],
   driekaart: [
     { teken: '🂠', kop: 'Blind inzetten', tekst: 'Eerst slokken op je hand, dan op Pair Plus. Kaarten nog dicht.' },
     { kaarten: ['9♥', '9♦', '4♣'], kop: 'Een paar', tekst: 'Meedoen verdubbelt je inzet, passen kost je hem.' },
@@ -91,12 +85,6 @@ export const DEMOS: Record<string, Beeld[]> = {
     { kaarten: ['🂠'], kop: 'Terugslag', tekst: 'Zijn alle azen een rij voorbij, dan gaat er een kaart open en moet die kleur terug.' },
     { teken: '🏁', kop: 'Harten wint', tekst: 'Goed gegokt is het dubbele uitdelen. Ernaast is je inzet drinken.', slok: '6 uitdelen' },
   ],
-  toepen: [
-    { kaarten: ['9♥', 'A♠', '10♦', 'B♣'], kop: 'Vier kaarten', tekst: 'Let op: de 9 is de hoogste en de 10 de laagste.' },
-    { kop: 'Kleur bekennen', tekst: 'Heb je de gevraagde kleur, dan moet je die spelen.' },
-    { knop: 'Toep!', kop: 'Inzet omhoog', tekst: 'De rest kiest: meegaan voor het nieuwe bedrag, of nu eruit voor het oude.' },
-    { kop: 'Minste slagen', tekst: 'Wie de meeste slagen pakt wint en deelt uit. De rest drinkt de inzet.', slok: '2 slokken' },
-  ],
   renelebak: [
     { teken: '🔈', kop: 'Wie heeft de box?', tekst: 'Die telefoon speelt alle nummers. Daarna drukt iedereen om de beurt.' },
     { teken: '🔊', kop: 'Solid Stigma', tekst: 'Hardcore, acht seconden. Save — doorgeven aan de volgende.' },
@@ -108,12 +96,6 @@ export const DEMOS: Record<string, Beeld[]> = {
     { knop: 'Langer horen', kop: 'Samen beslissen', tekst: 'Meer horen mag alleen als iedereen die nog zoekt dat wil.' },
     { kop: 'Eerste', tekst: 'Wie hem als eerste heeft deelt 7 uit, de tweede 5, daarna minder.', slok: '7 uitdelen' },
     { kop: 'Niet geraden', tekst: 'Krijg je hem niet, dan drink je.', slok: '5 slokken' },
-  ],
-  hitster: [
-    { teken: '📅', kop: 'Hoor het nummer', tekst: 'Je weet niet uit welk jaar het komt.' },
-    { kop: 'Plaats hem', tekst: 'Tussen 1994 en 2008? Zet hem op de goede plek in je tijdlijn.' },
-    { kop: 'Goed', tekst: 'De kaart is van jou en het andere team drinkt.', slok: '2 slokken' },
-    { kop: 'Eerst bij vijf', tekst: 'Wie als eerste vijf kaarten in de tijdlijn heeft, wint.' },
   ],
   flappy: [
     { teken: '🐤', kop: 'Tik om te fladderen', tekst: 'Niet tegen de buizen, en blijf in beeld.' },
@@ -148,11 +130,6 @@ export const DEMOS: Record<string, Beeld[]> = {
     { kop: 'Je ziet niets', tekst: 'Geen cijfers, geen balkje. Tik STOP als je denkt dat je er bent.' },
     { kop: '21,4', tekst: 'Je zat er het verst naast. Wie het dichtst bij zit, drinkt niets.', slok: '4 slokken' },
   ],
-  duel: [
-    { teken: '⚔️', kop: 'Twee spelers', tekst: 'Het scherm staat rood. Nog niet tikken.' },
-    { kop: 'Groen', tekst: 'Zo snel mogelijk tikken. Te vroeg telt als verlies.' },
-    { kop: 'Verloren', tekst: 'Je drinkt en ligt eruit. De laatste die overblijft deelt uit.', slok: '3 slokken' },
-  ],
   opbouwen: [
     { teken: '🎰', kop: 'Gooi', tekst: 'Een 5. De pot staat op 5 en jij mag door.' },
     { kop: 'Nog een keer', tekst: 'Een 4 erbij. De pot staat op 9. Stoppen mag altijd.' },
@@ -163,12 +140,6 @@ export const DEMOS: Record<string, Beeld[]> = {
     { knop: 'festival', kop: 'Eén woord', tekst: 'Dat is zijn hele hint. Meer mag hij niet zeggen.' },
     { kop: 'Schuiven', tekst: 'De rest zet de schuif waar ze denken dat het zit.' },
     { kop: 'Ernaast', tekst: 'Hoe verder ernaast, hoe meer je drinkt.', slok: '3 slokken' },
-  ],
-  spiegel: [
-    { teken: '🪞', kop: 'Jouw woord', tekst: 'LOGEERBED, uit de groep "in de slaapkamer".' },
-    { kop: 'Twee hetzelfde', tekst: 'Eén ander heeft precies jouw woord. Misschien.' },
-    { kop: 'Hinten', tekst: 'Praat erover, maar zeg je woord nooit hardop.' },
-    { kop: 'Wijs aan', tekst: 'Wie is jouw spiegel? Fout gewezen kost je slokken.', slok: '3 slokken' },
   ],
   juffen: [
     { teken: '🧮', kop: 'De tafel van 7', tekst: 'Verboden: veelvouden van 7, alles met een 7 erin, en dubbele getallen.' },
